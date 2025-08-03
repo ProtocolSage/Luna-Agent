@@ -36,7 +36,11 @@
       "oneClick": false,
       "allowToChangeInstallationDirectory": true
     },
-    "publish": null
+    "publish": {
+      "provider": "github",
+      "owner": "ProtocolSage",
+      "repo": "luna-agent"
+    }
   },
   "keywords": [
     "ai",

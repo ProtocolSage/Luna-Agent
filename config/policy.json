@@ -1,0 +1,7 @@
+{
+  "allowlist": ["https://api.github.com", "https://registry.npmjs.org"],
+  "pii": {"enabled": true},
+  "destructive_ops": {"require_mfa": true, "scopes": ["git_push","file_write","process_kill"]},
+  "rate_limits": {"tool_calls_per_minute": 30}
+}
+

@@ -1,0 +1,6 @@
+{
+  "default": {"mode": "react", "cot_visible": false},
+  "critical": {"mode": "self_consistency", "samples": 3, "max_extra_latency_ms": 150},
+  "tool_plan": {"static_checks": ["schema","ratelimit","allowlist"]}
+}
+

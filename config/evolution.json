@@ -1,0 +1,9 @@
+{
+  "triggers": [
+    {"when": "coreConfidence<0.45 over last 3 complex tasks", "do": ["mode:self_consistency", "samples:+2"]},
+    {"when": "toolFailureRate>0.1 over 50 calls", "do": ["reduce_parallelism: -2", "backoff: +250ms", "retry: +1"]},
+    {"when": "latencyP95>900ms for 30m", "do": ["disable_cosmetic_IGP", "lower_n: -1", "switch_model:tier2"]}
+  ],
+  "rollback": {"onRegression": true}
+}
+

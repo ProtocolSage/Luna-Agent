@@ -1,0 +1,346 @@
+import * as fs from 'fs/promises';
+import * as path from 'path';
+
+export interface SessionData {
+  sessionId: string;
+  createdAt: Date;
+  lastActivity: Date;
+  messageCount: number;
+  userPreferences: Record<string, any>;
+  contextVariables: Record<string, any>;
+  temporaryData: Record<string, any>;
+}
+
+export class KVStore {
+  private sessions: Map<string, SessionData> = new Map();
+  private dataDir: string;
+  private isInitialized = false;
+  private saveTimer: NodeJS.Timeout | null = null;
+
+  constructor() {
+    this.dataDir = path.join(__dirname, '../../data/sessions');
+  }
+
+  async initialize(): Promise<void> {
+    try {
+      await this.ensureDataDir();
+      await this.loadExistingSessions();
+      this.startPeriodicSave();
+      this.isInitialized = true;
+      console.log('KV store initialized');
+    } catch (error) {
+      console.error('Failed to initialize KV store:', error);
+      throw error;
+    }
+  }
+
+  async getSession(sessionId: string): Promise<SessionData | null> {
+    if (!this.isInitialized) {
+      return null;
+    }
+
+    const session = this.sessions.get(sessionId);
+    if (session) {
+      // Update last activity
+      session.lastActivity = new Date();
+      return { ...session }; // Return a copy
+    }
+
+    return null;
+  }
+
+  async setSession(sessionId: string, data: Partial<SessionData>): Promise<void> {
+    if (!this.isInitialized) {
+      return;
+    }
+
+    const existing = this.sessions.get(sessionId);
+    const now = new Date();
+
+    const sessionData: SessionData = {
+      sessionId,
+      createdAt: existing?.createdAt || now,
+      lastActivity: now,
+      messageCount: existing?.messageCount || 0,
+      userPreferences: existing?.userPreferences || {},
+      contextVariables: existing?.contextVariables || {},
+      temporaryData: existing?.temporaryData || {},
+      ...data
+    };
+
+    this.sessions.set(sessionId, sessionData);
+  }
+
+  async updateSession(sessionId: string, updates: Partial<SessionData>): Promise<void> {
+    const existing = await this.getSession(sessionId);
+    if (existing) {
+      await this.setSession(sessionId, { ...existing, ...updates });
+    }
+  }
+
+  async deleteSession(sessionId: string): Promise<void> {
+    this.sessions.delete(sessionId);
+    
+    try {
+      const sessionPath = path.join(this.dataDir, `${sessionId}.json`);
+      await fs.unlink(sessionPath);
+    } catch (error) {
+      // File might not exist, ignore error
+    }
+  }
+
+  async getAllSessions(): Promise<Record<string, SessionData>> {
+    const result: Record<string, SessionData> = {};
+    
+    for (const [sessionId, sessionData] of this.sessions) {
+      result[sessionId] = { ...sessionData };
+    }
+    
+    return result;
+  }
+
+  async getActiveSessions(maxAge: number = 24 * 60 * 60 * 1000): Promise<SessionData[]> {
+    const cutoff = new Date(Date.now() - maxAge);
+    const activeSessions: SessionData[] = [];
+
+    for (const session of this.sessions.values()) {
+      if (new Date(session.lastActivity) > cutoff) {
+        activeSessions.push({ ...session });
+      }
+    }
+
+    return activeSessions.sort((a, b) => 
+      new Date(b.lastActivity).getTime() - new Date(a.lastActivity).getTime()
+    );
+  }
+
+  async setUserPreference(sessionId: string, key: string, value: any): Promise<void> {
+    const session = await this.getSession(sessionId) || {
+      sessionId,
+      createdAt: new Date(),
+      lastActivity: new Date(),
+      messageCount: 0,
+      userPreferences: {},
+      contextVariables: {},
+      temporaryData: {}
+    };
+
+    session.userPreferences[key] = value;
+    await this.setSession(sessionId, session);
+  }
+
+  async getUserPreference(sessionId: string, key: string): Promise<any> {
+    const session = await this.getSession(sessionId);
+    return session?.userPreferences[key];
+  }
+
+  async setContextVariable(sessionId: string, key: string, value: any): Promise<void> {
+    const session = await this.getSession(sessionId) || {
+      sessionId,
+      createdAt: new Date(),
+      lastActivity: new Date(),
+      messageCount: 0,
+      userPreferences: {},
+      contextVariables: {},
+      temporaryData: {}
+    };
+
+    session.contextVariables[key] = value;
+    await this.setSession(sessionId, session);
+  }
+
+  async getContextVariable(sessionId: string, key: string): Promise<any> {
+    const session = await this.getSession(sessionId);
+    return session?.contextVariables[key];
+  }
+
+  async setTemporaryData(sessionId: string, key: string, value: any, ttl?: number): Promise<void> {
+    const session = await this.getSession(sessionId) || {
+      sessionId,
+      createdAt: new Date(),
+      lastActivity: new Date(),
+      messageCount: 0,
+      userPreferences: {},
+      contextVariables: {},
+      temporaryData: {}
+    };
+
+    const data = { value };
+    if (ttl) {
+      (data as any).expiresAt = new Date(Date.now() + ttl);
+    }
+
+    session.temporaryData[key] = data;
+    await this.setSession(sessionId, session);
+  }
+
+  async getTemporaryData(sessionId: string, key: string): Promise<any> {
+    const session = await this.getSession(sessionId);
+    const tempData = session?.temporaryData[key];
+    
+    if (!tempData) return undefined;
+
+    // Check if data has expired
+    if (tempData.expiresAt && new Date() > new Date(tempData.expiresAt)) {
+      // Remove expired data
+      delete session!.temporaryData[key];
+      await this.setSession(sessionId, session!);
+      return undefined;
+    }
+
+    return tempData.value;
+  }
+
+  private async ensureDataDir(): Promise<void> {
+    try {
+      await fs.access(this.dataDir);
+    } catch {
+      await fs.mkdir(this.dataDir, { recursive: true });
+    }
+  }
+
+  private async loadExistingSessions(): Promise<void> {
+    try {
+      const files = await fs.readdir(this.dataDir);
+      const jsonFiles = files.filter(f => f.endsWith('.json'));
+
+      for (const file of jsonFiles) {
+        try {
+          const filePath = path.join(this.dataDir, file);
+          const content = await fs.readFile(filePath, 'utf8');
+          const sessionData = JSON.parse(content);
+          
+          // Convert date strings back to Date objects
+          sessionData.createdAt = new Date(sessionData.createdAt);
+          sessionData.lastActivity = new Date(sessionData.lastActivity);
+          
+          this.sessions.set(sessionData.sessionId, sessionData);
+        } catch (error) {
+          console.warn(`Failed to load session from ${file}:`, error);
+        }
+      }
+
+      console.log(`Loaded ${this.sessions.size} sessions from storage`);
+    } catch (error) {
+      console.warn('No existing session data found, starting fresh');
+    }
+  }
+
+  private async saveAllSessions(): Promise<void> {
+    try {
+      for (const [sessionId, sessionData] of this.sessions) {
+        const sessionPath = path.join(this.dataDir, `${sessionId}.json`);
+        await fs.writeFile(sessionPath, JSON.stringify(sessionData, null, 2));
+      }
+    } catch (error) {
+      console.error('Failed to save sessions:', error);
+    }
+  }
+
+  private startPeriodicSave(): void {
+    // Save sessions every 30 seconds
+    this.saveTimer = setInterval(() => {
+      this.saveAllSessions();
+    }, 30000);
+  }
+
+  async cleanupExpiredSessions(maxAge: number = 7 * 24 * 60 * 60 * 1000): Promise<number> {
+    const cutoff = new Date(Date.now() - maxAge);
+    const toDelete: string[] = [];
+
+    for (const [sessionId, session] of this.sessions) {
+      if (new Date(session.lastActivity) < cutoff) {
+        toDelete.push(sessionId);
+      }
+    }
+
+    for (const sessionId of toDelete) {
+      await this.deleteSession(sessionId);
+    }
+
+    console.log(`Cleaned up ${toDelete.length} expired sessions`);
+    return toDelete.length;
+  }
+
+  async cleanupExpiredTemporaryData(): Promise<void> {
+    const now = new Date();
+    
+    for (const [sessionId, session] of this.sessions) {
+      let hasExpiredData = false;
+      
+      for (const [key, data] of Object.entries(session.temporaryData)) {
+        if (data.expiresAt && now > new Date(data.expiresAt)) {
+          delete session.temporaryData[key];
+          hasExpiredData = true;
+        }
+      }
+      
+      if (hasExpiredData) {
+        await this.setSession(sessionId, session);
+      }
+    }
+  }
+
+  async getSessionStats(): Promise<{
+    totalSessions: number;
+    activeSessions: number;
+    averageMessageCount: number;
+    oldestSession: Date | null;
+    newestSession: Date | null;
+  }> {
+    const sessions = Array.from(this.sessions.values());
+    const activeSessions = await this.getActiveSessions();
+    
+    const messageCounts = sessions.map(s => s.messageCount);
+    const averageMessageCount = messageCounts.length > 0 ? 
+      messageCounts.reduce((a, b) => a + b, 0) / messageCounts.length : 0;
+
+    const createdDates = sessions.map(s => new Date(s.createdAt));
+    const oldestSession = createdDates.length > 0 ? new Date(Math.min(...createdDates.map(d => d.getTime()))) : null;
+    const newestSession = createdDates.length > 0 ? new Date(Math.max(...createdDates.map(d => d.getTime()))) : null;
+
+    return {
+      totalSessions: sessions.length,
+      activeSessions: activeSessions.length,
+      averageMessageCount,
+      oldestSession,
+      newestSession
+    };
+  }
+
+  async healthCheck(): Promise<boolean> {
+    try {
+      await this.ensureDataDir();
+      return this.isInitialized;
+    } catch {
+      return false;
+    }
+  }
+
+  async cleanup(): Promise<void> {
+    if (this.saveTimer) {
+      clearInterval(this.saveTimer);
+      this.saveTimer = null;
+    }
+
+    // Save all sessions before cleanup
+    await this.saveAllSessions();
+    
+    // Cleanup expired data
+    await this.cleanupExpiredSessions();
+    await this.cleanupExpiredTemporaryData();
+  }
+
+  getStats(): {
+    sessionCount: number;
+    isInitialized: boolean;
+    dataDir: string;
+  } {
+    return {
+      sessionCount: this.sessions.size,
+      isInitialized: this.isInitialized,
+      dataDir: this.dataDir
+    };
+  }
+}
+

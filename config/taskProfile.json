@@ -1,0 +1,29 @@
+{
+  "task_type": "devops_code_automation_assistant",
+  "domain": ["typescript", "python", "bash", "electron", "websocket", "audio"],
+  "quality_requirement": "maximum",
+  "interaction_mode": "interactive_dialogue_voice_first",
+  "languages": ["en", "es-DO"],
+  "non_functional": {
+    "latency_ms_target": 300,
+    "cost_target_usd_per_min": 0.002,
+    "privacy_level": "no_pii_persisted",
+    "data_residency": "us",
+    "offline_fallback": true
+  },
+  "tools": {
+    "code_exec": "sandboxed_node_py",
+    "web": "restricted_fetch_allowlist",
+    "fs": "project_scoped",
+    "audio": ["stt_whisper_like", "tts_rt_stream"],
+    "video_edit": ["capcut_web_puppeteer"],
+    "llm": ["realtime", "json_mode"],
+    "memory": ["vector", "kv_short_term"]
+  },
+  "security": {
+    "prompt_injection_filters": true,
+    "mfa_for_destructive_ops": true,
+    "secret_rotation_days": 30
+  }
+}
+

@@ -47,15 +47,20 @@ export class PIIFilter {
 
     return {
       hasPII,
-      piiTypes: detectedTypes,
+      detectedTypes,
       confidence,
-      redactedText
+      sanitizedText: redactedText
     };
   }
 
   sanitize(text: string): string {
     const result = this.detect(text);
-    return result.redactedText;
+    return result.sanitizedText || text;
+  }
+
+  filter(text: string): string {
+    // Alias for sanitize method - filters out PII and returns clean text
+    return this.sanitize(text);
   }
 
   isBlocked(text: string): boolean {

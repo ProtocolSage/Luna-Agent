@@ -11,28 +11,28 @@ describe('PIIFilter', () => {
     it('should detect SSN with prefix', () => {
       const result = piiFilter.detect('SSN 123-45-6789');
       expect(result.hasPII).toBe(true);
-      expect(result.piiTypes).toContain('ssn');
-      expect(result.redactedText).toBe('[REDACTED_SSN]');
+      expect(result.detectedTypes).toContain('ssn');
+      expect(result.sanitizedText).toBe('[REDACTED_SSN]');
       expect(result.confidence).toBeGreaterThan(0.7);
     });
 
     it('should detect SSN without prefix', () => {
       const result = piiFilter.detect('My number is 123-45-6789');
       expect(result.hasPII).toBe(true);
-      expect(result.piiTypes).toContain('ssn');
-      expect(result.redactedText).toBe('My number is [REDACTED_SSN]');
+      expect(result.detectedTypes).toContain('ssn');
+      expect(result.sanitizedText).toBe('My number is [REDACTED_SSN]');
     });
 
     it('should detect SSN with spaces', () => {
       const result = piiFilter.detect('123 45 6789');
       expect(result.hasPII).toBe(true);
-      expect(result.piiTypes).toContain('ssn');
+      expect(result.detectedTypes).toContain('ssn');
     });
 
     it('should detect SSN without separators', () => {
       const result = piiFilter.detect('123456789');
       expect(result.hasPII).toBe(true);
-      expect(result.piiTypes).toContain('ssn');
+      expect(result.detectedTypes).toContain('ssn');
     });
 
     it('should block SSN input', () => {
@@ -45,15 +45,15 @@ describe('PIIFilter', () => {
     it('should detect email addresses', () => {
       const result = piiFilter.detect('Contact me at john@example.com');
       expect(result.hasPII).toBe(true);
-      expect(result.piiTypes).toContain('email');
-      expect(result.redactedText).toBe('Contact me at [REDACTED_EMAIL]');
+      expect(result.detectedTypes).toContain('email');
+      expect(result.sanitizedText).toBe('Contact me at [REDACTED_EMAIL]');
     });
 
     it('should detect multiple emails', () => {
       const result = piiFilter.detect('john@example.com and jane@test.org');
       expect(result.hasPII).toBe(true);
-      expect(result.piiTypes).toContain('email');
-      expect(result.redactedText).toBe('[REDACTED_EMAIL] and [REDACTED_EMAIL]');
+      expect(result.detectedTypes).toContain('email');
+      expect(result.sanitizedText).toBe('[REDACTED_EMAIL] and [REDACTED_EMAIL]');
     });
   });
 
@@ -61,8 +61,8 @@ describe('PIIFilter', () => {
     it('should detect phone numbers', () => {
       const result = piiFilter.detect('Call me at (555) 123-4567');
       expect(result.hasPII).toBe(true);
-      expect(result.piiTypes).toContain('phone');
-      expect(result.redactedText).toBe('Call me at ([REDACTED_PHONE]');
+      expect(result.detectedTypes).toContain('phone');
+      expect(result.sanitizedText).toBe('Call me at ([REDACTED_PHONE]');
     });
 
     it('should detect phone with different formats', () => {
@@ -78,7 +78,7 @@ describe('PIIFilter', () => {
         const result = piiFilter.detect(input);
         if (expected) {
           expect(result.hasPII).toBe(true);
-          expect(result.piiTypes).toContain('phone');
+          expect(result.detectedTypes).toContain('phone');
         } else {
           expect(result.hasPII).toBe(false);
         }
@@ -90,8 +90,8 @@ describe('PIIFilter', () => {
     it('should detect credit card numbers', () => {
       const result = piiFilter.detect('Card: 4532 1234 5678 9012');
       expect(result.hasPII).toBe(true);
-      expect(result.piiTypes).toContain('credit_card');
-      expect(result.redactedText).toBe('Card: [REDACTED_CREDIT_CARD]');
+      expect(result.detectedTypes).toContain('credit_card');
+      expect(result.sanitizedText).toBe('Card: [REDACTED_CREDIT_CARD]');
     });
   });
 
@@ -99,8 +99,8 @@ describe('PIIFilter', () => {
     it('should detect OpenAI API keys', () => {
       const result = piiFilter.detect('sk-1234567890abcdef1234567890abcdef');
       expect(result.hasPII).toBe(true);
-      expect(result.piiTypes).toContain('api_key');
-      expect(result.redactedText).toBe('[REDACTED_API_KEY]');
+      expect(result.detectedTypes).toContain('api_key');
+      expect(result.sanitizedText).toBe('[REDACTED_API_KEY]');
     });
   });
 
@@ -108,9 +108,9 @@ describe('PIIFilter', () => {
     it('should detect multiple PII types in one text', () => {
       const result = piiFilter.detect('SSN 123-45-6789 and email john@example.com');
       expect(result.hasPII).toBe(true);
-      expect(result.piiTypes).toContain('ssn');
-      expect(result.piiTypes).toContain('email');
-      expect(result.redactedText).toBe('[REDACTED_SSN] and email [REDACTED_EMAIL]');
+      expect(result.detectedTypes).toContain('ssn');
+      expect(result.detectedTypes).toContain('email');
+      expect(result.sanitizedText).toBe('[REDACTED_SSN] and email [REDACTED_EMAIL]');
     });
   });
 
@@ -118,8 +118,8 @@ describe('PIIFilter', () => {
     it('should not detect PII in clean text', () => {
       const result = piiFilter.detect('This is a normal message without any sensitive information.');
       expect(result.hasPII).toBe(false);
-      expect(result.piiTypes).toHaveLength(0);
-      expect(result.redactedText).toBe('This is a normal message without any sensitive information.');
+      expect(result.detectedTypes).toHaveLength(0);
+      expect(result.sanitizedText).toBe('This is a normal message without any sensitive information.');
     });
 
     it('should not block clean text', () => {

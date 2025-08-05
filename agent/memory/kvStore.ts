@@ -1,14 +1,26 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
+// Type-safe session data interfaces
+type SessionValue = string | number | boolean | null | SessionValue[] | { [key: string]: SessionValue };
+type UserPreference = string | number | boolean | string[];
+type ContextVariable = string | number | boolean | object | null;
+type TemporaryData = SessionValue;
+
+// TTL-aware temporary data structure
+interface TTLTemporaryData {
+  value: TemporaryData;
+  expiresAt?: Date;
+}
+
 export interface SessionData {
   sessionId: string;
   createdAt: Date;
   lastActivity: Date;
   messageCount: number;
-  userPreferences: Record<string, any>;
-  contextVariables: Record<string, any>;
-  temporaryData: Record<string, any>;
+  userPreferences: Record<string, UserPreference>;
+  contextVariables: Record<string, ContextVariable>;
+  temporaryData: Record<string, TemporaryData>;
 }
 
 export class KVStore {
@@ -85,7 +97,8 @@ export class KVStore {
       const sessionPath = path.join(this.dataDir, `${sessionId}.json`);
       await fs.unlink(sessionPath);
     } catch (error) {
-      // File might not exist, ignore error
+      // File might not exist or deletion failed - log for debugging
+      console.debug(`Session file deletion warning for ${sessionId}:`, error);
     }
   }
 
@@ -114,7 +127,7 @@ export class KVStore {
     );
   }
 
-  async setUserPreference(sessionId: string, key: string, value: any): Promise<void> {
+  async setUserPreference(sessionId: string, key: string, value: UserPreference): Promise<void> {
     const session = await this.getSession(sessionId) || {
       sessionId,
       createdAt: new Date(),
@@ -129,12 +142,12 @@ export class KVStore {
     await this.setSession(sessionId, session);
   }
 
-  async getUserPreference(sessionId: string, key: string): Promise<any> {
+  async getUserPreference(sessionId: string, key: string): Promise<UserPreference | undefined> {
     const session = await this.getSession(sessionId);
     return session?.userPreferences[key];
   }
 
-  async setContextVariable(sessionId: string, key: string, value: any): Promise<void> {
+  async setContextVariable(sessionId: string, key: string, value: ContextVariable): Promise<void> {
     const session = await this.getSession(sessionId) || {
       sessionId,
       createdAt: new Date(),
@@ -149,12 +162,12 @@ export class KVStore {
     await this.setSession(sessionId, session);
   }
 
-  async getContextVariable(sessionId: string, key: string): Promise<any> {
+  async getContextVariable(sessionId: string, key: string): Promise<ContextVariable | undefined> {
     const session = await this.getSession(sessionId);
     return session?.contextVariables[key];
   }
 
-  async setTemporaryData(sessionId: string, key: string, value: any, ttl?: number): Promise<void> {
+  async setTemporaryData(sessionId: string, key: string, value: TemporaryData, ttl?: number): Promise<void> {
     const session = await this.getSession(sessionId) || {
       sessionId,
       createdAt: new Date(),
@@ -165,16 +178,16 @@ export class KVStore {
       temporaryData: {}
     };
 
-    const data = { value };
+    const data: TTLTemporaryData = { value };
     if (ttl) {
-      (data as any).expiresAt = new Date(Date.now() + ttl);
+      data.expiresAt = new Date(Date.now() + ttl);
     }
 
     session.temporaryData[key] = data;
     await this.setSession(sessionId, session);
   }
 
-  async getTemporaryData(sessionId: string, key: string): Promise<any> {
+  async getTemporaryData(sessionId: string, key: string): Promise<TemporaryData | undefined> {
     const session = await this.getSession(sessionId);
     const tempData = session?.temporaryData[key];
     
@@ -222,7 +235,7 @@ export class KVStore {
 
       console.log(`Loaded ${this.sessions.size} sessions from storage`);
     } catch (error) {
-      console.warn('No existing session data found, starting fresh');
+      console.debug('No existing session data found, starting fresh. Details:', error);
     }
   }
 

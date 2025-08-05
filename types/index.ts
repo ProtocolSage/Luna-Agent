@@ -1,71 +1,82 @@
-// Core Types
-export interface LLMResponse {
+// Core types for Luna Agent system
+export interface MemoryDocument {
+  id: string;
   content: string;
-  model: string;
-  tokensUsed: TokenUsage;
+  embedding?: number[]; // Changed from vector to embedding
+  metadata?: Record<string, any>;
+  timestamp: string;
+  type: 'conversation' | 'document' | 'goal' | 'reminder' | 'journal';
+  sessionId?: string;
+}
+
+export interface Vector {
+  id: string;
+  embedding: number[]; // Changed from vector to embedding  
+}
+
+export interface SearchResult {
+  document: MemoryDocument;
+  similarity: number;
+}
+
+export interface SearchOptions {
+  limit?: number;
+  threshold?: number;
+  type?: string;
+  sessionId?: string;
+  dateRange?: { start: string; end: string };
+}
+
+// Agent system types
+export interface ToolContext {
+  traceId: string;
+  sessionId: string;
+  workingDir: string;
+  allowlist: string[];
+}
+
+export interface ToolResult {
+  tool: string;
+  success: boolean;
+  output?: any;
+  error?: string;
+  latencyMs: number;
+  metadata?: Record<string, any>;
+}
+
+// LLM and Model types
+export interface LLMResponse {
+  id: string;
+  content: string;
+  tokensUsed: number;
   cost: number;
-  confidence: number;
-  finishReason: string;
+  /** Optional confidence score from RAG pipeline */
+  confidence?: number;
 }
 
 export interface TokenUsage {
   input: number;
   output: number;
-  total: number;
 }
 
 export interface ModelConfig {
   name: string;
-  provider: 'openai' | 'anthropic' | 'mistral';
-  temperature?: number;
-  maxTokens?: number;
+  provider: string;
+  maxTokens: number;
+  temperature: number;
+  apiKey?: string;
+  endpoint?: string;
+  // Cost tracking properties for token usage billing
   costPer1kTokensIn?: number;
   costPer1kTokensOut?: number;
 }
 
-// Memory Types
-export interface MemoryDocument {
-  id: string;
-  content: string;
-  type: 'conversation' | 'document' | 'context' | 'preference';
-  sessionId?: string;
-  userId?: string;
-  timestamp: string;
-  tags?: string;
-  source?: string;
-  metadata?: Record<string, unknown>;
-  embedding?: number[];
-}
-
-export interface MemoryQuery {
-  query: string;
-  type?: string;
-  sessionId?: string;
-  userId?: string;
-  limit?: number;
-  threshold?: number;
-}
-
-// Security Types
-export interface PIIDetectionResult {
-  hasPII: boolean;
-  piiTypes: string[];
-  confidence: number;
-  redactedText: string;
-}
-
-export interface InjectionDetectionResult {
-  isInjection: boolean;
-  confidence: number;
-  patterns: string[];
-  sanitizedText: string;
-}
-
-// Circuit Breaker Types
 export interface CircuitBreakerState {
+  /** "CLOSED" normal, "OPEN" tripped, "HALF_OPEN" probing */
   state: 'CLOSED' | 'OPEN' | 'HALF_OPEN';
   failures: number;
-  lastFailureTime: number;
+  lastFailureTime?: number;
+  nextAttemptTime?: number;
 }
 
 export interface ModelMetrics {
@@ -75,66 +86,28 @@ export interface ModelMetrics {
   totalTokensIn: number;
   totalTokensOut: number;
   totalCost: number;
-  averageLatency: number;
-  lastUsed: number;
 }
 
-// Configuration Types
-export interface AgentConfig {
-  models: ModelConfig[];
-  security: {
-    enablePIIDetection: boolean;
-    enableInjectionDetection: boolean;
-    maxInputLength: number;
-  };
-  memory: {
-    maxDocuments: number;
-    vectorDimensions: number;
-  };
-  telemetry: {
-    enabled: boolean;
-    exporters: string[];
-  };
+// PII Detection types
+export interface PIIDetectionResult {
+  hasPII: boolean;
+  detectedTypes: string[];
+  confidence: number;
+  sanitizedText?: string;
 }
 
-// API Types
+// Chat/Communication types
 export interface ChatRequest {
   message: string;
   sessionId?: string;
   model?: string;
-  temperature?: number;
-  maxTokens?: number;
+  context?: Record<string, any>;
 }
 
 export interface ChatResponse {
-  response: string;
+  message: string;
   sessionId: string;
   model: string;
-  tokensUsed: TokenUsage;
-  cost: number;
+  usage: TokenUsage;
+  timestamp: string;
 }
-
-// Vector Store Types
-export interface VectorSearchResult {
-  document: MemoryDocument;
-  similarity: number;
-  distance: number;
-}
-
-export interface EmbeddingResponse {
-  embedding: number[];
-  tokens: number;
-  cost: number;
-}
-
-// Session Types
-export interface SessionData {
-  sessionId: string;
-  createdAt: Date;
-  lastActivity: Date;
-  messageCount: number;
-  userPreferences: string;
-  contextVariables: string;
-  temporaryData: string;
-}
-

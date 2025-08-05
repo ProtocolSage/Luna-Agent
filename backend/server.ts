@@ -2,6 +2,30 @@ import express, { Request, Response, NextFunction } from 'express';
 import { ModelRouter } from '../agent/orchestrator/modelRouter';
 import { PIIFilter } from '../agent/validators/piiFilter';
 import { ChatRequest, ChatResponse, ModelConfig } from '../types';
+import { createAgentRouter } from './routes/agent';
+import * as dotenv from 'dotenv';
+import { execSync } from 'child_process';
+
+// Load environment variables from .env file if it exists (won't override system vars)
+dotenv.config();
+
+// For Windows: Force load system environment variables if not already loaded
+if (!process.env.OPENAI_API_KEY || !process.env.ANTHROPIC_API_KEY) {
+  try {
+    // Get User environment variables from Windows
+    const openaiKey = execSync('powershell -Command "[Environment]::GetEnvironmentVariable(\'OPENAI_API_KEY\', \'User\')"', { encoding: 'utf8' }).trim();
+    const anthropicKey = execSync('powershell -Command "[Environment]::GetEnvironmentVariable(\'ANTHROPIC_API_KEY\', \'User\')"', { encoding: 'utf8' }).trim();
+    
+    if (openaiKey && !process.env.OPENAI_API_KEY) {
+      process.env.OPENAI_API_KEY = openaiKey;
+    }
+    if (anthropicKey && !process.env.ANTHROPIC_API_KEY) {
+      process.env.ANTHROPIC_API_KEY = anthropicKey;
+    }
+  } catch (error) {
+    console.warn('Could not load system environment variables:', error);
+  }
+}
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -51,53 +75,13 @@ app.get('/health', (req: Request, res: Response) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 
-// Chat endpoint
-app.post('/chat', async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { message, sessionId, model, temperature, maxTokens }: ChatRequest = req.body;
+// Agent routes (advanced capabilities)  
+async function initializeAgentRoutes() {
+  const agentRouter = await createAgentRouter(modelRouter);
+  app.use('/api', agentRouter);
 
-    if (!message) {
-      res.status(400).json({ error: 'Message is required' });
-      return;
-    }
-
-    // PII detection
-    const piiResult = piiFilter.detect(message);
-    if (piiResult.hasPII && piiResult.confidence > 0.7) {
-      res.status(400).json({ 
-        error: 'Message contains PII and cannot be processed',
-        piiTypes: piiResult.piiTypes
-      });
-      return;
-    }
-
-    // Route to LLM
-    const response = await modelRouter.route(message, {
-      preferredModel: model,
-      temperature,
-      maxTokens
-    });
-
-    const chatResponse: ChatResponse = {
-      response: response.content,
-      sessionId: sessionId || 'default',
-      model: response.model,
-      tokensUsed: response.tokensUsed,
-      cost: response.cost
-    };
-
-    res.json(chatResponse);
-  } catch (error) {
-    console.error('Chat endpoint error:', error);
-    res.status(500).json({ 
-      error: 'Internal server error',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    });
-  }
-});
-
-// Metrics endpoint
-app.get('/metrics', (req: Request, res: Response) => {
+  // Metrics endpoint
+  app.get('/metrics', (req: Request, res: Response) => {
   try {
     const metrics = modelRouter.getMetrics();
     const circuitBreakers = modelRouter.getCircuitBreakerStatus();
@@ -111,16 +95,27 @@ app.get('/metrics', (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error('Metrics endpoint error:', error);
-    res.status(500).json({ error: 'Failed to get metrics' });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
+}
 
-// Start server
-const server = app.listen(port, () => {
-  console.log(`Luna Agent server running on port ${port}`);
-  console.log(`Health check: http://localhost:${port}/health`);
-  console.log(`Chat endpoint: http://localhost:${port}/chat`);
-});
+// Initialize agent routes and start server
+async function startServer() {
+  await initializeAgentRoutes();
+  
+  // Start server
+  const server = app.listen(port, () => {
+    console.log(`Luna Agent server running on port ${port}`);
+    console.log(`Health check: http://localhost:${port}/health`);
+  });
+  
+  return server;
+}
 
-export { app, server };
+// Start the server
+const serverPromise = startServer();
 
+// Export at module level for proper TypeScript compatibility
+export { app, serverPromise as server };
+export default app;

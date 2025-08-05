@@ -1,8 +1,9 @@
 import { app, BrowserWindow } from 'electron';
 import * as path from 'path';
-import { server } from '../../backend/server';
+import { server as serverPromise } from '../../backend/server';
 
 let mainWindow: BrowserWindow | null = null;
+let serverInstance: any = null;
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
@@ -38,8 +39,16 @@ function createWindow(): void {
   });
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   createWindow();
+  
+  // Initialize server instance for proper cleanup
+  try {
+    serverInstance = await serverPromise;
+    console.log('Backend server initialized successfully');
+  } catch (error) {
+    console.error('Failed to initialize backend server:', error);
+  }
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -55,8 +64,10 @@ app.on('window-all-closed', () => {
 });
 
 app.on('before-quit', () => {
-  if (server) {
-    server.close();
+  // Graceful shutdown: Close backend server before Electron app quits
+  if (serverInstance && typeof serverInstance.close === 'function') {
+    console.log('Shutting down backend server...');
+    serverInstance.close();
   }
 });
 

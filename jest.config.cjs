@@ -28,6 +28,7 @@ module.exports = {
   ],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov'],
+  setupFiles: ['<rootDir>/test/setupTests.ts'],
   setupFilesAfterEnv: ['<rootDir>/test/setup.ts'],
   testTimeout: 10000,
   verbose: false,

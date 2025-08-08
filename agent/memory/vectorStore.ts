@@ -1,8 +1,10 @@
-import Database from 'better-sqlite3';
 import { createHash } from 'crypto';
 import * as path from 'path';
 import * as fs from 'fs';
 import { MemoryDocument, SearchResult, SearchOptions } from '../../types';
+
+// Use the database wrapper instead of better-sqlite3 directly
+const { getDatabase } = require('../../backend/database');
 
 // Database row interfaces for type safety
 interface VectorStoreRow {
@@ -33,9 +35,10 @@ interface EmbeddingAPIResponse {
 }
 
 export class VectorStore {
-  private db: Database.Database;
+  private db: any;
   private embeddingCache = new Map<string, number[]>();
   private ready = false;
+  private dbPath: string;
   
   constructor(dbPath?: string) {
     const memoryDir = path.join(process.cwd(), 'memory');
@@ -43,11 +46,20 @@ export class VectorStore {
       fs.mkdirSync(memoryDir, { recursive: true });
     }
     
-    this.db = new Database(dbPath || path.join(memoryDir, 'vector-store.db'));
-    this.initializeDatabase();
+    this.dbPath = dbPath || path.join(memoryDir, 'vector-store.db');
+    this.initializeDatabase().catch(console.error);
   }
 
-  private initializeDatabase() {
+  private async ensureReady(): Promise<void> {
+    if (!this.ready) {
+      await this.initializeDatabase();
+    }
+  }
+
+  private async initializeDatabase() {
+    // Initialize database connection using the wrapper
+    this.db = getDatabase(this.dbPath);
+    
     // Use memory_vectors table as specified in repair plan
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS memory_vectors (
@@ -70,8 +82,8 @@ export class VectorStore {
   }
 
   async initialize(): Promise<void> {
+    await this.ensureReady();
     console.log('VectorStore initialized with SQLite backend');
-    this.ready = true;
   }
 
   isReady(): boolean {
@@ -79,6 +91,7 @@ export class VectorStore {
   }
 
   async upsert(doc: MemoryDocument): Promise<void> {
+    await this.ensureReady();
     let embedding: number[] | null = null;
     
     // Generate embedding if available
@@ -139,6 +152,7 @@ export class VectorStore {
   }
 
   async search(query: string, options: SearchOptions = {}): Promise<SearchResult[]> {
+    await this.ensureReady();
     const { limit = 10, type, sessionId, dateRange } = options;
     
     let sql = `
@@ -184,6 +198,7 @@ export class VectorStore {
   }
 
   async similarity(query: string, limit: number = 10, threshold: number = 0.5): Promise<SearchResult[]> {
+    await this.ensureReady();
     // Generate query embedding if API available
     const queryEmbedding = await this.createEmbedding(query);
     

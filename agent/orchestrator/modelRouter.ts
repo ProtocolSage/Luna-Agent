@@ -235,6 +235,20 @@ export class ModelRouter {
   }
 
   private async callAnthropic(model: ModelConfig, prompt: string, options: Record<string, unknown>): Promise<LLMResponse> {
+    // Handle message history if provided, otherwise create simple message
+    let messages: any[] = [];
+    
+    if (options.messages && Array.isArray(options.messages)) {
+      // Use provided message history and validate it
+      messages = this.validateAnthropicMessages(options.messages as any[]);
+    } else if (options.conversationHistory && Array.isArray(options.conversationHistory)) {
+      // Convert conversation history to Anthropic format
+      messages = this.convertToAnthropicMessages(options.conversationHistory as any[]);
+    } else {
+      // Simple single message
+      messages = [{ role: 'user', content: prompt }];
+    }
+
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -245,7 +259,7 @@ export class ModelRouter {
       body: JSON.stringify({
         model: model.name,
         max_tokens: (options.maxTokens as number) || model.maxTokens || 2000,
-        messages: [{ role: 'user', content: prompt }],
+        messages: messages,
         temperature: (options.temperature as number) || model.temperature || 0.7
       })
     });
@@ -264,6 +278,96 @@ export class ModelRouter {
       cost: this.calculateAnthropicCost(model.name, data.usage),
       confidence: 0.9
     };
+  }
+
+  private validateAnthropicMessages(messages: any[]): any[] {
+    const validated: any[] = [];
+    let pendingToolUse: any = null;
+
+    for (let i = 0; i < messages.length; i++) {
+      const msg = messages[i];
+      
+      // Check if this message contains tool_use blocks
+      if (msg.role === 'assistant' && msg.content) {
+        const hasToolUse = Array.isArray(msg.content) && 
+          msg.content.some((c: any) => c.type === 'tool_use');
+        
+        if (hasToolUse) {
+          validated.push(msg);
+          pendingToolUse = msg.content.find((c: any) => c.type === 'tool_use');
+          
+          // Check if next message has the corresponding tool_result
+          if (i + 1 < messages.length) {
+            const nextMsg = messages[i + 1];
+            if (nextMsg.role === 'user' && nextMsg.content) {
+              const hasToolResult = Array.isArray(nextMsg.content) && 
+                nextMsg.content.some((c: any) => c.type === 'tool_result');
+              
+              if (!hasToolResult && pendingToolUse) {
+                // Insert a synthetic tool_result to fix the structure
+                validated.push({
+                  role: 'user',
+                  content: [{
+                    type: 'tool_result',
+                    tool_use_id: pendingToolUse.id,
+                    content: 'Tool execution skipped or failed'
+                  }]
+                });
+              }
+            } else if (pendingToolUse) {
+              // No user message follows, add synthetic tool_result
+              validated.push({
+                role: 'user',
+                content: [{
+                  type: 'tool_result',
+                  tool_use_id: pendingToolUse.id,
+                  content: 'Tool execution skipped or failed'
+                }]
+              });
+            }
+            pendingToolUse = null;
+          } else if (pendingToolUse) {
+            // Last message has tool_use, add synthetic tool_result
+            validated.push({
+              role: 'user',
+              content: [{
+                type: 'tool_result',
+                tool_use_id: pendingToolUse.id,
+                content: 'Tool execution skipped or failed'
+              }]
+            });
+            pendingToolUse = null;
+          }
+        } else {
+          validated.push(msg);
+        }
+      } else {
+        validated.push(msg);
+      }
+    }
+
+    return validated;
+  }
+
+  private convertToAnthropicMessages(history: any[]): any[] {
+    // Convert a generic conversation history to Anthropic format
+    const messages: any[] = [];
+    
+    for (const item of history) {
+      if (item.role && item.content) {
+        messages.push({
+          role: item.role === 'system' ? 'assistant' : item.role,
+          content: typeof item.content === 'string' ? item.content : JSON.stringify(item.content)
+        });
+      }
+    }
+
+    // Ensure we end with a user message if needed
+    if (messages.length === 0 || messages[messages.length - 1].role !== 'user') {
+      messages.push({ role: 'user', content: 'Continue' });
+    }
+
+    return this.validateAnthropicMessages(messages);
   }
 
   private async callMistral(model: ModelConfig, prompt: string, options: Record<string, unknown>): Promise<LLMResponse> {

@@ -1,0 +1,352 @@
+diff --git a/node_modules/speaker/build/Release/binding.exp b/node_modules/speaker/build/Release/binding.exp
+index 1e7604c..63eb5be 100644
+Binary files a/node_modules/speaker/build/Release/binding.exp and b/node_modules/speaker/build/Release/binding.exp differ
+diff --git a/node_modules/speaker/build/Release/binding.iobj b/node_modules/speaker/build/Release/binding.iobj
+index cd7a781..ba3f13b 100644
+Binary files a/node_modules/speaker/build/Release/binding.iobj and b/node_modules/speaker/build/Release/binding.iobj differ
+diff --git a/node_modules/speaker/build/Release/binding.ipdb b/node_modules/speaker/build/Release/binding.ipdb
+index 8a310dd..c741595 100644
+Binary files a/node_modules/speaker/build/Release/binding.ipdb and b/node_modules/speaker/build/Release/binding.ipdb differ
+diff --git a/node_modules/speaker/build/Release/binding.node b/node_modules/speaker/build/Release/binding.node
+index ffd72d1..ab98231 100644
+Binary files a/node_modules/speaker/build/Release/binding.node and b/node_modules/speaker/build/Release/binding.node differ
+diff --git a/node_modules/speaker/build/Release/binding.pdb b/node_modules/speaker/build/Release/binding.pdb
+index be3d377..891efa8 100644
+Binary files a/node_modules/speaker/build/Release/binding.pdb and b/node_modules/speaker/build/Release/binding.pdb differ
+diff --git a/node_modules/speaker/build/Release/liboutput.lib b/node_modules/speaker/build/Release/liboutput.lib
+index 2beda4f..655bec5 100644
+Binary files a/node_modules/speaker/build/Release/liboutput.lib and b/node_modules/speaker/build/Release/liboutput.lib differ
+diff --git a/node_modules/speaker/build/Release/obj/binding/binding.node.recipe b/node_modules/speaker/build/Release/obj/binding/binding.node.recipe
+index 8c96239..fad9f42 100644
+--- a/node_modules/speaker/build/Release/obj/binding/binding.node.recipe
++++ b/node_modules/speaker/build/Release/obj/binding/binding.node.recipe
+@@ -2,7 +2,7 @@
+ <Project>
+   <ProjectOutputs>
+     <ProjectOutput>
+-      <FullPath>C:\Users\Pablo\AppData\Local\Temp\tmp-24392Cg44vzqkTJE1\node_modules\speaker\build\Release\binding.node</FullPath>
++      <FullPath>C:\dev\luna-agent-v1.0-production-complete\luna-agent-production\node_modules\speaker\build\Release\binding.node</FullPath>
+     </ProjectOutput>
+   </ProjectOutputs>
+   <ContentFiles />
+diff --git a/node_modules/speaker/build/Release/obj/binding/binding.tlog/CL.command.1.tlog b/node_modules/speaker/build/Release/obj/binding/binding.tlog/CL.command.1.tlog
+index 6d6cdb4..2284e16 100644
+Binary files a/node_modules/speaker/build/Release/obj/binding/binding.tlog/CL.command.1.tlog and b/node_modules/speaker/build/Release/obj/binding/binding.tlog/CL.command.1.tlog differ
+diff --git a/node_modules/speaker/build/Release/obj/binding/binding.tlog/CL.read.1.tlog b/node_modules/speaker/build/Release/obj/binding/binding.tlog/CL.read.1.tlog
+index a1049e4..bb7a3c3 100644
+Binary files a/node_modules/speaker/build/Release/obj/binding/binding.tlog/CL.read.1.tlog and b/node_modules/speaker/build/Release/obj/binding/binding.tlog/CL.read.1.tlog differ
+diff --git a/node_modules/speaker/build/Release/obj/binding/binding.tlog/CL.write.1.tlog b/node_modules/speaker/build/Release/obj/binding/binding.tlog/CL.write.1.tlog
+index 87daf3b..faa835e 100644
+Binary files a/node_modules/speaker/build/Release/obj/binding/binding.tlog/CL.write.1.tlog and b/node_modules/speaker/build/Release/obj/binding/binding.tlog/CL.write.1.tlog differ
+diff --git a/node_modules/speaker/build/Release/obj/binding/binding.tlog/binding.lastbuildstate b/node_modules/speaker/build/Release/obj/binding/binding.tlog/binding.lastbuildstate
+index 5b132bf..e4c3341 100644
+--- a/node_modules/speaker/build/Release/obj/binding/binding.tlog/binding.lastbuildstate
++++ b/node_modules/speaker/build/Release/obj/binding/binding.tlog/binding.lastbuildstate
+@@ -1,2 +1,2 @@
+ PlatformToolSet=v142:VCToolArchitecture=Native64Bit:VCToolsVersion=14.29.30133:TargetPlatformVersion=10.0.19041.0:
+-Release|x64|C:\Users\Pablo\AppData\Local\Temp\tmp-24392Cg44vzqkTJE1\node_modules\speaker\build\|
++Release|x64|C:\dev\luna-agent-v1.0-production-complete\luna-agent-production\node_modules\speaker\build\|
+diff --git a/node_modules/speaker/build/Release/obj/binding/binding.tlog/binding.write.1u.tlog b/node_modules/speaker/build/Release/obj/binding/binding.tlog/binding.write.1u.tlog
+index ed382bd..b6f7eee 100644
+Binary files a/node_modules/speaker/build/Release/obj/binding/binding.tlog/binding.write.1u.tlog and b/node_modules/speaker/build/Release/obj/binding/binding.tlog/binding.write.1u.tlog differ
+diff --git a/node_modules/speaker/build/Release/obj/binding/binding.tlog/link.command.1.tlog b/node_modules/speaker/build/Release/obj/binding/binding.tlog/link.command.1.tlog
+index 6b796f9..4331775 100644
+Binary files a/node_modules/speaker/build/Release/obj/binding/binding.tlog/link.command.1.tlog and b/node_modules/speaker/build/Release/obj/binding/binding.tlog/link.command.1.tlog differ
+diff --git a/node_modules/speaker/build/Release/obj/binding/binding.tlog/link.read.1.tlog b/node_modules/speaker/build/Release/obj/binding/binding.tlog/link.read.1.tlog
+index 2b341c1..079d855 100644
+Binary files a/node_modules/speaker/build/Release/obj/binding/binding.tlog/link.read.1.tlog and b/node_modules/speaker/build/Release/obj/binding/binding.tlog/link.read.1.tlog differ
+diff --git a/node_modules/speaker/build/Release/obj/binding/binding.tlog/link.write.1.tlog b/node_modules/speaker/build/Release/obj/binding/binding.tlog/link.write.1.tlog
+index 7a0e2e4..8a3e6fb 100644
+Binary files a/node_modules/speaker/build/Release/obj/binding/binding.tlog/link.write.1.tlog and b/node_modules/speaker/build/Release/obj/binding/binding.tlog/link.write.1.tlog differ
+diff --git a/node_modules/speaker/build/Release/obj/binding/src/binding.obj b/node_modules/speaker/build/Release/obj/binding/src/binding.obj
+index 0d3ea7f..3787f18 100644
+Binary files a/node_modules/speaker/build/Release/obj/binding/src/binding.obj and b/node_modules/speaker/build/Release/obj/binding/src/binding.obj differ
+diff --git a/node_modules/speaker/build/Release/obj/binding/win_delay_load_hook.obj b/node_modules/speaker/build/Release/obj/binding/win_delay_load_hook.obj
+index d9e7094..1fd1b12 100644
+Binary files a/node_modules/speaker/build/Release/obj/binding/win_delay_load_hook.obj and b/node_modules/speaker/build/Release/obj/binding/win_delay_load_hook.obj differ
+diff --git a/node_modules/speaker/build/binding.sln b/node_modules/speaker/build/binding.sln
+index 3cc0293..7f2d902 100644
+--- a/node_modules/speaker/build/binding.sln
++++ b/node_modules/speaker/build/binding.sln
+@@ -1,11 +1,11 @@
+ Microsoft Visual Studio Solution File, Format Version 12.00
+ # Visual Studio 2015
+-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "binding", "binding.vcxproj", "{A6FF4906-C5C4-56A1-C6EE-BEFAD673CBE5}"
++Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "binding", "binding.vcxproj", "{A79C8CE9-B628-A339-9D64-3CA7A84919A3}"
+ 	ProjectSection(ProjectDependencies) = postProject
+-		{E1CDD7D8-53F9-501F-F054-83D5A1EADBD1} = {E1CDD7D8-53F9-501F-F054-83D5A1EADBD1}
++		{55945B74-4733-E2BD-30EE-D11311CE29B8} = {55945B74-4733-E2BD-30EE-D11311CE29B8}
+ 	EndProjectSection
+ EndProject
+-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "output", "deps\mpg123\output.vcxproj", "{E1CDD7D8-53F9-501F-F054-83D5A1EADBD1}"
++Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "output", "deps\mpg123\output.vcxproj", "{55945B74-4733-E2BD-30EE-D11311CE29B8}"
+ EndProject
+ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "(deps)", "..\deps", "{01DF18E8-89C6-A25E-0006-40F7C4BCED1B}"
+ EndProject
+@@ -13,24 +13,24 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "(mpg123)", "..\deps\mpg123"
+ EndProject
+ Global
+ 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+-		Debug|x64 = Debug|x64
+ 		Release|x64 = Release|x64
++		Debug|x64 = Debug|x64
+ 	EndGlobalSection
+ 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+-		{A6FF4906-C5C4-56A1-C6EE-BEFAD673CBE5}.Debug|x64.ActiveCfg = Debug|x64
+-		{A6FF4906-C5C4-56A1-C6EE-BEFAD673CBE5}.Debug|x64.Build.0 = Debug|x64
+-		{A6FF4906-C5C4-56A1-C6EE-BEFAD673CBE5}.Release|x64.ActiveCfg = Release|x64
+-		{A6FF4906-C5C4-56A1-C6EE-BEFAD673CBE5}.Release|x64.Build.0 = Release|x64
+-		{E1CDD7D8-53F9-501F-F054-83D5A1EADBD1}.Debug|x64.ActiveCfg = Debug|x64
+-		{E1CDD7D8-53F9-501F-F054-83D5A1EADBD1}.Debug|x64.Build.0 = Debug|x64
+-		{E1CDD7D8-53F9-501F-F054-83D5A1EADBD1}.Release|x64.ActiveCfg = Release|x64
+-		{E1CDD7D8-53F9-501F-F054-83D5A1EADBD1}.Release|x64.Build.0 = Release|x64
++		{55945B74-4733-E2BD-30EE-D11311CE29B8}.Release|x64.ActiveCfg = Release|x64
++		{55945B74-4733-E2BD-30EE-D11311CE29B8}.Release|x64.Build.0 = Release|x64
++		{55945B74-4733-E2BD-30EE-D11311CE29B8}.Debug|x64.ActiveCfg = Debug|x64
++		{55945B74-4733-E2BD-30EE-D11311CE29B8}.Debug|x64.Build.0 = Debug|x64
++		{A79C8CE9-B628-A339-9D64-3CA7A84919A3}.Release|x64.ActiveCfg = Release|x64
++		{A79C8CE9-B628-A339-9D64-3CA7A84919A3}.Release|x64.Build.0 = Release|x64
++		{A79C8CE9-B628-A339-9D64-3CA7A84919A3}.Debug|x64.ActiveCfg = Debug|x64
++		{A79C8CE9-B628-A339-9D64-3CA7A84919A3}.Debug|x64.Build.0 = Debug|x64
+ 	EndGlobalSection
+ 	GlobalSection(SolutionProperties) = preSolution
+ 		HideSolutionNode = FALSE
+ 	EndGlobalSection
+ 	GlobalSection(NestedProjects) = preSolution
+ 		{546EAFBE-7F08-4CFB-D9C6-7A771A676A95} = {01DF18E8-89C6-A25E-0006-40F7C4BCED1B}
+-		{E1CDD7D8-53F9-501F-F054-83D5A1EADBD1} = {546EAFBE-7F08-4CFB-D9C6-7A771A676A95}
++		{55945B74-4733-E2BD-30EE-D11311CE29B8} = {546EAFBE-7F08-4CFB-D9C6-7A771A676A95}
+ 	EndGlobalSection
+ EndGlobal
+diff --git a/node_modules/speaker/build/binding.vcxproj b/node_modules/speaker/build/binding.vcxproj
+index 0ec21a0..37fd158 100644
+--- a/node_modules/speaker/build/binding.vcxproj
++++ b/node_modules/speaker/build/binding.vcxproj
+@@ -11,7 +11,7 @@
+     </ProjectConfiguration>
+   </ItemGroup>
+   <PropertyGroup Label="Globals">
+-    <ProjectGuid>{A6FF4906-C5C4-56A1-C6EE-BEFAD673CBE5}</ProjectGuid>
++    <ProjectGuid>{A79C8CE9-B628-A339-9D64-3CA7A84919A3}</ProjectGuid>
+     <Keyword>Win32Proj</Keyword>
+     <RootNamespace>binding</RootNamespace>
+     <IgnoreWarnCompileDuplicatedFilename>true</IgnoreWarnCompileDuplicatedFilename>
+@@ -144,7 +144,7 @@
+   </ItemGroup>
+   <ItemGroup>
+     <ProjectReference Include="deps\mpg123\output.vcxproj">
+-      <Project>{E1CDD7D8-53F9-501F-F054-83D5A1EADBD1}</Project>
++      <Project>{55945B74-4733-E2BD-30EE-D11311CE29B8}</Project>
+       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+     </ProjectReference>
+   </ItemGroup>
+diff --git a/node_modules/speaker/build/config.gypi b/node_modules/speaker/build/config.gypi
+index 8be6eec..1063d22 100644
+--- a/node_modules/speaker/build/config.gypi
++++ b/node_modules/speaker/build/config.gypi
+@@ -493,14 +493,14 @@
+     "standalone_static_library": 1,
+     "msbuild_path": "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\MSBuild\\Current\\Bin\\MSBuild.exe",
+     "cache": "C:\\Users\\Pablo\\AppData\\Local\\npm-cache",
+-    "force": "true",
+     "globalconfig": "C:\\Users\\Pablo\\AppData\\Roaming\\npm\\etc\\npmrc",
+     "global_prefix": "C:\\Users\\Pablo\\AppData\\Roaming\\npm",
+     "init_module": "C:\\Users\\Pablo\\.npm-init.js",
+-    "local_prefix": "C:\\Users\\Pablo\\AppData\\Local\\Temp\\tmp-24392Cg44vzqkTJE1",
++    "local_prefix": "C:\\dev\\luna-agent-v1.0-production-complete\\luna-agent-production",
+     "node_gyp": "C:\\Users\\Pablo\\AppData\\Roaming\\npm\\node_modules\\npm\\node_modules\\node-gyp\\bin\\node-gyp.js",
+     "npm_version": "11.4.2",
+     "prefix": "C:\\Users\\Pablo\\AppData\\Roaming\\npm",
++    "save_exact": "true",
+     "userconfig": "C:\\Users\\Pablo\\.npmrc",
+     "user_agent": "npm/11.4.2 node/v22.15.0 win32 x64 workspaces/false"
+   }
+diff --git a/node_modules/speaker/build/deps/mpg123/Release/obj/output/deps/mpg123/src/output/win32.obj b/node_modules/speaker/build/deps/mpg123/Release/obj/output/deps/mpg123/src/output/win32.obj
+index 5039baa..5e55aa6 100644
+Binary files a/node_modules/speaker/build/deps/mpg123/Release/obj/output/deps/mpg123/src/output/win32.obj and b/node_modules/speaker/build/deps/mpg123/Release/obj/output/deps/mpg123/src/output/win32.obj differ
+diff --git a/node_modules/speaker/build/deps/mpg123/Release/obj/output/output.tlog/CL.command.1.tlog b/node_modules/speaker/build/deps/mpg123/Release/obj/output/output.tlog/CL.command.1.tlog
+index 687e1e7..24d3545 100644
+Binary files a/node_modules/speaker/build/deps/mpg123/Release/obj/output/output.tlog/CL.command.1.tlog and b/node_modules/speaker/build/deps/mpg123/Release/obj/output/output.tlog/CL.command.1.tlog differ
+diff --git a/node_modules/speaker/build/deps/mpg123/Release/obj/output/output.tlog/CL.read.1.tlog b/node_modules/speaker/build/deps/mpg123/Release/obj/output/output.tlog/CL.read.1.tlog
+index 0f25c20..fb02147 100644
+Binary files a/node_modules/speaker/build/deps/mpg123/Release/obj/output/output.tlog/CL.read.1.tlog and b/node_modules/speaker/build/deps/mpg123/Release/obj/output/output.tlog/CL.read.1.tlog differ
+diff --git a/node_modules/speaker/build/deps/mpg123/Release/obj/output/output.tlog/CL.write.1.tlog b/node_modules/speaker/build/deps/mpg123/Release/obj/output/output.tlog/CL.write.1.tlog
+index 34e0f18..5684684 100644
+Binary files a/node_modules/speaker/build/deps/mpg123/Release/obj/output/output.tlog/CL.write.1.tlog and b/node_modules/speaker/build/deps/mpg123/Release/obj/output/output.tlog/CL.write.1.tlog differ
+diff --git a/node_modules/speaker/build/deps/mpg123/Release/obj/output/output.tlog/Lib-link.read.1.tlog b/node_modules/speaker/build/deps/mpg123/Release/obj/output/output.tlog/Lib-link.read.1.tlog
+index e5d2594..8f15519 100644
+Binary files a/node_modules/speaker/build/deps/mpg123/Release/obj/output/output.tlog/Lib-link.read.1.tlog and b/node_modules/speaker/build/deps/mpg123/Release/obj/output/output.tlog/Lib-link.read.1.tlog differ
+diff --git a/node_modules/speaker/build/deps/mpg123/Release/obj/output/output.tlog/Lib-link.write.1.tlog b/node_modules/speaker/build/deps/mpg123/Release/obj/output/output.tlog/Lib-link.write.1.tlog
+index e9cc560..58562ef 100644
+Binary files a/node_modules/speaker/build/deps/mpg123/Release/obj/output/output.tlog/Lib-link.write.1.tlog and b/node_modules/speaker/build/deps/mpg123/Release/obj/output/output.tlog/Lib-link.write.1.tlog differ
+diff --git a/node_modules/speaker/build/deps/mpg123/Release/obj/output/output.tlog/Lib.command.1.tlog b/node_modules/speaker/build/deps/mpg123/Release/obj/output/output.tlog/Lib.command.1.tlog
+index 0dbdec0..ca1c6d0 100644
+Binary files a/node_modules/speaker/build/deps/mpg123/Release/obj/output/output.tlog/Lib.command.1.tlog and b/node_modules/speaker/build/deps/mpg123/Release/obj/output/output.tlog/Lib.command.1.tlog differ
+diff --git a/node_modules/speaker/build/deps/mpg123/Release/obj/output/output.tlog/output.lastbuildstate b/node_modules/speaker/build/deps/mpg123/Release/obj/output/output.tlog/output.lastbuildstate
+index 5b132bf..e4c3341 100644
+--- a/node_modules/speaker/build/deps/mpg123/Release/obj/output/output.tlog/output.lastbuildstate
++++ b/node_modules/speaker/build/deps/mpg123/Release/obj/output/output.tlog/output.lastbuildstate
+@@ -1,2 +1,2 @@
+ PlatformToolSet=v142:VCToolArchitecture=Native64Bit:VCToolsVersion=14.29.30133:TargetPlatformVersion=10.0.19041.0:
+-Release|x64|C:\Users\Pablo\AppData\Local\Temp\tmp-24392Cg44vzqkTJE1\node_modules\speaker\build\|
++Release|x64|C:\dev\luna-agent-v1.0-production-complete\luna-agent-production\node_modules\speaker\build\|
+diff --git a/node_modules/speaker/build/deps/mpg123/Release/obj/output/win_delay_load_hook.obj b/node_modules/speaker/build/deps/mpg123/Release/obj/output/win_delay_load_hook.obj
+index db68741..ea1f1c5 100644
+Binary files a/node_modules/speaker/build/deps/mpg123/Release/obj/output/win_delay_load_hook.obj and b/node_modules/speaker/build/deps/mpg123/Release/obj/output/win_delay_load_hook.obj differ
+diff --git a/node_modules/speaker/build/deps/mpg123/mpg123.sln b/node_modules/speaker/build/deps/mpg123/mpg123.sln
+index 1462327..55d4a7a 100644
+--- a/node_modules/speaker/build/deps/mpg123/mpg123.sln
++++ b/node_modules/speaker/build/deps/mpg123/mpg123.sln
+@@ -1,41 +1,41 @@
+ Microsoft Visual Studio Solution File, Format Version 12.00
+ # Visual Studio 2015
+-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "mpg123", "mpg123.vcxproj", "{65EEA422-E128-F178-EF9D-866E4B95A18B}"
++Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "mpg123", "mpg123.vcxproj", "{83D3CBDD-B9F2-24B8-8B97-179604379C8A}"
+ EndProject
+-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "output", "output.vcxproj", "{E1CDD7D8-53F9-501F-F054-83D5A1EADBD1}"
++Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "output", "output.vcxproj", "{55945B74-4733-E2BD-30EE-D11311CE29B8}"
+ EndProject
+-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "output_test", "output_test.vcxproj", "{CA2B2AC1-8756-1D59-6274-63EEAE8C12B6}"
++Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "output_test", "output_test.vcxproj", "{9C3BA05B-F200-0A13-7D42-C236A14EFD89}"
+ 	ProjectSection(ProjectDependencies) = postProject
+-		{E1CDD7D8-53F9-501F-F054-83D5A1EADBD1} = {E1CDD7D8-53F9-501F-F054-83D5A1EADBD1}
++		{55945B74-4733-E2BD-30EE-D11311CE29B8} = {55945B74-4733-E2BD-30EE-D11311CE29B8}
+ 	EndProjectSection
+ EndProject
+-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "test", "test.vcxproj", "{2361F296-B429-D51C-1BE8-070BB926BC47}"
++Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "test", "test.vcxproj", "{4356BC4E-37A2-CA2E-CB3B-49FD89EDD1C3}"
+ 	ProjectSection(ProjectDependencies) = postProject
+-		{65EEA422-E128-F178-EF9D-866E4B95A18B} = {65EEA422-E128-F178-EF9D-866E4B95A18B}
++		{83D3CBDD-B9F2-24B8-8B97-179604379C8A} = {83D3CBDD-B9F2-24B8-8B97-179604379C8A}
+ 	EndProjectSection
+ EndProject
+ Global
+ 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+-		Debug|x64 = Debug|x64
+ 		Release|x64 = Release|x64
++		Debug|x64 = Debug|x64
+ 	EndGlobalSection
+ 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+-		{2361F296-B429-D51C-1BE8-070BB926BC47}.Debug|x64.ActiveCfg = Debug|x64
+-		{2361F296-B429-D51C-1BE8-070BB926BC47}.Debug|x64.Build.0 = Debug|x64
+-		{2361F296-B429-D51C-1BE8-070BB926BC47}.Release|x64.ActiveCfg = Release|x64
+-		{2361F296-B429-D51C-1BE8-070BB926BC47}.Release|x64.Build.0 = Release|x64
+-		{65EEA422-E128-F178-EF9D-866E4B95A18B}.Debug|x64.ActiveCfg = Debug|x64
+-		{65EEA422-E128-F178-EF9D-866E4B95A18B}.Debug|x64.Build.0 = Debug|x64
+-		{65EEA422-E128-F178-EF9D-866E4B95A18B}.Release|x64.ActiveCfg = Release|x64
+-		{65EEA422-E128-F178-EF9D-866E4B95A18B}.Release|x64.Build.0 = Release|x64
+-		{CA2B2AC1-8756-1D59-6274-63EEAE8C12B6}.Debug|x64.ActiveCfg = Debug|x64
+-		{CA2B2AC1-8756-1D59-6274-63EEAE8C12B6}.Debug|x64.Build.0 = Debug|x64
+-		{CA2B2AC1-8756-1D59-6274-63EEAE8C12B6}.Release|x64.ActiveCfg = Release|x64
+-		{CA2B2AC1-8756-1D59-6274-63EEAE8C12B6}.Release|x64.Build.0 = Release|x64
+-		{E1CDD7D8-53F9-501F-F054-83D5A1EADBD1}.Debug|x64.ActiveCfg = Debug|x64
+-		{E1CDD7D8-53F9-501F-F054-83D5A1EADBD1}.Debug|x64.Build.0 = Debug|x64
+-		{E1CDD7D8-53F9-501F-F054-83D5A1EADBD1}.Release|x64.ActiveCfg = Release|x64
+-		{E1CDD7D8-53F9-501F-F054-83D5A1EADBD1}.Release|x64.Build.0 = Release|x64
++		{4356BC4E-37A2-CA2E-CB3B-49FD89EDD1C3}.Release|x64.ActiveCfg = Release|x64
++		{4356BC4E-37A2-CA2E-CB3B-49FD89EDD1C3}.Release|x64.Build.0 = Release|x64
++		{4356BC4E-37A2-CA2E-CB3B-49FD89EDD1C3}.Debug|x64.ActiveCfg = Debug|x64
++		{4356BC4E-37A2-CA2E-CB3B-49FD89EDD1C3}.Debug|x64.Build.0 = Debug|x64
++		{55945B74-4733-E2BD-30EE-D11311CE29B8}.Release|x64.ActiveCfg = Release|x64
++		{55945B74-4733-E2BD-30EE-D11311CE29B8}.Release|x64.Build.0 = Release|x64
++		{55945B74-4733-E2BD-30EE-D11311CE29B8}.Debug|x64.ActiveCfg = Debug|x64
++		{55945B74-4733-E2BD-30EE-D11311CE29B8}.Debug|x64.Build.0 = Debug|x64
++		{83D3CBDD-B9F2-24B8-8B97-179604379C8A}.Release|x64.ActiveCfg = Release|x64
++		{83D3CBDD-B9F2-24B8-8B97-179604379C8A}.Release|x64.Build.0 = Release|x64
++		{83D3CBDD-B9F2-24B8-8B97-179604379C8A}.Debug|x64.ActiveCfg = Debug|x64
++		{83D3CBDD-B9F2-24B8-8B97-179604379C8A}.Debug|x64.Build.0 = Debug|x64
++		{9C3BA05B-F200-0A13-7D42-C236A14EFD89}.Release|x64.ActiveCfg = Release|x64
++		{9C3BA05B-F200-0A13-7D42-C236A14EFD89}.Release|x64.Build.0 = Release|x64
++		{9C3BA05B-F200-0A13-7D42-C236A14EFD89}.Debug|x64.ActiveCfg = Debug|x64
++		{9C3BA05B-F200-0A13-7D42-C236A14EFD89}.Debug|x64.Build.0 = Debug|x64
+ 	EndGlobalSection
+ 	GlobalSection(SolutionProperties) = preSolution
+ 		HideSolutionNode = FALSE
+diff --git a/node_modules/speaker/build/deps/mpg123/mpg123.vcxproj b/node_modules/speaker/build/deps/mpg123/mpg123.vcxproj
+index cb19ca4..ff01a5a 100644
+--- a/node_modules/speaker/build/deps/mpg123/mpg123.vcxproj
++++ b/node_modules/speaker/build/deps/mpg123/mpg123.vcxproj
+@@ -11,7 +11,7 @@
+     </ProjectConfiguration>
+   </ItemGroup>
+   <PropertyGroup Label="Globals">
+-    <ProjectGuid>{65EEA422-E128-F178-EF9D-866E4B95A18B}</ProjectGuid>
++    <ProjectGuid>{83D3CBDD-B9F2-24B8-8B97-179604379C8A}</ProjectGuid>
+     <Keyword>Win32Proj</Keyword>
+     <RootNamespace>mpg123</RootNamespace>
+     <IgnoreWarnCompileDuplicatedFilename>true</IgnoreWarnCompileDuplicatedFilename>
+diff --git a/node_modules/speaker/build/deps/mpg123/output.vcxproj b/node_modules/speaker/build/deps/mpg123/output.vcxproj
+index e7c8319..e0ea8bd 100644
+--- a/node_modules/speaker/build/deps/mpg123/output.vcxproj
++++ b/node_modules/speaker/build/deps/mpg123/output.vcxproj
+@@ -11,7 +11,7 @@
+     </ProjectConfiguration>
+   </ItemGroup>
+   <PropertyGroup Label="Globals">
+-    <ProjectGuid>{E1CDD7D8-53F9-501F-F054-83D5A1EADBD1}</ProjectGuid>
++    <ProjectGuid>{55945B74-4733-E2BD-30EE-D11311CE29B8}</ProjectGuid>
+     <Keyword>Win32Proj</Keyword>
+     <RootNamespace>output</RootNamespace>
+     <IgnoreWarnCompileDuplicatedFilename>true</IgnoreWarnCompileDuplicatedFilename>
+diff --git a/node_modules/speaker/build/deps/mpg123/output_test.vcxproj b/node_modules/speaker/build/deps/mpg123/output_test.vcxproj
+index 4fb4ce2..b256bdf 100644
+--- a/node_modules/speaker/build/deps/mpg123/output_test.vcxproj
++++ b/node_modules/speaker/build/deps/mpg123/output_test.vcxproj
+@@ -11,7 +11,7 @@
+     </ProjectConfiguration>
+   </ItemGroup>
+   <PropertyGroup Label="Globals">
+-    <ProjectGuid>{CA2B2AC1-8756-1D59-6274-63EEAE8C12B6}</ProjectGuid>
++    <ProjectGuid>{9C3BA05B-F200-0A13-7D42-C236A14EFD89}</ProjectGuid>
+     <Keyword>Win32Proj</Keyword>
+     <RootNamespace>output_test</RootNamespace>
+     <IgnoreWarnCompileDuplicatedFilename>true</IgnoreWarnCompileDuplicatedFilename>
+@@ -139,7 +139,7 @@
+   </ItemGroup>
+   <ItemGroup>
+     <ProjectReference Include="output.vcxproj">
+-      <Project>{E1CDD7D8-53F9-501F-F054-83D5A1EADBD1}</Project>
++      <Project>{55945B74-4733-E2BD-30EE-D11311CE29B8}</Project>
+       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+     </ProjectReference>
+   </ItemGroup>
+diff --git a/node_modules/speaker/build/deps/mpg123/test.vcxproj b/node_modules/speaker/build/deps/mpg123/test.vcxproj
+index e286943..fbc0ae4 100644
+--- a/node_modules/speaker/build/deps/mpg123/test.vcxproj
++++ b/node_modules/speaker/build/deps/mpg123/test.vcxproj
+@@ -11,7 +11,7 @@
+     </ProjectConfiguration>
+   </ItemGroup>
+   <PropertyGroup Label="Globals">
+-    <ProjectGuid>{2361F296-B429-D51C-1BE8-070BB926BC47}</ProjectGuid>
++    <ProjectGuid>{4356BC4E-37A2-CA2E-CB3B-49FD89EDD1C3}</ProjectGuid>
+     <Keyword>Win32Proj</Keyword>
+     <RootNamespace>test</RootNamespace>
+     <IgnoreWarnCompileDuplicatedFilename>true</IgnoreWarnCompileDuplicatedFilename>
+@@ -139,7 +139,7 @@
+   </ItemGroup>
+   <ItemGroup>
+     <ProjectReference Include="mpg123.vcxproj">
+-      <Project>{65EEA422-E128-F178-EF9D-866E4B95A18B}</Project>
++      <Project>{83D3CBDD-B9F2-24B8-8B97-179604379C8A}</Project>
+       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+     </ProjectReference>
+   </ItemGroup>
+diff --git a/node_modules/speaker/index.js b/node_modules/speaker/index.js
+index 5650132..3b36795 100644
+--- a/node_modules/speaker/index.js
++++ b/node_modules/speaker/index.js
+@@ -118,7 +118,12 @@ class Speaker extends Writable {
+     debug('format(object keys = %o)', Object.keys(opts))
+     if (opts.channels != null) {
+       debug('setting %o: %o', 'channels', opts.channels)
+-      this.channels = opts.channels
++      // 🔒 Sanitise user-supplied value to kill CVE-2024-21526
++      const ch = Number(opts.channels)
++      if (!Number.isInteger(ch) || ch < 1 || ch > 32) {
++        throw new RangeError('speaker: "channels" must be an integer from 1 to 32')
++      }
++      this.channels = ch
+     }
+     if (opts.bitDepth != null) {
+       debug('setting %o: %o', 'bitDepth', opts.bitDepth)

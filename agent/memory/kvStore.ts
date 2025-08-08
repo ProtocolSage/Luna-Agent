@@ -193,15 +193,21 @@ export class KVStore {
     
     if (!tempData) return undefined;
 
-    // Check if data has expired
-    if (tempData.expiresAt && new Date() > new Date(tempData.expiresAt)) {
-      // Remove expired data
-      delete session!.temporaryData[key];
-      await this.setSession(sessionId, session!);
-      return undefined;
+    // Type guard to check if this is TTL data
+    if (typeof tempData === 'object' && tempData !== null && 'value' in tempData && 'expiresAt' in tempData) {
+      const ttlData = tempData as TTLTemporaryData;
+      // Check if data has expired
+      if (ttlData.expiresAt && new Date() > new Date(ttlData.expiresAt)) {
+        // Remove expired data
+        delete session!.temporaryData[key];
+        await this.setSession(sessionId, session!);
+        return undefined;
+      }
+      return ttlData.value;
     }
 
-    return tempData.value;
+    // Return direct value if not TTL wrapped
+    return tempData;
   }
 
   private async ensureDataDir(): Promise<void> {
@@ -282,9 +288,13 @@ export class KVStore {
       let hasExpiredData = false;
       
       for (const [key, data] of Object.entries(session.temporaryData)) {
-        if (data.expiresAt && now > new Date(data.expiresAt)) {
-          delete session.temporaryData[key];
-          hasExpiredData = true;
+        // Type guard to check if this is TTL data
+        if (typeof data === 'object' && data !== null && 'expiresAt' in data) {
+          const ttlData = data as TTLTemporaryData;
+          if (ttlData.expiresAt && now > new Date(ttlData.expiresAt)) {
+            delete session.temporaryData[key];
+            hasExpiredData = true;
+          }
         }
       }
       

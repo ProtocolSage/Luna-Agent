@@ -2,9 +2,12 @@ import { execSync } from 'child_process';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import fetch from 'node-fetch';
+import * as cheerio from 'cheerio';
 import { memoryService } from '../../memory/MemoryService';
 import { MemoryType } from '../../memory/MemoryStore';
 import { getStatus } from './status';
+import { GoalManager } from './goals';
+import { ReminderManager } from './reminders';
 
 export interface ToolStep {
   tool: string;
@@ -44,6 +47,8 @@ function assertSafePath(p: string) {
 export class ToolExecutive {
   private tools: Map<string, ToolDefinition> = new Map();
   private policy: any; // PolicyConfig type - add proper import if needed
+  private goalManager: GoalManager = new GoalManager();
+  private reminderManager: ReminderManager = new ReminderManager();
 
   constructor(policy?: any) { 
     this.policy = policy || { allowlist: [] };
@@ -255,7 +260,7 @@ export class ToolExecutive {
       description: 'Scrape visible text from a page. Optionally with selector.',
       parameters: { url: { type: 'string', required: true }, selector: { type: 'string' } },
       handler: async (args) => {
-        const cheerio = require('cheerio');
+        // cheerio is now imported at the top
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 10000);
         try {
@@ -272,7 +277,7 @@ export class ToolExecutive {
       description: 'Scrape all links from a page.',
       parameters: { url: { type: 'string', required: true } },
       handler: async (args) => {
-        const cheerio = require('cheerio');
+        // cheerio is now imported at the top
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 10000);
         try {
@@ -578,6 +583,95 @@ export class ToolExecutive {
           timestamp: result.memory.timestamp,
           similarity: result.similarity
         }));
+      }
+    });
+
+    // ---- Goal Management ----
+    this.registerTool({
+      name: 'add_goal',
+      description: 'Add a new task or goal with optional due date.',
+      parameters: { 
+        task: { type: 'string', required: true },
+        due: { type: 'string' } // ISO date string
+      },
+      handler: async (args) => {
+        const newTask = this.goalManager.addTask(args.task, args.due);
+        return {
+          success: true,
+          task: newTask,
+          message: `Goal added: ${args.task}${args.due ? ` (due: ${args.due})` : ''}`
+        };
+      }
+    });
+
+    this.registerTool({
+      name: 'list_goals',
+      description: 'List all active (incomplete) goals/tasks.',
+      parameters: {},
+      handler: async () => {
+        const tasks = this.goalManager.getTasks();
+        return {
+          totalTasks: tasks.length,
+          tasks: tasks.map(t => ({
+            task: t.task,
+            due: t.due,
+            created: new Date(t.created).toISOString(),
+            overdue: t.due ? Date.parse(t.due) < Date.now() : false
+          }))
+        };
+      }
+    });
+
+    this.registerTool({
+      name: 'complete_goal',
+      description: 'Mark a goal/task as completed.',
+      parameters: { task: { type: 'string', required: true } },
+      handler: async (args) => {
+        const success = this.goalManager.markTaskDone(args.task);
+        return {
+          success,
+          message: success 
+            ? `Goal completed: ${args.task}` 
+            : `Goal not found: ${args.task}`
+        };
+      }
+    });
+
+    // ---- Reminder Management ----
+    this.registerTool({
+      name: 'set_reminder',
+      description: 'Set a reminder for a specific time.',
+      parameters: { 
+        message: { type: 'string', required: true },
+        time: { type: 'string', required: true } // ISO date string
+      },
+      handler: async (args) => {
+        const result = this.reminderManager.addReminder(args.message, args.time);
+        return {
+          success: result.scheduled,
+          message: result.scheduled 
+            ? `Reminder set for ${args.time}: ${args.message}`
+            : `Failed to set reminder: ${result.error}`,
+          error: result.error
+        };
+      }
+    });
+
+    this.registerTool({
+      name: 'list_reminders',
+      description: 'List all active (unfired) reminders.',
+      parameters: {},
+      handler: async () => {
+        const reminders = this.reminderManager.getReminders();
+        return {
+          totalReminders: reminders.length,
+          reminders: reminders.map(r => ({
+            message: r.message,
+            scheduledTime: r.time,
+            fireAt: new Date(r.fireAt).toISOString(),
+            minutesUntil: Math.round((r.fireAt - Date.now()) / 60000)
+          }))
+        };
       }
     });
 

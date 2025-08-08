@@ -1,4 +1,4 @@
-import Database from 'better-sqlite3';
+import { getDatabase } from '../backend/database';
 import * as path from 'path';
 import * as fs from 'fs';
 
@@ -37,7 +37,7 @@ export interface MemorySearchResult {
  * - Fast synchronous operations for single-user mode
  */
 export class MemoryStore {
-  private db: Database.Database;
+  private db: any; // Database instance (better-sqlite3 or fallback)
   private dbPath: string;
 
   constructor(dbPath?: string) {
@@ -48,7 +48,7 @@ export class MemoryStore {
     }
 
     this.dbPath = dbPath || path.join(memoryDir, 'luna-memory.db');
-    this.db = new Database(this.dbPath);
+    this.db = getDatabase(this.dbPath);
     this.initializeDatabase();
   }
 

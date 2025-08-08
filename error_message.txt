@@ -1,0 +1,1 @@
+Error: Error invoking remote method 'stt:get-status': Error: No handler registered for 'stt:get-status'

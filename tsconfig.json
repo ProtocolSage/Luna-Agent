@@ -28,12 +28,10 @@
   },
   "include": [
     "types/**/*",
-    "agent/orchestrator/modelRouter.ts",
-    "agent/memory/vectorStore.ts",
-    "agent/validators/piiFilter.ts",
-    "backend/server.ts",
-    "app/main/main.ts",
-    "app/main/preload.ts"
+    "agent/**/*",
+    "backend/**/*",
+    "app/**/*",
+    "memory/**/*"
   ],
   "exclude": [
     "node_modules",

@@ -1,0 +1,250 @@
+import React, { useState, useEffect, useRef } from 'react';
+import VoiceControls from './components/VoiceControls';
+import './styles/PremiumApp.css';
+
+interface Message {
+  id: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  timestamp: Date;
+  isTyping?: boolean;
+}
+
+const PremiumApp: React.FC = () => {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isVoiceMode, setIsVoiceMode] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  useEffect(() => {
+    // Welcome message
+    const welcomeMessage: Message = {
+      id: 'welcome',
+      role: 'system',
+      content: 'Welcome to Luna Agent Premium. I\'m your AI assistant with advanced voice capabilities. Say "Hey Luna" or click the microphone to start voice interaction.',
+      timestamp: new Date()
+    };
+    setMessages([welcomeMessage]);
+
+    // Check health endpoint
+    fetch('http://localhost:3000/health')
+      .then(res => res.json())
+      .then(data => {
+        console.log('Health check:', data);
+      })
+      .catch(err => {
+        console.error('Health check failed:', err);
+      });
+  }, []);
+
+  const handleSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!input.trim() || isLoading) return;
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: input.trim(),
+      timestamp: new Date()
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+    setInput('');
+    setIsLoading(true);
+    setError(null);
+
+    // Add typing indicator
+    const typingMessage: Message = {
+      id: 'typing',
+      role: 'assistant',
+      content: '',
+      timestamp: new Date(),
+      isTyping: true
+    };
+    setMessages(prev => [...prev, typingMessage]);
+
+    try {
+      const response = await fetch('http://localhost:3000/api/agent/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          message: userMessage.content,
+          model: 'gpt-4o-2024-08-06'
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to get response');
+      }
+
+      // Remove typing indicator and add real message
+      setMessages(prev => {
+        const filtered = prev.filter(m => m.id !== 'typing');
+        const assistantMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: data.content || data.response || 'No response received',
+          timestamp: new Date()
+        };
+        return [...filtered, assistantMessage];
+      });
+
+      // If voice mode is on, speak the response
+      if (isVoiceMode && data.content) {
+        const { ipcRenderer } = window.require('electron');
+        ipcRenderer.invoke('voice:tts-speak', data.content, { interrupt: true });
+      }
+    } catch (err) {
+      setMessages(prev => prev.filter(m => m.id !== 'typing'));
+      setError(err instanceof Error ? err.message : 'An error occurred');
+    } finally {
+      setIsLoading(false);
+      inputRef.current?.focus();
+    }
+  };
+
+  const handleVoiceTranscript = (text: string) => {
+    setInput(text);
+    // Auto-submit after voice input
+    setTimeout(() => {
+      const form = document.getElementById('chat-form') as HTMLFormElement;
+      form?.requestSubmit();
+    }, 100);
+  };
+
+  const toggleVoiceMode = () => {
+    setIsVoiceMode(!isVoiceMode);
+  };
+
+  return (
+    <div className="premium-app">
+      <div className="app-container">
+        {/* Header */}
+        <div className="app-header">
+          <div className="header-content">
+            <div className="logo-section">
+              <div className="logo-orb">
+                <div className="orb-inner"></div>
+              </div>
+              <h1 className="app-title">Luna Agent</h1>
+              <span className="version-badge">Premium</span>
+            </div>
+            <div className="header-controls">
+              <button 
+                className={`voice-mode-toggle ${isVoiceMode ? 'active' : ''}`}
+                onClick={toggleVoiceMode}
+                title="Toggle Voice Mode"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                  <line x1="12" y1="19" x2="12" y2="23"/>
+                  <line x1="8" y1="23" x2="16" y2="23"/>
+                </svg>
+                {isVoiceMode ? 'Voice On' : 'Voice Off'}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Messages Area */}
+        <div className="messages-container">
+          <div className="messages-scroll">
+            {messages.map(message => (
+              <div key={message.id} className={`message-wrapper ${message.role}`}>
+                <div className="message-bubble">
+                  {message.role === 'assistant' && (
+                    <div className="avatar">
+                      <div className="avatar-glow"></div>
+                      <span>L</span>
+                    </div>
+                  )}
+                  <div className="message-content">
+                    {message.isTyping ? (
+                      <div className="typing-indicator">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="message-text">{message.content}</div>
+                        <div className="message-time">
+                          {message.timestamp.toLocaleTimeString([], { 
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                          })}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+            <div ref={messagesEndRef} />
+          </div>
+        </div>
+
+        {/* Error Display */}
+        {error && (
+          <div className="error-banner">
+            <span>⚠️ {error}</span>
+            <button onClick={() => setError(null)}>×</button>
+          </div>
+        )}
+
+        {/* Input Area */}
+        <div className="input-container">
+          <form id="chat-form" onSubmit={handleSubmit} className="input-form">
+            <div className="input-wrapper">
+              <input
+                ref={inputRef}
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Type your message or say 'Hey Luna'..."
+                disabled={isLoading}
+                className="message-input"
+              />
+              <div className="input-actions">
+                <VoiceControls 
+                  onTranscript={handleVoiceTranscript}
+                  className="voice-button-wrapper"
+                  showTranscript={false}
+                  showVisualizer={false}
+                />
+                <button 
+                  type="submit" 
+                  disabled={isLoading || !input.trim()}
+                  className="send-button"
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <line x1="22" y1="2" x2="11" y2="13"/>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default PremiumApp;

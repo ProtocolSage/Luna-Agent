@@ -1,3 +1,22 @@
+// Load File polyfill before any other imports
+if (typeof globalThis.File === 'undefined') {
+  const { Blob } = require('buffer');
+  
+  class File extends Blob {
+    public name: string;
+    public lastModified: number;
+    
+    constructor(chunks: any[], filename: string, options: any = {}) {
+      super(chunks, options);
+      this.name = filename;
+      this.lastModified = options.lastModified || Date.now();
+    }
+  }
+  
+  (globalThis as any).File = File;
+  if (typeof global !== 'undefined') (global as any).File = File;
+}
+
 import express, { Request, Response, NextFunction } from 'express';
 import { ModelRouter } from '../agent/orchestrator/modelRouter';
 import { PIIFilter } from '../agent/validators/piiFilter';
@@ -28,7 +47,7 @@ if (!process.env.OPENAI_API_KEY || !process.env.ANTHROPIC_API_KEY) {
 }
 
 const app = express();
-const port = process.env.PORT || 3000;
+let port = parseInt(process.env.PORT || '3000', 10);
 
 app.use(express.json());
 app.use((req: Request, res: Response, next: NextFunction) => {
@@ -104,13 +123,34 @@ async function initializeAgentRoutes() {
 async function startServer() {
   await initializeAgentRoutes();
   
-  // Start server
-  const server = app.listen(port, () => {
-    console.log(`Luna Agent server running on port ${port}`);
-    console.log(`Health check: http://localhost:${port}/health`);
+  // Try to start server, handling port conflicts
+  return new Promise((resolve, reject) => {
+    const tryPort = (currentPort: number, maxRetries: number = 10) => {
+      if (maxRetries === 0) {
+        reject(new Error('Could not find an available port after 10 attempts'));
+        return;
+      }
+      
+      const server = app.listen(currentPort)
+        .on('listening', () => {
+          port = currentPort; // Update the port variable
+          console.log(`Luna Agent server running on port ${port}`);
+          console.log(`Health check: http://localhost:${port}/health`);
+          resolve(server);
+        })
+        .on('error', (err: any) => {
+          if (err.code === 'EADDRINUSE') {
+            console.log(`Port ${currentPort} is in use, trying ${currentPort + 1}...`);
+            server.close();
+            tryPort(currentPort + 1, maxRetries - 1);
+          } else {
+            reject(err);
+          }
+        });
+    };
+    
+    tryPort(port);
   });
-  
-  return server;
 }
 
 // Start the server

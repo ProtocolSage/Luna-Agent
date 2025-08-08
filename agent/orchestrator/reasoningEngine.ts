@@ -1,5 +1,7 @@
 import { ModelRouter } from './modelRouter';
 import { ReasoningConfig } from '../../types/TaskProfile';
+import { PipelineService } from '../pipeline/PipelineService';
+import { ToolExecutive } from '../tools/executive';
 
 export interface ReasoningResult {
   type: 'direct_response' | 'tool_use' | 'multi_step';
@@ -23,10 +25,20 @@ export type ReasoningMode = 'react' | 'cot' | 'tot' | 'reflexion' | 'chaos' | 'c
 export class ReasoningEngine {
   private modelRouter: ModelRouter;
   private config: ReasoningConfig;
+  private pipelineService?: PipelineService;
 
-  constructor(modelRouter: ModelRouter, config: ReasoningConfig) {
+  constructor(modelRouter: ModelRouter, config: ReasoningConfig, executive?: ToolExecutive) {
     this.modelRouter = modelRouter;
     this.config = config;
+    
+    // Initialize pipeline service if executive is provided
+    if (executive) {
+      this.pipelineService = new PipelineService(executive, modelRouter, {
+        maxConcurrentExecutions: 3,
+        defaultTimeout: 180000, // 3 minutes for reasoning tasks
+        enableMetrics: true
+      });
+    }
   }
 
   async reason(
@@ -210,14 +222,82 @@ Every answer should make the user think differently.`;
   }
 
   private async processToolUse(systemPrompt: string, userPrompt: string, mode: ReasoningMode, context?: any): Promise<ReasoningResult> {
-    // This is where you'd parse the prompt to figure out which tool(s) to use, then call ToolExecutive.executePlan
-    // For now, this is a stub; in real code, you'd invoke the tool pipeline
-    return {
-      type: 'tool_use',
-      content: `[ToolUse] Detected tool use needed but tool pipeline is not yet implemented.`,
-      confidence: 0.6,
-      metadata: { toolCall: true }
-    };
+    if (!this.pipelineService) {
+      return {
+        type: 'tool_use',
+        content: '[ToolUse] Tool pipeline not available. Please provide a ToolExecutive instance.',
+        confidence: 0.3,
+        metadata: { toolCall: true, error: 'pipeline_not_available' }
+      };
+    }
+
+    try {
+      // Generate a unique trace ID for this reasoning session
+      const traceId = `reasoning_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      // Execute the tool pipeline
+      const result = await this.pipelineService.submitRequest(
+        userPrompt,
+        {
+          sessionId: context?.sessionId || 'reasoning_session',
+          traceId: traceId,
+          userId: context?.userId,
+          metadata: {
+            reasoningMode: mode,
+            systemPrompt: systemPrompt.substring(0, 200), // Store abbreviated version
+            timestamp: new Date().toISOString()
+          },
+          constraints: this.extractConstraints(context),
+          workingDir: context?.workingDir || process.cwd()
+        },
+        {
+          priority: 'high',
+          config: {
+            maxSteps: this.config.maxSteps || 5,
+            timeoutMs: this.config.timeoutMs || 180000,
+            allowParallel: true,
+            validateResults: true,
+            logExecution: true
+          },
+          waitForCompletion: true
+        }
+      ) as any; // Cast needed since we're waiting for completion
+
+      // Transform pipeline result to reasoning result
+      return {
+        type: 'tool_use',
+        content: result.finalOutput?.summary || 'Tool execution completed',
+        confidence: result.success ? 0.9 : 0.4,
+        steps: this.convertPipelineStepsToReasoningSteps(result.steps),
+        toolCalls: result.steps.map((step: any) => ({
+          tool: step.tool,
+          success: step.success,
+          output: step.output,
+          error: step.error,
+          latencyMs: step.latencyMs
+        })),
+        metadata: {
+          toolCall: true,
+          executionTime: result.totalTimeMs,
+          stepCount: result.steps.length,
+          successfulSteps: result.steps.filter((s: any) => s.success).length,
+          traceId: traceId,
+          pipelineSuccess: result.success
+        }
+      };
+
+    } catch (error: any) {
+      return {
+        type: 'tool_use',
+        content: `[ToolUse Error] Failed to execute tool pipeline: ${error.message}`,
+        confidence: 0.2,
+        metadata: { 
+          toolCall: true, 
+          error: error.message,
+          errorType: 'pipeline_execution_error'
+        }
+      };
+    }
   }
 
   private async processDirectResponse(systemPrompt: string, userPrompt: string, mode: ReasoningMode, context?: any): Promise<ReasoningResult> {
@@ -233,5 +313,62 @@ Every answer should make the user think differently.`;
       confidence: response.confidence || 0.75,
       metadata: { tokensUsed: response.tokensUsed }
     };
+  }
+
+  /**
+   * Helper methods for pipeline integration
+   */
+  
+  private extractConstraints(context?: any): string[] {
+    const constraints: string[] = [];
+    
+    if (context?.allowUnsafeTools) {
+      constraints.push('allow_unsafe_tools');
+    }
+    
+    if (context?.allowCodeExecution) {
+      constraints.push('allow_code_execution');
+    }
+    
+    if (context?.constraints) {
+      constraints.push(...context.constraints);
+    }
+    
+    return constraints;
+  }
+
+  private convertPipelineStepsToReasoningSteps(pipelineSteps: any[]): ReasoningStep[] {
+    return pipelineSteps.map((step, index) => ({
+      step: index + 1,
+      thought: `Using tool: ${step.tool}`,
+      action: `${step.tool}(${JSON.stringify(step.args || {})})`,
+      observation: step.success 
+        ? `Success: ${JSON.stringify(step.output)}` 
+        : `Error: ${step.error}`,
+      confidence: step.success ? 0.9 : 0.3
+    }));
+  }
+
+  /**
+   * Get pipeline service metrics (if available)
+   */
+  getPipelineMetrics() {
+    return this.pipelineService?.getMetrics() || null;
+  }
+
+  /**
+   * Get pipeline service queue status (if available)
+   */
+  getPipelineQueueStatus() {
+    return this.pipelineService?.getQueueStatus() || null;
+  }
+
+  /**
+   * Shutdown pipeline service gracefully
+   */
+  async shutdown() {
+    if (this.pipelineService) {
+      await this.pipelineService.shutdown();
+    }
   }
 }

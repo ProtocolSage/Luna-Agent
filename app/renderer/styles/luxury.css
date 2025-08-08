@@ -733,18 +733,62 @@ body {
 }
 
 .voice-btn {
-  min-width: 50px;
+  width: 120px;
+  min-width: 120px;
   height: 50px;
   border-radius: 25px;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 0 12px;
+  padding: 0 16px;
   font-size: 16px;
   transition: var(--transition-smooth);
   position: relative;
   overflow: hidden;
+}
+
+.voice-btn-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.voice-btn-text {
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  min-width: 50px;
+  text-align: left;
+}
+
+/* Header nav controls layout */
+.header-content nav {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+/* Ensure consistent button sizing */
+.glass-btn,
+.settings-btn {
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.settings-icon {
+  font-size: 24px;
+  line-height: 1;
+}
+
+/* Header voice controls wrapper */
+.header-voice-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .voice-btn.recording {
@@ -793,6 +837,8 @@ body {
   font-weight: 500;
   white-space: nowrap;
   opacity: 0.9;
+  min-width: 60px;
+  text-align: center;
 }
 
 .voice-btn:disabled {
@@ -876,8 +922,9 @@ body {
   right: 40px;
   width: 300px;
   padding: 20px;
-  z-index: 200;
+  z-index: 1100;
   animation: slideDown 0.3s ease-out;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
 }
 
 @keyframes slideDown {
@@ -1003,10 +1050,20 @@ body {
   }
 
   .voice-btn {
-    min-width: 40px;
+    width: 100px;
+    min-width: 100px;
     height: 40px;
-    padding: 0 8px;
+    padding: 0 12px;
     font-size: 14px;
+  }
+
+  .voice-btn-text {
+    font-size: 12px;
+    min-width: 40px;
+  }
+
+  .voice-btn-icon {
+    font-size: 16px;
   }
 
   .mic-status {

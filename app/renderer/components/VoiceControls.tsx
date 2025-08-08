@@ -49,11 +49,14 @@ export const VoiceControls: React.FC<VoiceControlsProps> = ({
 
   const voiceService = getVoiceService();
 
-  // Initialize STT listeners
+  // Initialize STT listeners and increase max listeners
   useEffect(() => {
     if (window.stt) {
+      // Increase max listeners to prevent warnings
+      window.stt.setMaxListeners?.(20);
+      
       // Listen for hybrid STT transcriptions
-      window.stt.onTranscript(({ text, isFinal }: { text: string; isFinal: boolean }) => {
+      const unsubscribeTranscript = window.stt.onTranscript(({ text, isFinal }: { text: string; isFinal: boolean }) => {
         console.log('[VoiceControls] Hybrid STT transcript:', { text, isFinal });
         if (isFinal && text.trim()) {
           onTranscript?.(text);
@@ -61,7 +64,7 @@ export const VoiceControls: React.FC<VoiceControlsProps> = ({
       });
 
       // Listen for STT engine switches
-      window.stt.onEngineSwitch((info: { engine: string; isCloud: boolean }) => {
+      const unsubscribeEngineSwitch = window.stt.onEngineSwitch((info: { engine: string; isCloud: boolean }) => {
         console.log('[VoiceControls] STT engine switched:', info);
         setState(prev => ({ 
           ...prev, 
@@ -81,6 +84,36 @@ export const VoiceControls: React.FC<VoiceControlsProps> = ({
           }));
         }
       }).catch(console.error);
+
+      // Cleanup function
+      return () => {
+        if (typeof unsubscribeTranscript === 'function') {
+          unsubscribeTranscript();
+        }
+        if (typeof unsubscribeEngineSwitch === 'function') {
+          unsubscribeEngineSwitch();
+        }
+      };
+    }
+
+    // Also listen for hybrid STT state changes via voiceIPC
+    if (window.voiceIPC) {
+      window.voiceIPC.on('stt:transcript', (transcript: { text: string; isFinal: boolean }) => {
+        console.log('[VoiceControls] STT transcript via IPC:', transcript);
+        if (transcript.isFinal && transcript.text.trim()) {
+          onTranscript?.(transcript.text);
+        }
+      });
+
+      window.voiceIPC.on('voice:listening-started', () => {
+        console.log('[VoiceControls] Voice listening started via IPC');
+        setState(prev => ({ ...prev, isListening: true, error: null }));
+      });
+
+      window.voiceIPC.on('voice:listening-stopped', () => {
+        console.log('[VoiceControls] Voice listening stopped via IPC');
+        setState(prev => ({ ...prev, isListening: false }));
+      });
     }
   }, [onTranscript]);
 
@@ -187,10 +220,10 @@ export const VoiceControls: React.FC<VoiceControlsProps> = ({
       if (state.isListening) {
         console.log('VoiceControls: Stopping listening...');
         
-        // Stop both Web Speech and Hybrid STT
-        await voiceService.stopListening();
+        // Stop both Web Speech (legacy) and Hybrid STT
+        await voiceService.stopListening().catch(console.warn);
         if (window.stt) {
-          await window.stt.stop();
+          await window.stt.stop().catch(console.warn);
         }
         
         setTimeout(() => {
@@ -200,33 +233,16 @@ export const VoiceControls: React.FC<VoiceControlsProps> = ({
         console.log('VoiceControls: Starting listening...');
         setState(prev => ({ ...prev, error: null }));
         
-        // Decide which STT to use
-        if (state.webSpeechFailed || !navigator.onLine) {
-          // Use Hybrid STT if Web Speech failed or offline
-          if (window.stt) {
-            console.log('VoiceControls: Starting Hybrid STT');
-            const result = await window.stt.start();
-            if (!result.success) {
-              throw new Error(result.error || 'Hybrid STT failed to start');
-            }
-          } else {
-            throw new Error('No STT system available');
+        // USE HYBRID STT AS PRIMARY METHOD
+        if (window.stt) {
+          console.log('VoiceControls: Starting Hybrid STT (production method)');
+          const result = await window.stt.start();
+          if (!result.success) {
+            throw new Error(result.error || 'Hybrid STT failed to start - check cloud API keys or Whisper installation');
           }
+          // Don't set listening state manually - let hybrid STT events handle it
         } else {
-          // Try Web Speech first (for compatibility)
-          try {
-            await voiceService.startListening();
-          } catch (webSpeechError) {
-            console.warn('VoiceControls: Web Speech failed, falling back to Hybrid STT');
-            if (window.stt) {
-              const result = await window.stt.start();
-              if (!result.success) {
-                throw new Error(result.error || 'All STT systems failed');
-              }
-            } else {
-              throw webSpeechError;
-            }
-          }
+          throw new Error('Hybrid STT system not available. Please check configuration and restart Luna Agent.');
         }
       }
     } catch (error) {
@@ -240,7 +256,7 @@ export const VoiceControls: React.FC<VoiceControlsProps> = ({
       }));
       onError?.(errorMessage);
     }
-  }, [state.isListening, state.webSpeechFailed, voiceService, onError]);
+  }, [state.isListening, voiceService, onError]);
 
   const switchToCloud = useCallback(async () => {
     try {

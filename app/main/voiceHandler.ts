@@ -38,6 +38,9 @@ export class VoiceHandler extends EventEmitter {
 
   private async initializeHybridSTT(): void {
     try {
+      // Increase max listeners to prevent warnings
+      ipcMain.setMaxListeners(20);
+      
       // Cloud-first by default (can be changed via config)
       const preferLocal = process.env.STT_PREFER_LOCAL === 'true';
       this.hybridSTT = new HybridSTT(preferLocal);

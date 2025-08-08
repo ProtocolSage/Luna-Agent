@@ -67,6 +67,15 @@ export class HybridSTT extends EventEmitter implements STTEngine {
   async #swap(err: Error) {
     const currentEngine = this.#engine.constructor.name;
     
+    // PREVENT ENDLESS LOOP: If both engines fail with the same error, stop switching
+    if (err.message.includes('getUserMedia')) {
+      console.error('[HybridSTT] CRITICAL: getUserMedia not available in main process context');
+      console.error('[HybridSTT] STT system must run in renderer process where browser APIs exist');
+      this.#isStarted = false;
+      this.emit('fatal', new Error('STT system incompatible with main process - needs renderer process'));
+      return;
+    }
+    
     const next = this.#engine instanceof CloudSTT
       ? new WhisperSTT()           // cloud → whisper
       : new CloudSTT();            // whisper → cloud (we'll retry)

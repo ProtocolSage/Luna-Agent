@@ -32,7 +32,7 @@ contextBridge.exposeInMainWorld('voiceIPC', {
     ipcRenderer.on('voice:tts-error', (_, error) => cb(error)),
 });
 
-// Expose STT interface
+// Expose STT interface with proper listener management
 contextBridge.exposeInMainWorld('stt', {
   start: () => ipcRenderer.invoke('stt:start'),
   stop: () => ipcRenderer.invoke('stt:stop'),
@@ -40,8 +40,20 @@ contextBridge.exposeInMainWorld('stt', {
   switchToCloud: () => ipcRenderer.invoke('stt:switch-to-cloud'),
   switchToWhisper: () => ipcRenderer.invoke('stt:switch-to-whisper'),
   healthCheck: () => ipcRenderer.invoke('stt:health-check'),
-  onTranscript: (cb: (transcript: { text: string; isFinal: boolean }) => void) =>
-    ipcRenderer.on('stt:transcript', (_, transcript) => cb(transcript)),
-  onEngineSwitch: (cb: (info: { engine: string; isCloud: boolean }) => void) =>
-    ipcRenderer.on('stt:engine-switched', (_, info) => cb(info))
+  onTranscript: (cb: (transcript: { text: string; isFinal: boolean }) => void) => {
+    const wrappedCallback = (_: any, transcript: { text: string; isFinal: boolean }) => cb(transcript);
+    ipcRenderer.on('stt:transcript', wrappedCallback);
+    // Return cleanup function
+    return () => ipcRenderer.off('stt:transcript', wrappedCallback);
+  },
+  onEngineSwitch: (cb: (info: { engine: string; isCloud: boolean }) => void) => {
+    const wrappedCallback = (_: any, info: { engine: string; isCloud: boolean }) => cb(info);
+    ipcRenderer.on('stt:engine-switched', wrappedCallback);
+    // Return cleanup function  
+    return () => ipcRenderer.off('stt:engine-switched', wrappedCallback);
+  },
+  // Increase max listeners to handle multiple components
+  setMaxListeners: (max: number) => {
+    ipcRenderer.setMaxListeners(max);
+  }
 });

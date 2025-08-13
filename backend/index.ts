@@ -4,4 +4,4 @@ export * from './routes';
 export * from '../types';
 
 // Re-export key backend types and functions
-export { default as app } from './server';
+export { default as app } from './server-simple';

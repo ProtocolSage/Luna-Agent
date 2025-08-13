@@ -1,5 +1,11 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import { logger } from '../renderer/services/analytics/Logger';
+// Simple logger for preload context
+const logger = {
+  info: (msg: string, ...args: any[]) => console.log(`[INFO] ${msg}`, ...args),
+  error: (msg: string, ...args: any[]) => console.error(`[ERROR] ${msg}`, ...args),
+  warn: (msg: string, ...args: any[]) => console.warn(`[WARN] ${msg}`, ...args),
+  debug: (msg: string, ...args: any[]) => console.debug(`[DEBUG] ${msg}`, ...args)
+};
 
 /**
  * Secure Preload Script for Luna Agent
@@ -424,7 +430,8 @@ if (!document.querySelector('meta[http-equiv="Content-Security-Policy"]')) {
 }
 
 // Export types for TypeScript support
-export type { ElectronAPI };
+// Export types moved to avoid conflict
+// export type { ElectronAPI };
 
 // Log successful preload completion
 console.log('🔒 Luna Agent preload script loaded securely');

@@ -1,7 +1,7 @@
 import { app, BrowserWindow, ipcMain, shell, dialog, Menu, globalShortcut } from 'electron';
 import path from 'path';
 import { spawn, ChildProcess } from 'child_process';
-import { logger } from '../app/renderer/services/analytics/Logger';
+import { logger } from '../renderer/services/analytics/Logger';
 
 /**
  * Luna Agent Electron Main Process
@@ -64,9 +64,9 @@ class LunaMainProcess {
 
     // Security: Prevent new window creation
     app.on('web-contents-created', (event, contents) => {
-      contents.on('new-window', (navigationEvent, url) => {
-        navigationEvent.preventDefault();
+      contents.setWindowOpenHandler(({ url }) => {
         shell.openExternal(url);
+        return { action: 'deny' };
       });
 
       contents.setWindowOpenHandler(() => {
@@ -98,7 +98,7 @@ class LunaMainProcess {
         // Security: Critical settings
         nodeIntegration: false,
         contextIsolation: true,
-        enableRemoteModule: false,
+        // enableRemoteModule deprecated in newer Electron versions
         sandbox: true,
         preload: path.join(__dirname, '../preload/preload.js'),
         
@@ -110,7 +110,7 @@ class LunaMainProcess {
         disableBlinkFeatures: '',
         
         // Media permissions for voice
-        enableWebRTC: true,
+        // enableWebRTC deprecated in newer Electron versions
         autoplayPolicy: 'user-gesture-required'
       }
     });
@@ -348,14 +348,16 @@ class LunaMainProcess {
 
     // Notification handlers
     ipcMain.handle('notification:show', (event, options) => {
-      // Use system notifications
+      // Use Electron's native notification system
+      const { Notification } = require('electron');
       if (Notification.isSupported()) {
-        new Notification({
+        const notification = new Notification({
           title: options.title || 'Luna Agent',
           body: options.body || '',
           icon: path.join(__dirname, '../assets/icon.png'),
           ...options
-        }).show();
+        });
+        notification.show();
       }
     });
 
@@ -432,7 +434,7 @@ class LunaMainProcess {
           { role: 'cut' },
           { role: 'copy' },
           { role: 'paste' },
-          { role: 'selectall' }
+          { role: 'selectAll' }
         ]
       },
       {

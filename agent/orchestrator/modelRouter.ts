@@ -44,6 +44,8 @@ export class ModelRouter {
   private readonly BASE_DELAY = 1000;
   private readonly MAX_DELAY = 10000;
   private readonly RECENT_REQUESTS_WINDOW = 60000; // 1 minute window for recent requests
+  private readonly FAILURE_THRESHOLD = 5;
+  private readonly RECOVERY_TIMEOUT = 30000;
 
   constructor(models: ModelConfig[]) {
     this.models = models;
@@ -55,7 +57,10 @@ export class ModelRouter {
       this.circuitBreakers.set(model.name, {
         state: 'CLOSED',
         failures: 0,
-        lastFailureTime: 0
+        lastFailureTime: 0,
+        halfOpenCalls: 0,
+        recentRequests: [],
+        slowCalls: 0
       });
 
       this.metrics.set(model.name, {

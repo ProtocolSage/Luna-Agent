@@ -235,7 +235,7 @@ const LuxuryApp: React.FC = () => {
         if (response.ok) {
           const data = await response.json();
           sessionId = data.sessionId;
-          localStorage.setItem('luna-session-id', sessionId);
+          if (sessionId) localStorage.setItem('luna-session-id', sessionId);
         } else {
           throw new Error('Failed to create session');
         }
@@ -245,7 +245,7 @@ const LuxuryApp: React.FC = () => {
       const validateResponse = await fetch('/api/auth/validate', {
         method: 'GET',
         headers: {
-          'X-Session-ID': sessionId
+          'X-Session-ID': sessionId || 'anonymous'
         },
         credentials: 'include'
       });
@@ -260,7 +260,7 @@ const LuxuryApp: React.FC = () => {
       const csrfResponse = await fetch('/api/auth/csrf-token', {
         method: 'POST',
         headers: {
-          'X-Session-ID': sessionId,
+          'X-Session-ID': sessionId || 'anonymous',
           'Content-Type': 'application/json'
         },
         credentials: 'include'
@@ -274,7 +274,7 @@ const LuxuryApp: React.FC = () => {
       
       setSecurityStatus({
         authenticated: true,
-        sessionId,
+        sessionId: sessionId || 'anonymous',
         csrfToken,
         rateLimitRemaining: 100,
         securityLevel: 'high'

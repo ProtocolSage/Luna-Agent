@@ -3,7 +3,7 @@ import { EventEmitter } from 'events';
 import path from 'path';
 import { initializeConversationManager, getConversationManager } from '../../agent/voice/conversationManager';
 import { initializeVoiceService } from '../../agent/services/voiceService';
-import { HybridSTT } from '../../agent/voice/stt/HybridSTT';
+// HybridSTT removed - using renderer-based STT instead
 import axios from 'axios';
 
 export class VoiceHandler extends EventEmitter {
@@ -14,15 +14,21 @@ export class VoiceHandler extends EventEmitter {
   private isListening: boolean = false;
   private currentMode: 'auto' | 'push' | 'manual' = 'manual';
   private pushToTalkActive: boolean = false;
-  private hybridSTT: HybridSTT | null = null;
+  // hybridSTT removed - using renderer-based STT
 
-  constructor(window: BrowserWindow) {
+  // Public setter for backend URL
+  public setBackendUrl(url: string): void {
+    this.backendUrl = url;
+  }
+
+  constructor(window: BrowserWindow, backendUrl?: string) {
     super();
     this.mainWindow = window;
-    // Use configured backend URL or default to the agent server port (3000)
-    this.backendUrl = process.env.BACKEND_URL || `http://localhost:${process.env.PORT || '3000'}`;
+    // Prefer constructor-provided URL over default
+    this.backendUrl = backendUrl || process.env.BACKEND_URL || 'http://localhost:3000';
+    console.log('[VoiceHandler] Initialized with backend URL:', this.backendUrl);
     this.setupIPCHandlers();
-    this.setupSTTHandlers();
+    // STT handlers removed - using renderer-based STT
     
     // VoiceService must be initialized before conversationManager
     const ELEVEN_API_KEY = process.env.ELEVEN_API_KEY;
@@ -31,104 +37,17 @@ export class VoiceHandler extends EventEmitter {
     }
     initializeVoiceService({ apiKey: ELEVEN_API_KEY });
     this.initializeConversationManager();
-    
-    // Initialize Hybrid STT
-    this.initializeHybridSTT();
+    // Hybrid STT initialization removed - using renderer-based STT
   }
 
-  private async initializeHybridSTT(): void {
-    try {
-      // Increase max listeners to prevent warnings
-      ipcMain.setMaxListeners(20);
-      
-      // Cloud-first by default (can be changed via config)
-      const preferLocal = process.env.STT_PREFER_LOCAL === 'true';
-      this.hybridSTT = new HybridSTT(preferLocal);
-      
-      // Forward STT events to renderer
-      this.hybridSTT.on('transcript', (transcript) => {
-        this.sendToRenderer('stt:transcript', transcript);
-      });
+  // Removed duplicate setBackendUrl - already defined above
 
-      this.hybridSTT.on('engine-switched', (info) => {
-        console.log(`[VoiceHandler] STT engine switched to: ${info.engine}`);
-        this.sendToRenderer('stt:engine-switched', info);
-      });
+  // Hybrid STT initialization removed - using renderer-based STT instead
 
-      console.log('[VoiceHandler] Hybrid STT initialized successfully');
-    } catch (error) {
-      console.error('[VoiceHandler] Failed to initialize Hybrid STT:', error);
-    }
-  }
-
+  // STT handlers removed - now handled by renderer-based STT
   private setupSTTHandlers(): void {
-    // STT control handlers
-    ipcMain.handle('stt:start', async () => {
-      try {
-        if (!this.hybridSTT) {
-          throw new Error('Hybrid STT not initialized');
-        }
-        await this.hybridSTT.start();
-        this.isListening = true;
-        return { success: true };
-      } catch (error: any) {
-        console.error('[VoiceHandler] STT start error:', error);
-        return { success: false, error: error.message };
-      }
-    });
-
-    ipcMain.handle('stt:stop', async () => {
-      try {
-        if (!this.hybridSTT) {
-          throw new Error('Hybrid STT not initialized');
-        }
-        await this.hybridSTT.stop();
-        this.isListening = false;
-        return { success: true };
-      } catch (error: any) {
-        console.error('[VoiceHandler] STT stop error:', error);
-        return { success: false, error: error.message };
-      }
-    });
-
-    // STT status and control
-    ipcMain.handle('stt:get-status', async () => {
-      if (!this.hybridSTT) {
-        return { error: 'STT not initialized' };
-      }
-      return this.hybridSTT.getStatus();
-    });
-
-    ipcMain.handle('stt:switch-to-cloud', async () => {
-      try {
-        if (!this.hybridSTT) {
-          throw new Error('Hybrid STT not initialized');
-        }
-        await this.hybridSTT.switchToCloud();
-        return { success: true, engine: 'CloudSTT' };
-      } catch (error: any) {
-        return { success: false, error: error.message };
-      }
-    });
-
-    ipcMain.handle('stt:switch-to-whisper', async () => {
-      try {
-        if (!this.hybridSTT) {
-          throw new Error('Hybrid STT not initialized');
-        }
-        await this.hybridSTT.switchToWhisper();
-        return { success: true, engine: 'WhisperSTT' };
-      } catch (error: any) {
-        return { success: false, error: error.message };
-      }
-    });
-
-    ipcMain.handle('stt:health-check', async () => {
-      if (!this.hybridSTT) {
-        return { error: 'STT not initialized' };
-      }
-      return await this.hybridSTT.checkHealth();
-    });
+    // All STT operations are now handled by the renderer process
+    // via RendererHybridSTT exposed through preload.ts
   }
 
   private setupIPCHandlers(): void {
@@ -143,21 +62,41 @@ export class VoiceHandler extends EventEmitter {
       }
     });
 
-    // TTS Handlers - Using ElevenLabs API directly
+    // STT status handler (was missing)
+    ipcMain.handle('stt:get-status', async () => {
+      return {
+        currentEngine: 'RendererHybridSTT',
+        isCloud: false,
+        isLocal: true,
+        isStarted: this.isListening,
+        error: null
+      };
+    });
+
+    // TTS Handlers - Using ElevenLabs API with browser fallback
     ipcMain.handle('voice:tts-speak', async (event, text: string, options?: any) => {
       try {
-        // Instead of using native speaker, we'll stream audio to renderer
+        // Try ElevenLabs first
         const audioData = await this.getElevenLabsAudio(text);
         
         // Send audio data to renderer to play using Web Audio API
         this.sendToRenderer('voice:tts-audio-data', audioData);
         this.sendToRenderer('voice:tts-started');
         
-        return { success: true };
+        return { success: true, provider: 'elevenlabs' };
       } catch (error: any) {
-        console.error('TTS error:', error);
-        this.sendToRenderer('voice:tts-error', error.message);
-        return { success: false, error: error.message };
+        console.warn('ElevenLabs TTS failed, falling back to browser TTS:', error);
+        
+        // Fallback to browser speechSynthesis
+        try {
+          this.sendToRenderer('voice:tts-browser-speak', { text, options });
+          this.sendToRenderer('voice:tts-started');
+          return { success: true, provider: 'browser' };
+        } catch (fallbackError: any) {
+          console.error('Both TTS providers failed:', fallbackError);
+          this.sendToRenderer('voice:tts-error', 'All TTS providers failed');
+          return { success: false, error: 'All TTS providers failed' };
+        }
       }
     });
 
@@ -243,7 +182,7 @@ export class VoiceHandler extends EventEmitter {
         currentMode: this.currentMode,
         pushToTalkActive: this.pushToTalkActive,
         conversationState: this.conversationManager?.getState() || null,
-        sttStatus: this.hybridSTT?.getStatus() || null
+        sttStatus: null // STT status now managed by renderer
       };
     });
 
@@ -297,14 +236,15 @@ export class VoiceHandler extends EventEmitter {
   }
 
   private async getElevenLabsAudio(text: string): Promise<Buffer> {
+    const ELEVEN_API_KEY = process.env.ELEVEN_API_KEY;
+    
+    if (!ELEVEN_API_KEY) {
+      throw new Error('ElevenLabs API key not configured');
+    }
+
     try {
-      const ELEVEN_API_KEY = process.env.ELEVEN_API_KEY;
       const voiceId = 'rSZFtT0J8GtnLqoDoFAp'; // Nova Westbrook voice
       
-      if (!ELEVEN_API_KEY) {
-        throw new Error('ElevenLabs API key not configured');
-      }
-
       const response = await axios.post(
         `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream`,
         {
@@ -323,13 +263,24 @@ export class VoiceHandler extends EventEmitter {
             'Content-Type': 'application/json',
             'Accept': 'audio/mpeg'
           },
-          responseType: 'arraybuffer'
+          responseType: 'arraybuffer',
+          timeout: 10000 // 10 second timeout
         }
       );
 
       return Buffer.from(response.data);
     } catch (error: any) {
       console.error('ElevenLabs API error:', error.message);
+      
+      // Provide more specific error messages
+      if (error.code === 'ECONNREFUSED') {
+        throw new Error('Cannot connect to ElevenLabs API');
+      } else if (error.response?.status === 401) {
+        throw new Error('Invalid ElevenLabs API key');
+      } else if (error.response?.status === 429) {
+        throw new Error('ElevenLabs API rate limit exceeded');
+      }
+      
       throw error;
     }
   }
@@ -440,14 +391,11 @@ export class VoiceHandler extends EventEmitter {
 
   private async startListening(): Promise<void> {
     try {
-      if (!this.hybridSTT) {
-        throw new Error('Hybrid STT not initialized');
-      }
-      
-      await this.hybridSTT.start();
+      // STT start is now handled by renderer process
+      console.log('[VoiceHandler] STT start requested - handled by renderer');
       this.isListening = true;
       this.sendToRenderer('voice:listening-started');
-      console.log('[VoiceHandler] Voice listening started with Hybrid STT');
+      console.log('[VoiceHandler] Voice listening started (renderer-based STT)');
     } catch (error: any) {
       console.error('[VoiceHandler] Failed to start listening:', error);
       this.isListening = false;
@@ -457,18 +405,13 @@ export class VoiceHandler extends EventEmitter {
   
   private async stopListening(): Promise<void> {
     try {
-      if (!this.hybridSTT) {
-        console.warn('[VoiceHandler] Hybrid STT not initialized');
-        return;
-      }
-      
-      await this.hybridSTT.stop();
+      // STT stop is now handled by renderer process
+      console.log('[VoiceHandler] STT stop requested - handled by renderer');
       this.isListening = false;
       this.sendToRenderer('voice:listening-stopped');
       console.log('[VoiceHandler] Voice listening stopped');
     } catch (error: any) {
       console.error('[VoiceHandler] Error stopping listening:', error);
-      this.isListening = false;
     }
   }
   
@@ -506,9 +449,15 @@ export class VoiceHandler extends EventEmitter {
 
   // Public methods
   async speak(text: string): Promise<void> {
-    // Delegate to renderer process
-    const audioData = await this.getElevenLabsAudio(text);
-    this.sendToRenderer('voice:tts-audio-data', audioData);
+    try {
+      // Try ElevenLabs first
+      const audioData = await this.getElevenLabsAudio(text);
+      this.sendToRenderer('voice:tts-audio-data', audioData);
+    } catch (error: any) {
+      console.warn('ElevenLabs TTS failed in speak(), falling back to browser TTS:', error);
+      // Fallback to browser speechSynthesis
+      this.sendToRenderer('voice:tts-browser-speak', { text });
+    }
   }
 
   async interrupt(): Promise<void> {
@@ -522,7 +471,7 @@ export class VoiceHandler extends EventEmitter {
       currentMode: this.currentMode,
       pushToTalkActive: this.pushToTalkActive,
       conversationState: this.conversationManager?.getState() || null,
-      sttStatus: this.hybridSTT?.getStatus() || null
+      sttStatus: null // STT status now managed by renderer
     };
   }
 
@@ -539,10 +488,8 @@ export class VoiceHandler extends EventEmitter {
       }
       
       // Clean up hybrid STT
-      if (this.hybridSTT) {
-        await this.hybridSTT.stop();
-        this.hybridSTT = null;
-      }
+      // STT cleanup now handled by renderer process
+      console.log('[VoiceHandler] Cleanup - STT managed by renderer');
       
       // Clean up conversation manager
       if (this.conversationManager) {
@@ -563,15 +510,12 @@ export class VoiceHandler extends EventEmitter {
       ipcMain.removeAllListeners('voice:tts-switch-voice');
       ipcMain.removeAllListeners('vad');
       
+      // Remove handle-based IPC handlers
       ipcMain.removeHandler('voice:get-state');
       ipcMain.removeHandler('voice:get-history');
       ipcMain.removeHandler('voice:chat-with-tts');
-      ipcMain.removeHandler('stt:start');
-      ipcMain.removeHandler('stt:stop');
+      // Only remove the STT handler that is actually registered
       ipcMain.removeHandler('stt:get-status');
-      ipcMain.removeHandler('stt:switch-to-cloud');
-      ipcMain.removeHandler('stt:switch-to-whisper');
-      ipcMain.removeHandler('stt:health-check');
       
       this.isInitialized = false;
       this.isListening = false;

@@ -1,25 +1,37 @@
 const path = require('path');
 const webpack = require('webpack');
+const nodeExternals = require('webpack-node-externals');
+
+const isDev = process.env.NODE_ENV === 'development';
 
 module.exports = {
-  mode: 'production',
+  mode: isDev ? 'development' : 'production',
   target: 'electron-main',
-  entry: './app/main/main.ts',
+  entry: {
+    main: './app/main/main.ts'
+  },
   output: {
     path: path.resolve(__dirname, 'dist/app/main'),
-    filename: 'main.js',
-    libraryTarget: 'commonjs2'
+    filename: '[name].js',
+    clean: true
   },
-  externals: {
-    'electron': 'commonjs2 electron',
-    'better-sqlite3': 'commonjs2 better-sqlite3',
-    'fs': 'commonjs2 fs',
-    'path': 'commonjs2 path',
-    'crypto': 'commonjs2 crypto',
-    'os': 'commonjs2 os',
-    'child_process': 'commonjs2 child_process',
-    'axios': 'commonjs2 axios'
+  devtool: isDev ? 'source-map' : false,
+  watch: isDev,
+  watchOptions: {
+    ignored: /node_modules/,
+    aggregateTimeout: 300,
+    poll: 1000
   },
+  // This is the critical fix - use webpack-node-externals
+  externals: [
+    nodeExternals({
+      allowlist: isDev ? [
+        // Allow bundling of development dependencies that support HMR
+        /webpack\/hot/,
+        'webpack/hot/poll?1000'
+      ] : [] // Don't bundle ANY node_modules in production
+    })
+  ],
   resolve: {
     extensions: ['.ts', '.tsx', '.js', '.jsx']
   },
@@ -32,12 +44,25 @@ module.exports = {
           options: {
             transpileOnly: true,
             compilerOptions: {
-              noEmit: false
+              noEmit: false,
+              sourceMap: isDev
             }
           }
         },
         exclude: /node_modules/
-      }
+      },
+      // Add support for hot reloading of main process modules
+      ...(isDev ? [{
+        test: /\.(ts|js)$/,
+        exclude: /node_modules/,
+        use: {
+          loader: 'babel-loader',
+          options: {
+            presets: [['@babel/preset-env', { targets: { node: '18' } }], '@babel/preset-typescript'],
+            plugins: []
+          }
+        }
+      }] : [])
     ]
   },
   node: {
@@ -46,7 +71,17 @@ module.exports = {
   },
   plugins: [
     new webpack.DefinePlugin({
-      'process.env.NODE_ENV': JSON.stringify('production')
-    })
-  ]
+      'process.env.NODE_ENV': JSON.stringify(isDev ? 'development' : 'production'),
+      'process.env.BUILD_TARGET': JSON.stringify('main')
+    }),
+    // HMR plugins for development
+    ...(isDev ? [
+      new webpack.HotModuleReplacementPlugin(),
+      new webpack.NoEmitOnErrorsPlugin()
+    ] : [])
+  ],
+  optimization: {
+    nodeEnv: isDev ? 'development' : 'production',
+    minimize: !isDev
+  }
 };

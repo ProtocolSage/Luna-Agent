@@ -13,8 +13,8 @@ describe('VectorStore', () => {
     jest.clearAllMocks();
   });
 
-  afterEach(() => {
-    vectorStore.clear();
+  afterEach(async () => {
+    await vectorStore.clear();
     jest.restoreAllMocks();
   });
 
@@ -35,10 +35,10 @@ describe('VectorStore', () => {
 
       await vectorStore.upsert(document);
       
-      const retrieved = vectorStore.getDocument('test-1');
+      const retrieved = await vectorStore.getDocument('test-1');
       expect(retrieved).toBeDefined();
       expect(retrieved?.content).toBe('Test document content');
-      expect(vectorStore.getDocumentCount()).toBe(1);
+      expect(await vectorStore.getDocumentCount()).toBe(1);
     });
 
     it('should upsert document with mocked embedding', async () => {
@@ -65,7 +65,7 @@ describe('VectorStore', () => {
 
       await vectorStore.upsert(document);
       
-      const retrieved = vectorStore.getDocument('test-2');
+      const retrieved = await vectorStore.getDocument('test-2');
       expect(retrieved).toBeDefined();
       expect(retrieved?.embedding).toEqual([0.1, 0.2, 0.3]);
 
@@ -95,7 +95,7 @@ describe('VectorStore', () => {
       // Should not throw, but store without embedding
       await expect(vectorStore.upsert(document)).resolves.not.toThrow();
       
-      const retrieved = vectorStore.getDocument('test-3');
+      const retrieved = await vectorStore.getDocument('test-3');
       expect(retrieved).toBeDefined();
       expect(retrieved?.embedding).toBeUndefined();
 
@@ -199,7 +199,7 @@ describe('VectorStore', () => {
 
   describe('document management', () => {
     it('should get document count', async () => {
-      expect(vectorStore.getDocumentCount()).toBe(0);
+      expect(await vectorStore.getDocumentCount()).toBe(0);
 
       await vectorStore.upsert({
         id: 'test',
@@ -208,7 +208,7 @@ describe('VectorStore', () => {
         timestamp: new Date().toISOString()
       });
 
-      expect(vectorStore.getDocumentCount()).toBe(1);
+      expect(await vectorStore.getDocumentCount()).toBe(1);
     });
 
     it('should delete documents', async () => {
@@ -219,11 +219,11 @@ describe('VectorStore', () => {
         timestamp: new Date().toISOString()
       });
 
-      expect(vectorStore.getDocument('to-delete')).toBeDefined();
+      expect(await vectorStore.getDocument('to-delete')).toBeDefined();
       
-      const deleted = vectorStore.deleteDocument('to-delete');
+      const deleted = await vectorStore.deleteDocument('to-delete');
       expect(deleted).toBe(true);
-      expect(vectorStore.getDocument('to-delete')).toBeUndefined();
+      expect(await vectorStore.getDocument('to-delete')).toBeUndefined();
     });
 
     it('should clear all documents', async () => {
@@ -241,10 +241,10 @@ describe('VectorStore', () => {
         timestamp: new Date().toISOString()
       });
 
-      expect(vectorStore.getDocumentCount()).toBe(2);
+      expect(await vectorStore.getDocumentCount()).toBe(2);
       
-      vectorStore.clear();
-      expect(vectorStore.getDocumentCount()).toBe(0);
+      await vectorStore.clear();
+      expect(await vectorStore.getDocumentCount()).toBe(0);
     });
   });
 

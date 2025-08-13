@@ -4,6 +4,7 @@
  */
 
 import { RendererCloudSTT } from './RendererCloudSTT';
+import { RendererWhisperSTT } from './RendererWhisperSTT';
 import { STTProvider, TranscriptionResult } from './STTInterface';
 
 interface RendererSTTEvents {
@@ -18,8 +19,8 @@ export class RendererHybridSTT {
   private currentEngine: STTProvider | null = null;
   private isStarted: boolean = false;
   private eventListeners: Map<string, Array<(...args: any[]) => void>> = new Map();
-  private fallbackToWebSpeech: boolean = false;
-  private webSpeechRecognition: any = null;
+  private whisperSTT: RendererWhisperSTT | null = null;
+  private cloudSTT: RendererCloudSTT | null = null;
   private switchingInProgress: boolean = false;
   private lastError: string | null = null;
 
@@ -35,24 +36,41 @@ export class RendererHybridSTT {
     try {
       this.isStarted = true;
       
-      // Try cloud STT first
-      await this.initializeCloudSTT();
+      // Check if we have cloud STT credentials
+      const env = (window as any).__ENV || {};
+      const hasCloudCredentials = env.AZURE_SPEECH_KEY || env.DEEPGRAM_API_KEY;
       
-      return { success: true };
-    } catch (error: any) {
-      console.warn('[RendererHybridSTT] Cloud STT failed, falling back to Web Speech');
-      this.lastError = error.message;
-      
-      // Fallback to enhanced Web Speech with better error handling
-      try {
-        await this.initializeWebSpeechFallback();
-        return { success: true };
-      } catch (webSpeechError: any) {
-        this.isStarted = false;
-        const errorMsg = `All STT systems failed. Cloud: ${error.message}. WebSpeech: ${webSpeechError.message}`;
-        console.error('[RendererHybridSTT]', errorMsg);
-        return { success: false, error: errorMsg };
+      if (hasCloudCredentials) {
+        // Try cloud STT first if credentials exist
+        try {
+          await this.initializeCloudSTT();
+          return { success: true };
+        } catch (cloudError: any) {
+          console.warn('[RendererHybridSTT] Cloud STT failed:', cloudError.message);
+          this.lastError = cloudError.message;
+          // Fall through to Whisper
+        }
+      } else {
+        console.log('[RendererHybridSTT] No cloud credentials found, defaulting to Whisper STT');
       }
+      
+      // Fallback to Whisper (OpenAI) if cloud fails or no cloud credentials
+      console.log('[RendererHybridSTT] Using OpenAI Whisper STT');
+      try {
+        await this.initializeWhisperSTT();
+        return { success: true };
+      } catch (whisperError: any) {
+        console.error('[RendererHybridSTT] All STT engines failed');
+        this.isStarted = false;
+        this.lastError = whisperError.message;
+        return { 
+          success: false, 
+          error: `Both Cloud and Whisper STT failed: ${this.lastError}` 
+        };
+      }
+    } catch (error: any) {
+      this.isStarted = false;
+      return { success: false, error: error.message };
     }
   }
 
@@ -60,21 +78,20 @@ export class RendererHybridSTT {
     try {
       this.isStarted = false;
       
-      // Stop cloud STT
+      // Stop current engine
       if (this.currentEngine) {
         await this.currentEngine.stopListening();
       }
       
-      // Stop Web Speech fallback
-      if (this.webSpeechRecognition) {
-        try {
-          this.webSpeechRecognition.stop();
-        } catch (err) {
-          // Ignore errors when stopping
-        }
+      // Clean up any active engines
+      if (this.cloudSTT) {
+        await this.cloudSTT.stopListening();
+      }
+      if (this.whisperSTT) {
+        await this.whisperSTT.stop();
       }
       
-      this.emit('listening-stopped');
+      this.emit('listening-stopped', undefined as any);
       return { success: true };
     } catch (error: any) {
       return { success: false, error: error.message };
@@ -82,207 +99,165 @@ export class RendererHybridSTT {
   }
 
   private async initializeCloudSTT(): Promise<void> {
-    try {
-      this.currentEngine = new RendererCloudSTT();
-      
-      // Set up event forwarding
-      this.currentEngine.on('transcription', (result: TranscriptionResult) => {
-        this.emit('transcript', { text: result.text, isFinal: result.isFinal });
-      });
+    this.cloudSTT = new RendererCloudSTT();
+    await this.cloudSTT.initialize({
+      language: 'en-US',
+      continuous: true,
+      interimResults: true
+    });
 
-      this.currentEngine.on('recording-started', () => {
-        this.emit('listening-started');
-        this.emit('engine-switched', { engine: 'CloudSTT', isCloud: true });
-      });
+    console.log('[RendererHybridSTT] Initialized cloud STT');
+    
+    this.cloudSTT.on('transcription', (result: TranscriptionResult) => {
+      this.emit('transcript', { text: result.text, isFinal: result.isFinal });
+    });
 
-      this.currentEngine.on('recording-stopped', () => {
-        this.emit('listening-stopped');
-      });
+    this.cloudSTT.on('error', (error: string) => {
+      console.error('[RendererHybridSTT] Cloud STT error:', error);
+      this.emit('error', error);
+    });
 
-      this.currentEngine.on('error', (error: string) => {
-        console.error('[RendererHybridSTT] Cloud STT error:', error);
-        this.lastError = error;
-        this.emit('error', error);
-        
-        // Don't auto-switch if we're already switching
-        if (!this.switchingInProgress) {
-          this.switchToWebSpeechFallback();
-        }
-      });
-
-      // Initialize and start
-      await this.currentEngine.initialize({});
-      await this.currentEngine.startListening();
-      
-      console.log('[RendererHybridSTT] Cloud STT started successfully');
-      
-    } catch (error: any) {
-      console.error('[RendererHybridSTT] Failed to initialize cloud STT:', error);
-      throw error;
-    }
+    await this.cloudSTT.startListening();
+    this.currentEngine = this.cloudSTT;
+    this.emit('engine-switched', { engine: 'CloudSTT', isCloud: true });
   }
 
-  private async initializeWebSpeechFallback(): Promise<void> {
-    if (!this.isWebSpeechAvailable()) {
-      throw new Error('Web Speech API not supported');
-    }
+  private async initializeWhisperSTT(): Promise<void> {
+    this.whisperSTT = new RendererWhisperSTT();
+    await this.whisperSTT.initialize({
+      language: 'en-US',
+      continuous: true,
+      interimResults: true
+    });
 
-    const SpeechRecognition = (window as any).SpeechRecognition || 
-                             (window as any).webkitSpeechRecognition;
+    console.log('[RendererHybridSTT] Initialized Whisper STT');
     
-    this.webSpeechRecognition = new SpeechRecognition();
-    this.webSpeechRecognition.continuous = true;
-    this.webSpeechRecognition.interimResults = true;
-    this.webSpeechRecognition.lang = 'en-US';
+    this.whisperSTT.on('transcription', (result: TranscriptionResult) => {
+      this.emit('transcript', { text: result.text, isFinal: result.isFinal });
+    });
 
-    this.webSpeechRecognition.onresult = (event: any) => {
-      const result = event.results[event.results.length - 1];
-      this.emit('transcript', {
-        text: result[0].transcript,
-        isFinal: result.isFinal
-      });
-    };
+    this.whisperSTT.on('error', (error: string) => {
+      console.error('[RendererHybridSTT] Whisper STT error:', error);
+      this.emit('error', error);
+    });
 
-    this.webSpeechRecognition.onerror = (event: any) => {
-      console.error('[RendererHybridSTT] Web Speech error:', event.error);
-      
-      if (event.error === 'network') {
-        // Stop the error loop immediately
-        this.webSpeechRecognition.stop();
-        this.emit('error', 'Web Speech network error - voice recognition stopped');
-        return;
-      }
-      
-      this.emit('error', `Web Speech error: ${event.error}`);
-    };
-
-    this.webSpeechRecognition.onstart = () => {
-      console.log('[RendererHybridSTT] Web Speech started');
-      this.fallbackToWebSpeech = true;
-      this.emit('listening-started');
-      this.emit('engine-switched', { engine: 'WebSpeech', isCloud: false });
-    };
-
-    this.webSpeechRecognition.onend = () => {
-      console.log('[RendererHybridSTT] Web Speech ended');
-      // Don't auto-restart to prevent loops
-    };
-
-    // Start Web Speech
-    this.webSpeechRecognition.start();
+    await this.whisperSTT.start();
+    this.currentEngine = this.whisperSTT;
+    this.emit('engine-switched', { engine: 'WhisperSTT', isCloud: false });
   }
 
-  private async switchToWebSpeechFallback(): Promise<void> {
-    if (this.switchingInProgress || this.fallbackToWebSpeech) return;
-    
+  private async switchToWhisperFallback(): Promise<void> {
+    if (this.switchingInProgress || this.currentEngine === this.whisperSTT) {
+      return;
+    }
+
+    console.log('[RendererHybridSTT] Switching to Whisper fallback...');
     this.switchingInProgress = true;
-    
+
     try {
-      console.log('[RendererHybridSTT] Switching to Web Speech fallback');
-      
-      // Stop cloud STT
+      // Stop current engine
       if (this.currentEngine) {
         await this.currentEngine.stopListening();
         this.currentEngine = null;
       }
-      
-      // Start Web Speech fallback
-      await this.initializeWebSpeechFallback();
+
+      // Initialize Whisper
+      await this.initializeWhisperSTT();
       
     } catch (error: any) {
-      console.error('[RendererHybridSTT] Failed to switch to Web Speech:', error);
-      this.emit('error', `Failed to switch to Web Speech: ${error.message}`);
+      console.error('[RendererHybridSTT] Failed to switch to Whisper:', error);
+      this.emit('error', `Failed to switch to Whisper: ${error.message}`);
     } finally {
       this.switchingInProgress = false;
     }
   }
 
-  private isWebSpeechAvailable(): boolean {
-    return typeof window !== 'undefined' && (
-      'SpeechRecognition' in window || 
-      'webkitSpeechRecognition' in window
-    );
-  }
+  // Removed duplicate - see public switchToCloud below
 
   // Public status methods
   getStatus(): {
-    currentEngine: string;
+    engine: string;
     isCloud: boolean;
     isLocal: boolean;
     isStarted: boolean;
     lastError: string | null;
   } {
     return {
-      currentEngine: this.fallbackToWebSpeech ? 'WebSpeech' : (this.currentEngine?.name || 'None'),
-      isCloud: !this.fallbackToWebSpeech && !!this.currentEngine,
-      isLocal: this.fallbackToWebSpeech,
+      engine: this.currentEngine === this.whisperSTT ? 'WhisperSTT' : 
+              (this.currentEngine === this.cloudSTT ? 'CloudSTT' : 'None'),
+      isCloud: this.currentEngine === this.cloudSTT,
+      isLocal: this.currentEngine === this.whisperSTT,
       isStarted: this.isStarted,
       lastError: this.lastError
     };
   }
 
-  async switchToCloud(): Promise<{ success: boolean; error?: string }> {
+  async switchToCloud(): Promise<void> {
+    if (this.currentEngine === this.cloudSTT) {
+      console.log('[RendererHybridSTT] Already using cloud STT');
+      return;
+    }
+
+    console.log('[RendererHybridSTT] Switching to cloud STT...');
+    this.switchingInProgress = true;
+
     try {
-      if (this.currentEngine && !this.fallbackToWebSpeech) {
-        return { success: true }; // Already using cloud
+      // Stop current engine
+      if (this.currentEngine) {
+        await this.currentEngine.stopListening();
       }
 
-      // Stop current engine
-      await this.stop();
-      this.fallbackToWebSpeech = false;
-      
-      // Start cloud STT
+      // Reinitialize cloud STT
       await this.initializeCloudSTT();
       
-      return { success: true };
     } catch (error: any) {
-      return { success: false, error: error.message };
+      console.error('[RendererHybridSTT] Failed to switch to cloud:', error);
+      this.emit('error', `Failed to switch to cloud: ${error.message}`);
+      // Fallback to Whisper if cloud fails
+      await this.switchToWhisperFallback();
+    } finally {
+      this.switchingInProgress = false;
     }
   }
 
-  async switchToWebSpeech(): Promise<{ success: boolean; error?: string }> {
-    try {
-      if (this.fallbackToWebSpeech) {
-        return { success: true }; // Already using Web Speech
-      }
-
-      // Stop current engine
-      await this.stop();
-      
-      // Start Web Speech
-      await this.initializeWebSpeechFallback();
-      
-      return { success: true };
-    } catch (error: any) {
-      return { success: false, error: error.message };
+  async switchToWhisper(): Promise<void> {
+    if (this.currentEngine === this.whisperSTT) {
+      console.log('[RendererHybridSTT] Already using Whisper STT');
+      return;
     }
+
+    console.log('[RendererHybridSTT] Switching to Whisper STT...');
+    await this.switchToWhisperFallback();
   }
 
-  async healthCheck(): Promise<{ currentEngine: string; isHealthy: boolean; error?: string }> {
-    const status = this.getStatus();
+  async healthCheck(): Promise<{ healthy: boolean; details?: any }> {
+    const hasWhisperKey = !!(window as any).__ENV?.OPENAI_API_KEY;
+    const hasCloudKey = !!(window as any).__ENV?.AZURE_SPEECH_KEY || !!(window as any).__ENV?.DEEPGRAM_API_KEY;
     
-    try {
-      if (this.currentEngine) {
-        const health = await this.currentEngine.checkHealth();
-        return {
-          currentEngine: status.currentEngine,
-          isHealthy: health.healthy,
-          error: health.error
-        };
-      } else {
-        return {
-          currentEngine: status.currentEngine,
-          isHealthy: this.fallbackToWebSpeech && this.isWebSpeechAvailable(),
-          error: this.fallbackToWebSpeech ? undefined : 'No STT engine active'
-        };
+    const status = this.getStatus();
+    const healthy = !!this.currentEngine && (this.currentEngine.isListening() || this.currentEngine.isInitialized());
+    
+    if (!healthy && (hasWhisperKey || hasCloudKey)) {
+      // Try to auto-recover
+      try {
+        if (hasCloudKey) {
+          await this.initializeCloudSTT();
+        } else if (hasWhisperKey) {
+          await this.switchToWhisperFallback();
+        }
+      } catch (error) {
+        console.error('[RendererHybridSTT] Auto-recovery failed:', error);
       }
-    } catch (error: any) {
-      return {
-        currentEngine: status.currentEngine,
-        isHealthy: false,
-        error: error.message
-      };
     }
+    
+    return {
+      healthy: !!this.currentEngine,
+      details: {
+        ...status,
+        hasWhisperKey,
+        hasCloudKey
+      }
+    };
   }
 
   // Event emitter methods

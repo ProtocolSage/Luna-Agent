@@ -254,8 +254,9 @@ Every answer should make the user think differently.`;
           priority: 'high',
           config: {
             maxSteps: this.config.maxSteps || 5,
-            timeoutMs: this.config.timeoutMs || 180000,
+            timeoutMs: 180000,
             allowParallel: true,
+            retryCount: 2,
             validateResults: true,
             logExecution: true
           },

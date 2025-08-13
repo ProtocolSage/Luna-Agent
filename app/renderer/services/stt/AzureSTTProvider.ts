@@ -10,8 +10,8 @@ export class AzureSTTProvider implements STTProvider {
   readonly isOnlineService = true;
   
   private config: STTConfig = {};
-  private isInitialized: boolean = false;
-  private isListening: boolean = false;
+  private _isInitialized: boolean = false;
+  private _isListening: boolean = false;
   private eventListeners: Map<string, Array<(...args: any[]) => void>> = new Map();
   private websocket: WebSocket | null = null;
   private mediaRecorder: MediaRecorder | null = null;
@@ -31,7 +31,7 @@ export class AzureSTTProvider implements STTProvider {
   }
 
   async initialize(config: STTConfig): Promise<void> {
-    if (this.isInitialized) return;
+    if (this._isInitialized) return;
     
     this.config = {
       language: 'en-US',
@@ -53,16 +53,16 @@ export class AzureSTTProvider implements STTProvider {
       throw new Error(`Azure Speech service unavailable: ${healthCheck.error}`);
     }
 
-    this.isInitialized = true;
+    this._isInitialized = true;
     console.log('Azure STT provider initialized');
   }
 
   async startListening(): Promise<void> {
-    if (!this.isInitialized) {
+    if (!this._isInitialized) {
       throw new Error('Azure STT provider not initialized');
     }
 
-    if (this.isListening) return;
+    if (this._isListening) return;
 
     try {
       // Get microphone access
@@ -79,12 +79,12 @@ export class AzureSTTProvider implements STTProvider {
       await this.connectWebSocket();
       this.setupMediaRecorder();
       
-      this.isListening = true;
+      this._isListening = true;
       this.emit('recording-started');
       console.log('Azure STT: Started listening');
       
     } catch (error: any) {
-      this.isListening = false;
+      this._isListening = false;
       console.error('Azure STT: Failed to start listening:', error);
       this.emit('error', `Failed to start Azure STT: ${error.message}`);
       throw error;
@@ -92,10 +92,10 @@ export class AzureSTTProvider implements STTProvider {
   }
 
   async stopListening(): Promise<void> {
-    if (!this.isListening) return;
+    if (!this._isListening) return;
 
     try {
-      this.isListening = false;
+      this._isListening = false;
       
       // Stop media recorder
       if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
@@ -150,7 +150,7 @@ export class AzureSTTProvider implements STTProvider {
       
       this.websocket.onclose = (event) => {
         console.log('Azure STT: WebSocket closed:', event.code, event.reason);
-        if (this.isListening && this.reconnectAttempts < this.maxReconnectAttempts) {
+        if (this._isListening && this.reconnectAttempts < this.maxReconnectAttempts) {
           this.attemptReconnect();
         }
       };
@@ -225,7 +225,7 @@ export class AzureSTTProvider implements STTProvider {
     console.log(`Azure STT: Attempting reconnection ${this.reconnectAttempts}/${this.maxReconnectAttempts}`);
     
     setTimeout(async () => {
-      if (this.isListening) {
+      if (this._isListening) {
         try {
           await this.connectWebSocket();
           this.setupMediaRecorder();
@@ -250,11 +250,11 @@ export class AzureSTTProvider implements STTProvider {
   }
 
   isListening(): boolean {
-    return this.isListening;
+    return this._isListening;
   }
 
   isInitialized(): boolean {
-    return this.isInitialized;
+    return this._isInitialized;
   }
 
   setLanguage(language: string): void {

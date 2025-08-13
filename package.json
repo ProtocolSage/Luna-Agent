@@ -1,121 +1,277 @@
 {
-  "name": "luna-agent",
+  "name": "luna-agent-production",
   "version": "1.0.0",
-  "description": "Production-ready AI agent with voice interface and multi-LLM support",
-  "main": "dist/app/main/main.js",
+  "description": "Production-Ready AI Assistant with Voice Interface",
+  "main": "app/main/main.js",
+  "homepage": "./",
+  "author": "Luna Agent Team",
+  "license": "MIT",
+  "private": true,
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
   "scripts": {
-    "build": "node build.js",
-    "build:dev": "node build.js",
-    "build:prod": "node build.js",
-    "typecheck": "tsc --noEmit",
-    "start": "npm run build:prod && electron dist/app/main/main.js",
-    "test": "jest --passWithNoTests",
-    "test:coverage": "jest --coverage --passWithNoTests",
-    "test:offline": "jest --passWithNoTests --testPathIgnorePatterns=integration",
-    "lint": "eslint . --ext .ts,.tsx --max-warnings 0",
-    "lint:fix": "eslint . --ext .ts,.tsx --fix",
-    "package": "npm run build && electron-builder --publish never",
-    "package:win": "npm run build && electron-builder --win --publish never",
-    "package:mac": "npm run build && electron-builder --mac --publish never",
-    "package:linux": "npm run build && electron-builder --linux --publish never",
-    "dev": "concurrently \"npm run build:dev -- --watch\" \"wait-on dist/app/main/main.js && electron dist/app/main/main.js\"",
-    "clean": "rimraf dist coverage",
-    "rebuild": "electron-rebuild -f -w better-sqlite3"
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:renderer\" \"npm run dev:electron\"",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:renderer": "cd app && npm run dev",
+    "dev:electron": "wait-on http://localhost:3000 http://localhost:3001 && electron app/main/main.js",
+    
+    "build": "npm run build:backend && npm run build:renderer && npm run build:electron",
+    "build:backend": "cd backend && npm run build",
+    "build:renderer": "cd app && npm run build",
+    "build:electron": "electron-builder",
+    
+    "build:electron:win": "electron-builder --win",
+    "build:electron:mac": "electron-builder --mac", 
+    "build:electron:linux": "electron-builder --linux",
+    
+    "package": "npm run build && npm run package:electron",
+    "package:electron": "electron-builder --publish=never",
+    
+    "dist": "npm run build && electron-builder --publish=always",
+    "dist:win": "npm run build && electron-builder --win --publish=always",
+    "dist:mac": "npm run build && electron-builder --mac --publish=always",
+    "dist:linux": "npm run build && electron-builder --linux --publish=always",
+    
+    "start": "npm run build && electron app/main/main.js",
+    "start:prod": "NODE_ENV=production npm run start",
+    
+    "test": "jest",
+    "test:unit": "jest tests/unit",
+    "test:integration": "jest tests/integration",
+    "test:e2e": "jest tests/e2e",
+    "test:coverage": "jest --coverage",
+    "test:watch": "jest --watch",
+    "test:ci": "jest --ci --coverage --watchAll=false",
+    
+    "lint": "eslint . --ext .ts,.tsx,.js,.jsx --fix",
+    "lint:check": "eslint . --ext .ts,.tsx,.js,.jsx",
+    "type-check": "tsc --noEmit",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    
+    "clean": "rimraf dist build coverage app/renderer/dist backend/dist",
+    "clean:deps": "rimraf node_modules app/node_modules backend/node_modules",
+    "clean:all": "npm run clean && npm run clean:deps",
+    
+    "postinstall": "npm run install:deps",
+    "install:deps": "cd app && npm install && cd ../backend && npm install",
+    "install:electron": "electron-rebuild",
+    
+    "security:audit": "npm audit && cd app && npm audit && cd ../backend && npm audit",
+    "security:fix": "npm audit fix && cd app && npm audit fix && cd ../backend && npm audit fix",
+    
+    "docker:build": "docker build -t luna-agent:latest .",
+    "docker:run": "docker run -p 3001:3001 luna-agent:latest",
+    "docker:compose": "docker-compose up -d",
+    "docker:compose:dev": "docker-compose -f docker-compose.dev.yml up",
+    
+    "deploy:staging": "npm run build && npm run deploy:copy-staging",
+    "deploy:production": "npm run build && npm run deploy:copy-production",
+    "deploy:copy-staging": "rsync -avz --delete dist/ staging-server:/var/www/luna-agent/",
+    "deploy:copy-production": "rsync -avz --delete dist/ production-server:/var/www/luna-agent/",
+    
+    "db:migrate": "cd backend && npm run db:migrate",
+    "db:seed": "cd backend && npm run db:seed",
+    "db:reset": "cd backend && npm run db:reset",
+    "db:backup": "cd backend && npm run db:backup",
+    
+    "logs:view": "tail -f logs/luna-agent.log",
+    "logs:error": "tail -f logs/error.log",
+    "logs:voice": "tail -f logs/voice.log",
+    "logs:security": "tail -f logs/security.log",
+    
+    "health:check": "node scripts/health-check.js",
+    "performance:profile": "node --prof app/main/main.js",
+    "performance:analyze": "node --prof-process *.log > profile.txt",
+    
+    "precommit": "npm run lint:check && npm run type-check && npm run test:ci",
+    "prepare": "husky install",
+    "version:patch": "npm version patch && git push --tags",
+    "version:minor": "npm version minor && git push --tags",
+    "version:major": "npm version major && git push --tags"
   },
   "build": {
-    "appId": "com.manus.luna-agent",
     "productName": "Luna Agent",
-    "npmRebuild": false,
+    "appId": "com.lunaagent.app",
     "directories": {
       "output": "dist"
     },
     "files": [
-      "dist/**/*",
-      "node_modules/**/*"
+      "app/**/*",
+      "backend/dist/**/*",
+      "node_modules/**/*",
+      "package.json"
     ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "hardenedRuntime": true,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "icon": "assets/icon.icns",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["x64", "arm64"]
+        },
+        {
+          "target": "zip",
+          "arch": ["x64", "arm64"]
+        }
+      ]
+    },
     "win": {
-      "target": "nsis",
-      "icon": "assets/icon.ico"
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64", "ia32"]
+        },
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "assets/icon.ico",
+      "publisherName": "Luna Agent",
+      "verifyUpdateCodeSignature": false
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": ["x64"]
+        },
+        {
+          "target": "deb",
+          "arch": ["x64"]
+        },
+        {
+          "target": "rpm",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "assets/icon.png",
+      "category": "Office"
     },
     "nsis": {
       "oneClick": false,
-      "allowToChangeInstallationDirectory": true
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "runAfterFinish": true
     },
     "publish": {
       "provider": "github",
-      "owner": "ProtocolSage",
-      "repo": "luna-agent"
+      "owner": "luna-agent",
+      "repo": "luna-agent-production"
+    },
+    "compression": "maximum",
+    "removePackageScripts": true
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.5",
+    "@types/node": "^20.6.3",
+    "@types/react": "^18.2.22",
+    "@types/react-dom": "^18.2.7",
+    "@types/supertest": "^2.0.12",
+    "@types/ws": "^8.5.5",
+    "@typescript-eslint/eslint-plugin": "^6.7.2",
+    "@typescript-eslint/parser": "^6.7.2",
+    "concurrently": "^8.2.1",
+    "electron": "^26.2.1",
+    "electron-builder": "^24.6.4",
+    "electron-rebuild": "^3.2.9",
+    "eslint": "^8.50.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-react": "^7.33.2",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "husky": "^8.0.3",
+    "jest": "^29.7.0",
+    "jest-dom": "^4.0.0",
+    "jest-html-reporters": "^3.1.5",
+    "jest-junit": "^16.0.0",
+    "lint-staged": "^14.0.1",
+    "prettier": "^3.0.3",
+    "rimraf": "^5.0.1",
+    "supertest": "^6.3.3",
+    "ts-jest": "^29.1.1",
+    "typescript": "^5.2.2",
+    "wait-on": "^7.0.1"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "lucide-react": "^0.279.0",
+    "uuid": "^9.0.0",
+    "ws": "^8.14.1",
+    "multer": "^1.4.5-lts.1",
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "helmet": "^7.0.0",
+    "compression": "^1.7.4",
+    "express-rate-limit": "^6.10.0",
+    "express-validator": "^7.0.1",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2",
+    "crypto-js": "^4.1.1",
+    "winston": "^3.10.0",
+    "winston-daily-rotate-file": "^4.7.1",
+    "dotenv": "^16.3.1",
+    "node-cron": "^3.0.2"
+  },
+  "optionalDependencies": {
+    "sqlite3": "^5.1.6",
+    "pg": "^8.11.3",
+    "redis": "^4.6.8",
+    "mongoose": "^7.5.0"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md}": [
+      "prettier --write"
+    ]
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged && npm run type-check",
+      "pre-push": "npm run test:ci"
     }
+  },
+  "jest": {
+    "preset": "ts-jest",
+    "testEnvironment": "jsdom",
+    "setupFilesAfterEnv": ["<rootDir>/tests/setup/jest.setup.ts"],
+    "testMatch": ["<rootDir>/tests/**/*.test.ts", "<rootDir>/tests/**/*.test.tsx"],
+    "collectCoverageFrom": [
+      "app/**/*.{ts,tsx}",
+      "backend/**/*.{ts,js}",
+      "!**/*.d.ts",
+      "!**/node_modules/**"
+    ],
+    "coverageDirectory": "coverage",
+    "coverageReporters": ["text", "lcov", "html"]
   },
   "keywords": [
     "ai",
-    "agent",
+    "assistant",
     "voice",
-    "llm",
-    "electron"
+    "electron",
+    "react",
+    "production",
+    "desktop",
+    "speech-recognition",
+    "text-to-speech",
+    "automation"
   ],
-  "author": "Manus.IM",
-  "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/ProtocolSage/luna-agent.git"
+    "url": "https://github.com/luna-agent/luna-agent-production.git"
   },
   "bugs": {
-    "url": "https://github.com/ProtocolSage/luna-agent/issues"
-  },
-  "homepage": "https://github.com/ProtocolSage/luna-agent#readme",
-  "devDependencies": {
-    "@types/cheerio": "^0.22.35",
-    "@types/express": "^5.0.3",
-    "@types/jest": "^29.5.5",
-    "@types/node": "^20.6.0",
-    "@types/node-fetch": "^2.6.13",
-    "@types/react": "^18.2.21",
-    "@types/react-dom": "^18.2.7",
-    "@types/uuid": "^9.0.4",
-    "@typescript-eslint/eslint-plugin": "^8.39.0",
-    "@typescript-eslint/parser": "^8.39.0",
-    "concurrently": "^8.2.1",
-    "css-loader": "^7.1.2",
-    "electron": "^37.2.6",
-    "electron-builder": "^24.13.3",
-    "electron-rebuild": "^3.2.9",
-    "eslint": "^9.32.0",
-    "jest": "^29.7.0",
-    "patch-package": "^8.0.0",
-    "postinstall-postinstall": "^2.1.0",
-    "rimraf": "^5.0.1",
-    "style-loader": "^4.0.0",
-    "ts-jest": "^29.1.1",
-    "ts-loader": "^9.5.2",
-    "tsx": "^4.20.3",
-    "typescript": "^5.2.2",
-    "wait-on": "^7.0.1",
-    "webpack": "^5.101.0",
-    "webpack-cli": "^5.1.4"
-  },
-  "dependencies": {
-    "@picovoice/porcupine-web": "^3.0.3",
-    "@types/better-sqlite3": "^7.6.13",
-    "@types/node-schedule": "^2.1.8",
-    "@types/sqlite3": "^3.1.8",
-    "abort-controller": "3.0.0",
-    "ajv": "^8.17.1",
-    "ajv-keywords": "^5.1.0",
-    "axios": "^1.6.0",
-    "bluebird": "^3.7.2",
-    "cheerio": "^1.1.2",
-    "dotenv": "^17.2.1",
-    "express": "^4.18.2",
-    "got": "11.8.6",
-    "iconv-lite": "^0.6.3",
-    "node-fetch": "^2.7.0",
-    "node-schedule": "^2.1.1",
-    "prism-media": "1.3.5",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "speaker": "0.5.4",
-    "uuid": "^9.0.0",
-    "yargs": "^18.0.0"
+    "url": "https://github.com/luna-agent/luna-agent-production/issues"
   }
 }

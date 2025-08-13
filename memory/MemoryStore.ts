@@ -57,27 +57,87 @@ export class MemoryStore {
    * Creates memories table with proper indexes for fast querying
    */
   private initializeDatabase(): void {
-    // Create memories table
-    this.db.exec(`
-      CREATE TABLE IF NOT EXISTS memories (
-        id TEXT PRIMARY KEY,
-        content TEXT NOT NULL,
-        type TEXT NOT NULL,
-        timestamp TEXT NOT NULL,
-        embedding TEXT, -- JSON-encoded embedding vector
-        metadata TEXT   -- JSON-encoded metadata
-      );
-    `);
+    try {
+      // Create memories table
+      this.db.exec(`
+        CREATE TABLE IF NOT EXISTS memories (
+          id TEXT PRIMARY KEY,
+          content TEXT NOT NULL,
+          type TEXT NOT NULL,
+          timestamp TEXT NOT NULL,
+          embedding TEXT, -- JSON-encoded embedding vector
+          metadata TEXT   -- JSON-encoded metadata
+        );
+      `);
 
-    // Create indexes for fast querying
-    this.db.exec(`
-      CREATE INDEX IF NOT EXISTS idx_memories_type ON memories(type);
-      CREATE INDEX IF NOT EXISTS idx_memories_timestamp ON memories(timestamp);
-      CREATE INDEX IF NOT EXISTS idx_memories_content_fts ON memories(content);
-    `);
+      // Create indexes for fast querying
+      this.db.exec(`
+        -- Basic indexes for common queries
+        CREATE INDEX IF NOT EXISTS idx_memories_type ON memories(type);
+        CREATE INDEX IF NOT EXISTS idx_memories_timestamp ON memories(timestamp DESC);
+        
+        -- Composite indexes for common query patterns
+        CREATE INDEX IF NOT EXISTS idx_memories_type_timestamp ON memories(type, timestamp DESC);
+        CREATE INDEX IF NOT EXISTS idx_memories_timestamp_type ON memories(timestamp DESC, type);
+        
+        -- Partial indexes for embeddings (only rows with embeddings)
+        CREATE INDEX IF NOT EXISTS idx_memories_with_embedding ON memories(timestamp DESC) WHERE embedding IS NOT NULL;
+        CREATE INDEX IF NOT EXISTS idx_memories_type_with_embedding ON memories(type, timestamp DESC) WHERE embedding IS NOT NULL;
+        
+        -- Index for content search optimization
+        CREATE INDEX IF NOT EXISTS idx_memories_content_type ON memories(type) WHERE content IS NOT NULL;
+      `);
 
-    // Enable WAL mode for better concurrency
-    this.db.pragma('journal_mode = WAL');
+      // Create FTS5 virtual table for full-text search (if supported)
+      try {
+        this.db.exec(`
+          CREATE VIRTUAL TABLE IF NOT EXISTS memories_fts USING fts5(
+            id UNINDEXED,
+            content,
+            type UNINDEXED,
+            timestamp UNINDEXED,
+            content='memories',
+            content_rowid='rowid'
+          );
+        `);
+        
+        // Create triggers to keep FTS table in sync
+        this.db.exec(`
+          CREATE TRIGGER IF NOT EXISTS memories_fts_insert AFTER INSERT ON memories BEGIN
+            INSERT INTO memories_fts(id, content, type, timestamp) VALUES(new.id, new.content, new.type, new.timestamp);
+          END;
+          
+          CREATE TRIGGER IF NOT EXISTS memories_fts_delete AFTER DELETE ON memories BEGIN
+            DELETE FROM memories_fts WHERE id = old.id;
+          END;
+          
+          CREATE TRIGGER IF NOT EXISTS memories_fts_update AFTER UPDATE ON memories BEGIN
+            DELETE FROM memories_fts WHERE id = old.id;
+            INSERT INTO memories_fts(id, content, type, timestamp) VALUES(new.id, new.content, new.type, new.timestamp);
+          END;
+        `);
+        
+        console.log('[MemoryStore] FTS5 full-text search enabled');
+      } catch (error) {
+        console.warn('[MemoryStore] FTS5 not supported, using LIKE queries for search');
+      }
+
+      // Enable WAL mode for better concurrency (if supported)
+      try {
+        this.db.pragma('journal_mode = WAL');
+        this.db.pragma('synchronous = NORMAL');
+        this.db.pragma('cache_size = 1000');
+        this.db.pragma('temp_store = memory');
+        console.log('[MemoryStore] Database optimizations applied');
+      } catch (error) {
+        console.warn('[MemoryStore] Some database optimizations not supported');
+      }
+      
+      console.log('[MemoryStore] Database initialized successfully');
+    } catch (error) {
+      console.error('[MemoryStore] Failed to initialize database:', error);
+      throw error;
+    }
   }
 
   /**
@@ -121,7 +181,9 @@ export class MemoryStore {
       ...existing,
       ...updates,
       id: existing.id, // Preserve ID
-      timestamp: existing.timestamp // Preserve original timestamp
+      timestamp: existing.timestamp, // Preserve original timestamp
+      // Handle explicit embedding updates (including clearing with null)
+      embedding: 'embedding' in updates ? updates.embedding : existing.embedding
     };
 
     const stmt = this.db.prepare(`
@@ -133,7 +195,7 @@ export class MemoryStore {
     const result = stmt.run(
       updated.content,
       updated.type,
-      updated.embedding ? JSON.stringify(updated.embedding) : null,
+      updated.embedding === null ? null : (updated.embedding ? JSON.stringify(updated.embedding) : null),
       updated.metadata ? JSON.stringify(updated.metadata) : null,
       id
     );
@@ -191,9 +253,72 @@ export class MemoryStore {
 
   /**
    * Full-text search across memory content
-   * Uses simple LIKE queries as fallback when no embeddings available
+   * Uses FTS5 when available, falls back to LIKE queries
    */
   async searchMemories(options: MemorySearchOptions): Promise<MemorySearchResult[]> {
+    const { query, type, limit = 20, offset = 0, sinceTimestamp } = options;
+    
+    // If we have a search query, try FTS5 first
+    if (query && this.hasFTSSupport()) {
+      return this.searchMemoriesFTS(options);
+    }
+    
+    // Fallback to regular SQL search
+    return this.searchMemoriesSQL(options);
+  }
+
+  /**
+   * Search using FTS5 full-text search
+   */
+  private async searchMemoriesFTS(options: MemorySearchOptions): Promise<MemorySearchResult[]> {
+    const { query, type, limit = 20, offset = 0, sinceTimestamp } = options;
+    
+    let sql = `
+      SELECT m.*, f.rank 
+      FROM memories_fts f 
+      JOIN memories m ON f.id = m.id 
+      WHERE memories_fts MATCH ?
+    `;
+    const params: any[] = [query];
+
+    // Add type filter
+    if (type) {
+      sql += ' AND m.type = ?';
+      params.push(type);
+    }
+
+    // Add timestamp filter
+    if (sinceTimestamp) {
+      sql += ' AND m.timestamp >= ?';
+      params.push(sinceTimestamp);
+    }
+
+    sql += ' ORDER BY f.rank, m.timestamp DESC LIMIT ? OFFSET ?';
+    params.push(limit, offset);
+
+    try {
+      const stmt = this.db.prepare(sql);
+      const rows = stmt.all(...params) as any[];
+      
+      return rows.map(row => {
+        const memory = this.rowToMemory(row);
+        const relevanceScore = this.calculateFTSRelevance(row.rank);
+        return {
+          memory,
+          similarity: relevanceScore,
+          relevanceScore
+        };
+      });
+    } catch (error) {
+      console.warn('[MemoryStore] FTS search failed, falling back to SQL:', error);
+      return this.searchMemoriesSQL(options);
+    }
+  }
+
+  /**
+   * Search using regular SQL queries
+   */
+  private async searchMemoriesSQL(options: MemorySearchOptions): Promise<MemorySearchResult[]> {
     const { query, type, limit = 20, offset = 0, sinceTimestamp } = options;
     
     let sql = 'SELECT * FROM memories WHERE 1=1';
@@ -211,10 +336,10 @@ export class MemoryStore {
       params.push(sinceTimestamp);
     }
 
-    // Add content search
+    // Add content search with case-insensitive matching
     if (query) {
-      sql += ' AND (content LIKE ? OR content LIKE ?)';
-      params.push(`%${query}%`, `%${query.toLowerCase()}%`);
+      sql += ' AND (content LIKE ? OR LOWER(content) LIKE LOWER(?))';
+      params.push(`%${query}%`, `%${query}%`);
     }
 
     sql += ' ORDER BY timestamp DESC LIMIT ? OFFSET ?';
@@ -223,10 +348,36 @@ export class MemoryStore {
     const stmt = this.db.prepare(sql);
     const rows = stmt.all(...params) as any[];
     
-    return rows.map(row => ({
-      memory: this.rowToMemory(row),
-      relevanceScore: query ? this.calculateSimpleRelevance(this.rowToMemory(row).content, query) : 1.0
-    }));
+    return rows.map(row => {
+      const memory = this.rowToMemory(row);
+      const relevanceScore = query ? this.calculateSimpleRelevance(memory.content, query) : 1.0;
+      return {
+        memory,
+        similarity: relevanceScore,
+        relevanceScore
+      };
+    });
+  }
+
+  /**
+   * Check if FTS5 support is available
+   */
+  private hasFTSSupport(): boolean {
+    try {
+      const stmt = this.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='memories_fts'");
+      return stmt.get() !== undefined;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Calculate relevance score from FTS5 rank
+   */
+  private calculateFTSRelevance(rank: number): number {
+    // FTS5 rank is negative (more negative = better match)
+    // Convert to positive score between 0 and 1
+    return Math.max(0, Math.min(1, 1 + rank / 10));
   }
 
   /**
@@ -255,7 +406,8 @@ export class MemoryStore {
         
         return {
           memory,
-          similarity
+          similarity,
+          relevanceScore: similarity || 0
         };
       })
       .sort((a, b) => (b.similarity || 0) - (a.similarity || 0))
@@ -328,7 +480,7 @@ export class MemoryStore {
       content: row.content,
       type: row.type as MemoryType,
       timestamp: row.timestamp,
-      embedding: row.embedding ? JSON.parse(row.embedding) : undefined,
+      embedding: row.embedding != null ? JSON.parse(row.embedding) : null,
       metadata: row.metadata ? JSON.parse(row.metadata) : undefined
     };
   }

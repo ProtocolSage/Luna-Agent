@@ -68,7 +68,7 @@ export class ConversationManager extends EventEmitter {
     try {
       // Initialize voice input
       this.voiceInput = initializeVoiceInput({
-        provider: this.config.sttProvider!,
+        provider: this.config.sttProvider! as 'webSpeech' | 'whisper' | 'azure' | 'google',
         apiKey: this.config.apiKey,
         language: 'en-US',
         continuous: true,

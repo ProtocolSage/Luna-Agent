@@ -3,8 +3,11 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import fetch from 'node-fetch';
 import * as cheerio from 'cheerio';
-import { memoryService } from '../../memory/MemoryService';
+import { MemoryService } from '../../memory/MemoryService';
 import { MemoryType } from '../../memory/MemoryStore';
+
+// Create memory service instance
+const memoryService = new MemoryService();
 import { getStatus } from './status';
 import { GoalManager } from './goals';
 import { ReminderManager } from './reminders';
@@ -428,7 +431,7 @@ export class ToolExecutive {
           content: memory.content,
           type: memory.type,
           timestamp: memory.timestamp,
-          hasEmbedding: !!memory.embedding
+          hasEmbedding: Array.isArray(memory.embedding) && memory.embedding.length > 0
         };
       }
     });
@@ -449,7 +452,7 @@ export class ToolExecutive {
           type: memory.type,
           timestamp: memory.timestamp,
           metadata: memory.metadata,
-          hasEmbedding: !!memory.embedding
+          hasEmbedding: Array.isArray(memory.embedding) && memory.embedding.length > 0
         };
       }
     });
@@ -506,7 +509,7 @@ export class ToolExecutive {
           content: memory.content.length > 200 ? memory.content.substring(0, 200) + '...' : memory.content,
           type: memory.type,
           timestamp: memory.timestamp,
-          hasEmbedding: !!memory.embedding
+          hasEmbedding: Array.isArray(memory.embedding) && memory.embedding.length > 0
         }));
       }
     });
@@ -537,7 +540,7 @@ export class ToolExecutive {
           type: memory.type,
           timestamp: memory.timestamp,
           metadata: memory.metadata,
-          hasEmbedding: !!memory.embedding
+          hasEmbedding: Array.isArray(memory.embedding) && memory.embedding.length > 0
         };
       }
     });

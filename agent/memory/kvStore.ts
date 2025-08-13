@@ -20,7 +20,7 @@ export interface SessionData {
   messageCount: number;
   userPreferences: Record<string, UserPreference>;
   contextVariables: Record<string, ContextVariable>;
-  temporaryData: Record<string, TemporaryData>;
+  temporaryData: Record<string, TemporaryData | TTLTemporaryData>;
 }
 
 export class KVStore {
@@ -183,7 +183,7 @@ export class KVStore {
       data.expiresAt = new Date(Date.now() + ttl);
     }
 
-    session.temporaryData[key] = data;
+    session.temporaryData[key] = data as TemporaryData | TTLTemporaryData;
     await this.setSession(sessionId, session);
   }
 
@@ -194,7 +194,7 @@ export class KVStore {
     if (!tempData) return undefined;
 
     // Type guard to check if this is TTL data
-    if (typeof tempData === 'object' && tempData !== null && 'value' in tempData && 'expiresAt' in tempData) {
+    if (typeof tempData === 'object' && tempData !== null && 'value' in tempData) {
       const ttlData = tempData as TTLTemporaryData;
       // Check if data has expired
       if (ttlData.expiresAt && new Date() > new Date(ttlData.expiresAt)) {
@@ -289,7 +289,7 @@ export class KVStore {
       
       for (const [key, data] of Object.entries(session.temporaryData)) {
         // Type guard to check if this is TTL data
-        if (typeof data === 'object' && data !== null && 'expiresAt' in data) {
+        if (typeof data === 'object' && data !== null && 'value' in data) {
           const ttlData = data as TTLTemporaryData;
           if (ttlData.expiresAt && now > new Date(ttlData.expiresAt)) {
             delete session.temporaryData[key];

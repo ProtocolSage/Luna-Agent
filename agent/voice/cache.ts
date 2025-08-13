@@ -22,7 +22,7 @@ export class PhraseCache {
     // rudimentary LRU eviction
     if (this.store.size > this.maxItems) {
       const first = this.store.keys().next().value;
-      this.store.delete(first);
+      this.store.delete(first!);
     }
   }
 

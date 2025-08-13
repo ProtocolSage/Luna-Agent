@@ -1,9 +1,30 @@
 // Pipeline system exports
-export { ToolPipeline, PipelineConfig, PipelineContext, PipelineResult, ToolPlanning } from './ToolPipeline';
-export { PipelineService, PipelineServiceConfig, PipelineMetrics, ExecutionRequest } from './PipelineService';
+export { ToolPipeline } from './ToolPipeline';
+export { PipelineService } from './PipelineService';
+
+// Type exports
+export type { 
+  PipelineConfig, 
+  PipelineContext, 
+  PipelineResult, 
+  ToolPlanning 
+} from './ToolPipeline';
+
+export type { 
+  PipelineServiceConfig, 
+  PipelineMetrics, 
+  ExecutionRequest 
+} from './PipelineService';
 
 // Re-export tool system components for convenience
-export { ToolExecutive, ToolStep, ToolResult, ToolDefinition, ToolContext } from '../tools/executive';
+export { ToolExecutive } from '../tools/executive';
+
+export type { 
+  ToolStep, 
+  ToolResult, 
+  ToolDefinition, 
+  ToolContext 
+} from '../tools/executive';
 
 /**
  * Pipeline System Overview

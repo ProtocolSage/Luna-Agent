@@ -1,0 +1,89 @@
+# Luna Agent Production Docker Configuration
+# Multi-stage build for optimized production image
+
+# Stage 1: Build Stage
+FROM node:20-alpine AS builder
+
+# Install build dependencies
+RUN apk add --no-cache \
+    python3 \
+    make \
+    g++ \
+    git \
+    bash
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+COPY .npmrc* ./
+
+# Install dependencies
+RUN npm ci --only=production && \
+    npm cache clean --force
+
+# Copy application source
+COPY . .
+
+# Build the application
+RUN npm run build:production
+
+# Stage 2: Production Stage
+FROM node:20-alpine
+
+# Install runtime dependencies
+RUN apk add --no-cache \
+    ffmpeg \
+    sox \
+    chromium \
+    ca-certificates \
+    tzdata \
+    tini
+
+# Create non-root user
+RUN addgroup -g 1001 -S luna && \
+    adduser -u 1001 -S luna -G luna
+
+# Set working directory
+WORKDIR /app
+
+# Copy built application from builder stage
+COPY --from=builder --chown=luna:luna /app/dist ./dist
+COPY --from=builder --chown=luna:luna /app/node_modules ./node_modules
+COPY --from=builder --chown=luna:luna /app/package*.json ./
+COPY --from=builder --chown=luna:luna /app/.env.production ./.env
+
+# Copy necessary configuration files
+COPY --chown=luna:luna config ./config
+COPY --chown=luna:luna prompts ./prompts
+COPY --chown=luna:luna models ./models
+COPY --chown=luna:luna assets ./assets
+
+# Create necessary directories
+RUN mkdir -p /app/logs /app/temp /app/cache /app/memory && \
+    chown -R luna:luna /app
+
+# Set environment variables
+ENV NODE_ENV=production \
+    PORT=3000 \
+    ELECTRON_DISABLE_SECURITY_WARNINGS=true \
+    CHROME_BIN=/usr/bin/chromium-browser \
+    PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD node -e "require('http').get('http://localhost:3000/health', (r) => r.statusCode === 200 ? process.exit(0) : process.exit(1))"
+
+# Switch to non-root user
+USER luna
+
+# Expose ports
+EXPOSE 3000 3001 3002
+
+# Use tini for proper signal handling
+ENTRYPOINT ["/sbin/tini", "--"]
+
+# Start the application
+CMD ["node", "dist/backend/server.js"]

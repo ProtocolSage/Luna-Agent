@@ -1,48 +1,39 @@
-import { spawn, ChildProcessWithoutNullStreams } from 'child_process';
+import { spawn } from 'child_process';
 import { EventEmitter } from 'events';
 import type { STTEngine, STTTranscript } from './STTEngine';
 import path from 'path';
 
 export class WhisperSTT extends EventEmitter implements STTEngine {
-  #proc?: ChildProcessWithoutNullStreams;
-  #micStream?: MediaStream;
-  #mediaRecorder?: MediaRecorder;
+  #proc?: any;
+  #micStream?: any;
+  #mediaRecorder?: any;
   #isRunning = false;
 
   async start() {
     if (this.#isRunning) return;
-    
-    try {
-      await this.#setupMicrophone();
-      await this.#startWhisperProcess();
-      this.#isRunning = true;
-      console.log('[WhisperSTT] Started successfully');
-    } catch (err) {
-      this.emit('fatal', err as Error);
-    }
+    // IMPORTANT: This class runs in Electron main process and must NOT access
+    // browser-only APIs like navigator.mediaDevices or MediaRecorder.
+    // Real local/whisper capture must be handled in the renderer or via a
+    // dedicated native module. Emit a fatal error to signal orchestrators.
+    const err = new Error('getUserMedia not available in main process - Whisper STT must run in renderer');
+    console.warn('[WhisperSTT] Deprecated main-process start() called. Use renderer-based STT.');
+    this.emit('fatal', err);
   }
 
   async stop() {
     this.#isRunning = false;
-    this.#stopMicrophone();
-    this.#proc?.kill();
+    try { this.#stopMicrophone(); } catch {}
+    try { this.#proc?.kill(); } catch {}
     this.#proc = undefined;
   }
 
   /* ---------- private helpers ---------- */
 
   async #setupMicrophone() {
-    if (this.#micStream) return;
-
-    this.#micStream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        sampleRate: 16000,
-        channelCount: 1,
-        echoCancellation: false, // Better for Whisper
-        noiseSuppression: false,
-        autoGainControl: false
-      }
-    });
+    // STUBBED: Main process cannot access getUserMedia
+    // This class should only be used from renderer process
+    console.warn('[WhisperSTT] Microphone setup called in main process - stubbed');
+    throw new Error('WhisperSTT cannot access microphone from main process. Use renderer-based STT.');
   }
 
   #stopMicrophone() {
@@ -50,7 +41,7 @@ export class WhisperSTT extends EventEmitter implements STTEngine {
       this.#mediaRecorder.stop();
     }
     if (this.#micStream) {
-      this.#micStream.getTracks().forEach(track => track.stop());
+      this.#micStream.getTracks().forEach((track: any) => track.stop());
       this.#micStream = undefined;
     }
   }
@@ -88,12 +79,12 @@ export class WhisperSTT extends EventEmitter implements STTEngine {
       this.#parseWhisperOutput(data);
     });
 
-    this.#proc.on('exit', (code) => {
+    this.#proc.on('exit', (code: any) => {
       console.warn('[WhisperSTT] Process exited with code:', code);
       this.emit('fatal', new Error(`whisper-exit-${code}`));
     });
 
-    this.#proc.on('error', (err) => {
+    this.#proc.on('error', (err: any) => {
       console.error('[WhisperSTT] Process error:', err);
       this.emit('fatal', err);
     });
@@ -103,28 +94,9 @@ export class WhisperSTT extends EventEmitter implements STTEngine {
     if (!this.#micStream || !this.#proc) return;
 
     // Use MediaRecorder to capture audio data
-    this.#mediaRecorder = new MediaRecorder(this.#micStream, {
-      mimeType: 'audio/webm; codecs=opus'
-    });
-
-    this.#mediaRecorder.ondataavailable = async (event) => {
-      if (event.data.size > 0 && this.#proc && this.#proc.stdin.writable) {
-        // Convert WebM to WAV/PCM for Whisper
-        // This is a simplified approach - in production you might want to use ffmpeg
-        try {
-          const arrayBuffer = await event.data.arrayBuffer();
-          const buffer = Buffer.from(arrayBuffer);
-          
-          // Write audio data to Whisper's stdin
-          this.#proc.stdin.write(buffer);
-        } catch (err) {
-          console.error('[WhisperSTT] Error writing audio data:', err);
-        }
-      }
-    };
-
-    // Start recording with small chunks for real-time processing
-    this.#mediaRecorder.start(500); // 500ms chunks
+    // STUBBED: MediaRecorder not available in main process
+    console.warn('[WhisperSTT] MediaRecorder setup skipped - not available in main process');
+    return;
   }
 
   #parseWhisperOutput(data: string) {

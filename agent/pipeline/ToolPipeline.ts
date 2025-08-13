@@ -179,7 +179,7 @@ Respond with a JSON object containing:
 `;
 
     try {
-      const response = await this.modelRouter.generateResponse(
+      const response = await (this.modelRouter as any).generateResponse(
         'You are an expert tool execution planner.',
         planningPrompt,
         {
@@ -279,8 +279,9 @@ Respond with a JSON object containing:
     signal: AbortSignal
   ): Promise<ToolResult> {
     let lastError: Error | null = null;
+    const maxRetries = this.config.retryCount ?? 2;
     
-    for (let attempt = 0; attempt <= this.config.retryCount; attempt++) {
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
       if (signal.aborted) {
         throw new Error('Pipeline execution aborted');
       }
@@ -445,21 +446,14 @@ Based on the execution of the following request: "${originalRequest}"
 
 The following tools were executed with these results:
 ${results.map((r, i) => `
-${i + 1}. ${r.tool} - ${r.success ? 'SUCCESS' : 'FAILED'}
-   Output: ${JSON.stringify(r.output || r.error, null, 2)}
-`).join('')}
+${i + 1}. ${r.tool} - ${r.success ? 'SUCCESS' : 'FAILED'}`).join('')}
 
 Please provide a comprehensive summary of what was accomplished, any issues encountered, and the final result.
 `;
 
-      const response = await this.modelRouter.generateResponse(
-        'You are analyzing the results of a tool execution pipeline.',
+      const response = await (this.modelRouter as any).generateResponse(
         synthesisPrompt,
-        {
-          model: 'gpt-4o-2024-08-06',
-          temperature: 0.1,
-          maxTokens: 1000
-        }
+        { temperature: 0.7, maxTokens: 2000 }
       );
       
       return {

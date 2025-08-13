@@ -49,14 +49,18 @@ export const VoiceControls: React.FC<VoiceControlsProps> = ({
 
   const voiceService = getVoiceService();
 
-  // Initialize STT listeners and increase max listeners
+  // Initialize STT listeners and IPC listeners (mic permission, transcripts)
   useEffect(() => {
+    let unsubscribeTranscript: undefined | (() => void);
+    let unsubscribeEngineSwitch: undefined | (() => void);
+    let offMicPermission: undefined | (() => void);
+
     if (window.stt) {
       // Increase max listeners to prevent warnings
       window.stt.setMaxListeners?.(20);
-      
+
       // Listen for hybrid STT transcriptions
-      const unsubscribeTranscript = window.stt.onTranscript(({ text, isFinal }: { text: string; isFinal: boolean }) => {
+      unsubscribeTranscript = window.stt.onTranscript(({ text, isFinal }: { text: string; isFinal: boolean }) => {
         console.log('[VoiceControls] Hybrid STT transcript:', { text, isFinal });
         if (isFinal && text.trim()) {
           onTranscript?.(text);
@@ -64,7 +68,7 @@ export const VoiceControls: React.FC<VoiceControlsProps> = ({
       });
 
       // Listen for STT engine switches
-      const unsubscribeEngineSwitch = window.stt.onEngineSwitch((info: { engine: string; isCloud: boolean }) => {
+      unsubscribeEngineSwitch = window.stt.onEngineSwitch((info: { engine: string; isCloud: boolean }) => {
         console.log('[VoiceControls] STT engine switched:', info);
         setState(prev => ({ 
           ...prev, 
@@ -84,38 +88,59 @@ export const VoiceControls: React.FC<VoiceControlsProps> = ({
           }));
         }
       }).catch(console.error);
-
-      // Cleanup function
-      return () => {
-        if (typeof unsubscribeTranscript === 'function') {
-          unsubscribeTranscript();
-        }
-        if (typeof unsubscribeEngineSwitch === 'function') {
-          unsubscribeEngineSwitch();
-        }
-      };
     }
 
-    // Also listen for hybrid STT state changes via voiceIPC
+    // Also listen for hybrid STT state changes and mic permission via voiceIPC
+    let offIpcListeningStarted: undefined | (() => void);
+    let offIpcListeningStopped: undefined | (() => void);
+    let offIpcSttTranscript: undefined | (() => void);
     if (window.voiceIPC) {
-      window.voiceIPC.on('stt:transcript', (transcript: { text: string; isFinal: boolean }) => {
-        console.log('[VoiceControls] STT transcript via IPC:', transcript);
-        if (transcript.isFinal && transcript.text.trim()) {
-          onTranscript?.(transcript.text);
-        }
-      });
+      if (typeof window.voiceIPC.onSttTranscript === 'function') {
+        offIpcSttTranscript = window.voiceIPC.onSttTranscript((transcript: { text: string; isFinal: boolean }) => {
+          console.log('[VoiceControls] STT transcript via IPC:', transcript);
+          if (transcript.isFinal && transcript.text.trim()) {
+            onTranscript?.(transcript.text);
+          }
+        });
+      }
 
-      window.voiceIPC.on('voice:listening-started', () => {
-        console.log('[VoiceControls] Voice listening started via IPC');
-        setState(prev => ({ ...prev, isListening: true, error: null }));
-      });
+      if (typeof window.voiceIPC.onListeningStarted === 'function') {
+        offIpcListeningStarted = window.voiceIPC.onListeningStarted(() => {
+          console.log('[VoiceControls] Voice listening started via IPC');
+          setState(prev => ({ ...prev, isListening: true, error: null }));
+        });
+      }
 
-      window.voiceIPC.on('voice:listening-stopped', () => {
-        console.log('[VoiceControls] Voice listening stopped via IPC');
-        setState(prev => ({ ...prev, isListening: false }));
-      });
+      if (typeof window.voiceIPC.onListeningStopped === 'function') {
+        offIpcListeningStopped = window.voiceIPC.onListeningStopped(() => {
+          console.log('[VoiceControls] Voice listening stopped via IPC');
+          setState(prev => ({ ...prev, isListening: false }));
+        });
+      }
+
+      if (typeof window.voiceIPC.onMicPermission === 'function') {
+        offMicPermission = window.voiceIPC.onMicPermission((data: { granted: boolean }) => {
+          if (!data.granted) {
+            setState(prev => ({ ...prev, isListening: false, error: 'Microphone permission denied' }));
+            onError?.('Microphone permission denied');
+          } else {
+            // Clear mic-related error if previously shown
+            setState(prev => ({ ...prev, error: prev.error?.includes('Microphone') ? null : prev.error }));
+          }
+        });
+      }
     }
-  }, [onTranscript]);
+
+    // Cleanup
+    return () => {
+      if (typeof unsubscribeTranscript === 'function') unsubscribeTranscript();
+      if (typeof unsubscribeEngineSwitch === 'function') unsubscribeEngineSwitch();
+      if (typeof offMicPermission === 'function') offMicPermission();
+      if (typeof offIpcListeningStarted === 'function') offIpcListeningStarted();
+      if (typeof offIpcListeningStopped === 'function') offIpcListeningStopped();
+      if (typeof offIpcSttTranscript === 'function') offIpcSttTranscript();
+    };
+  }, [onTranscript, onError]);
 
   // Set up voice service event listeners  
   useEffect(() => {

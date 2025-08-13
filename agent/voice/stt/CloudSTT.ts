@@ -17,41 +17,35 @@ export class CloudSTT extends EventEmitter implements STTEngine {
   };
 
   async start() {
+    // IMPORTANT: This class runs in Electron main process and must NOT access
+    // browser-only APIs like navigator.mediaDevices or MediaRecorder.
+    // The renderer-side service `RendererCloudSTT` handles real audio capture.
     this.#abortController = new AbortController();
-    try {
-      await this.#setupMicrophone();
-      await this.#connectStream();
-      this.#retry = 0;                // reset after a successful start
-    } catch (err) {
-      this.#handleFatal(err as Error);
-    }
+    const err = new Error('getUserMedia not available in main process - Cloud STT must run in renderer');
+    console.warn('[CloudSTT] Deprecated main-process start() called. Use renderer-based STT.');
+    // Emit fatal so orchestrators (e.g. HybridSTT) can stop or fail over.
+    this.emit('fatal', err);
   }
 
   async stop() {
-    this.#abortController?.abort();
-    this.#stream?.close();
-    this.#stopMicrophone();
+    // Best-effort cleanup; no browser API access
+    try { this.#abortController?.abort(); } catch {}
+    try { (this.#stream as any)?.close?.(); } catch {}
+    try { this.#stopMicrophone(); } catch {}
   }
 
   /* ---------- private helpers ---------- */
 
   async #setupMicrophone() {
-    if (this.#micStream) return;
-
-    this.#micStream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        sampleRate: 16000,
-        channelCount: 1,
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true
-      }
-    });
+    // STUBBED: Main process cannot access getUserMedia
+    // This class should only be used from renderer process
+    console.warn('[CloudSTT] Microphone setup called in main process - stubbed');
+    throw new Error('CloudSTT cannot access microphone from main process. Use renderer-based STT.');
 
     // Setup MediaRecorder for streaming audio data
-    this.#mediaRecorder = new MediaRecorder(this.#micStream, {
-      mimeType: 'audio/webm; codecs=opus'
-    });
+    // STUBBED: MediaRecorder not available in main process
+    console.warn('[CloudSTT] MediaRecorder setup skipped - not available in main process');
+    return;
   }
 
   #stopMicrophone() {

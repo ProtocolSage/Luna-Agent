@@ -1,82 +1,74 @@
-# Luna Agent v1.0 - Production Release
+# 🚀 Luna Agent v1.0 - Production System
 
-## Quick Start
+## Advanced AI Assistant with Voice Integration & Real-time Processing
 
-1. **Install Dependencies**
-   ```bash
-   npm install
-   ```
+[![Build Status](https://img.shields.io/github/workflow/status/yourusername/luna-agent/CI-CD)](https://github.com/yourusername/luna-agent/actions)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Version](https://img.shields.io/badge/version-1.0.0-green.svg)](package.json)
+[![Docker](https://img.shields.io/badge/docker-ready-blue.svg)](docker-compose.yml)
 
-2. **Build Application**
-   ```bash
-   npm run build:prod
-   ```
+## 📋 Table of Contents
 
-3. **Run Tests**
-   ```bash
-   npm test
-   ```
+- [Features](#features)
+- [Architecture](#architecture)
+- [Prerequisites](#prerequisites)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Development](#development)
+- [Testing](#testing)
+- [Deployment](#deployment)
+- [Monitoring](#monitoring)
+- [Security](#security)
+- [API Documentation](#api-documentation)
+- [Contributing](#contributing)
+- [License](#license)
 
-4. **Start Application**
-   ```bash
-   npm start
-   ```
+## ✨ Features
 
-5. **Package for Distribution**
-   ```bash
-   npm run package
-   ```
+### Core Capabilities
+- **🎙️ Advanced Voice Integration**: Real-time voice recognition and synthesis
+- **💬 Streaming Conversations**: WebSocket-based real-time chat
+- **🛠️ Tool Execution**: Extensible tool system for external integrations
+- **📊 Analytics Dashboard**: Comprehensive performance monitoring
+- **🔒 Enterprise Security**: JWT authentication, rate limiting, CSP
+- **📱 Cross-Platform**: Windows, macOS, Linux support
+- **🌐 Multi-language**: Support for 15+ languages
+- **🔄 Auto-recovery**: Crash recovery and error boundary systems
 
-## Environment Variables
+### Technical Features
+- **Microservices Architecture**: Scalable and maintainable
+- **Real-time WebSockets**: Low-latency bidirectional communication
+- **PostgreSQL + Redis**: Robust data persistence and caching
+- **Docker Containerization**: Easy deployment and scaling
+- **CI/CD Pipeline**: Automated testing and deployment
+- **Monitoring Stack**: Prometheus + Grafana integration
 
-Set these environment variables for full functionality:
+## 🏗️ Architecture
 
-```bash
-export OPENAI_API_KEY="your-openai-key"
-export ANTHROPIC_API_KEY="your-anthropic-key"
-export MISTRAL_API_KEY="your-mistral-key"
 ```
-
-## Architecture
-
-- **Agent Core**: Multi-LLM routing with circuit breaker protection
-- **Memory System**: Vector search with SQLite persistence
-- **Security**: PII detection and prompt injection prevention
-- **Frontend**: Electron desktop app with voice interface
-- **Backend**: Express API server with CORS support
-
-## Production Features
-
-✅ 100% TypeScript type safety  
-✅ Comprehensive test suite (41 tests)  
-✅ Circuit breaker protection  
-✅ Vector similarity search  
-✅ PII detection and filtering  
-✅ Multi-model LLM support  
-✅ Secure tool sandboxing  
-✅ Real-time telemetry  
-
-## Deployment
-
-### Docker
-```bash
-docker build -t luna-agent .
-docker run -p 3000:3000 luna-agent
+┌─────────────────────────────────────────────────────────┐
+│                     Frontend (Electron)                  │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌────────┐ │
+│  │   React  │  │   Voice  │  │  Tools   │  │  UI    │ │
+│  │    App   │  │  Controls│  │  Panel   │  │ Comps  │ │
+│  └──────────┘  └──────────┘  └──────────┘  └────────┘ │
+└─────────────────────────────────────────────────────────┘
+                             │
+                    ┌────────┴────────┐
+                    │   WebSocket/API  │
+                    └────────┬────────┘
+┌─────────────────────────────────────────────────────────┐
+│                    Backend (Node.js)                     │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌────────┐ │
+│  │    API   │  │WebSocket │  │   Auth   │  │  Tools │ │
+│  │  Server  │  │  Server  │  │  Service │  │ Engine │ │
+│  └──────────┘  └──────────┘  └──────────┘  └────────┘ │
+└─────────────────────────────────────────────────────────┘
+                             │
+         ┌───────────────────┼───────────────────┐
+         │                   │                   │
+┌────────┴────────┐ ┌────────┴────────┐ ┌──────┴──────┐
+│   PostgreSQL    │ │      Redis       │ │   Storage   │
+│    Database     │ │      Cache       │ │   (S3/GCS)  │
+└─────────────────┘ └──────────────────┘ └─────────────┘
 ```
-
-### Windows Package
-```bash
-npm run package
-# Generates dist/LunaSetup.exe
-```
-
-## API Endpoints
-
-- `GET /health` - Health check
-- `POST /chat` - Chat with AI agent
-- `GET /metrics` - System metrics
-
-## Support
-
-This is a production-ready AI agent system with enterprise-grade security and performance features.
-

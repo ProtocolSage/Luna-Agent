@@ -10,18 +10,40 @@ interface RateLimit {
   resetTime: number;
 }
 
+interface CircuitBreakerConfig {
+  failureThreshold: number;
+  recoveryTimeout: number;
+  halfOpenMaxCalls: number;
+  errorThreshold: number; // Error rate threshold (0-1)
+  minimumThroughput: number; // Minimum requests needed for error rate calculation
+  slowCallThreshold: number; // Latency threshold in ms
+  slowCallRateThreshold: number; // Slow call rate threshold (0-1)
+}
+
+interface ModelCircuitBreakerState extends CircuitBreakerState {
+  halfOpenCalls: number;
+  recentRequests: RequestResult[];
+  slowCalls: number;
+}
+
+interface RequestResult {
+  timestamp: number;
+  success: boolean;
+  latency: number;
+  error?: string;
+}
+
 export class ModelRouter {
   private models: ModelConfig[];
-  private circuitBreakers = new Map<string, CircuitBreakerState>();
+  private circuitBreakers = new Map<string, ModelCircuitBreakerState>();
   private metrics = new Map<string, ModelMetrics>();
   private rateLimits = new Map<string, RateLimit>();
+  private circuitBreakerConfigs = new Map<string, CircuitBreakerConfig>();
 
-  private readonly FAILURE_THRESHOLD = 3;
-  private readonly RECOVERY_TIMEOUT = 60000; // 1 minute
-  private readonly HALF_OPEN_MAX_CALLS = 3;
   private readonly MAX_RETRIES = 3;
   private readonly BASE_DELAY = 1000;
   private readonly MAX_DELAY = 10000;
+  private readonly RECENT_REQUESTS_WINDOW = 60000; // 1 minute window for recent requests
 
   constructor(models: ModelConfig[]) {
     this.models = models;
@@ -198,6 +220,10 @@ export class ModelRouter {
         return this.callAnthropic(model, prompt, options);
       case 'mistral':
         return this.callMistral(model, prompt, options);
+      case 'ollama':
+        return this.callOllama(model, prompt, options);
+      case 'llamacpp':
+        return this.callLlamaCpp(model, prompt, options);
       default:
         throw new Error(`Unsupported provider: ${model.provider}`);
     }
@@ -442,6 +468,243 @@ export class ModelRouter {
     const modelPricing = pricing[modelName] || pricing['mistral-small-latest'];
     return ((usage.prompt_tokens || 0) / 1000 * modelPricing.input) + 
            ((usage.completion_tokens || 0) / 1000 * modelPricing.output);
+  }
+
+  /**
+   * Call Ollama local LLM server
+   * Provides offline operation capability
+   */
+  private async callOllama(model: ModelConfig, prompt: string, options: Record<string, unknown>): Promise<LLMResponse> {
+    const ollamaUrl = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
+    
+    // First, check if Ollama server is running and model is available
+    try {
+      await this.checkOllamaAvailability(model.name, ollamaUrl);
+    } catch (error) {
+      console.warn(`[ModelRouter] Ollama model ${model.name} not available:`, error);
+      throw new Error(`Ollama model ${model.name} is not available. Please ensure Ollama is running and model is installed.`);
+    }
+
+    const response = await fetch(`${ollamaUrl}/api/generate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: model.name,
+        prompt: prompt,
+        options: {
+          temperature: (options.temperature as number) || model.temperature || 0.7,
+          num_predict: (options.maxTokens as number) || model.maxTokens || 2000,
+          top_k: 40,
+          top_p: 0.9,
+          repeat_penalty: 1.1
+        },
+        stream: false
+      }),
+      signal: AbortSignal.timeout((options.timeout as number) || 30000)
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Ollama API error: ${response.status} ${response.statusText} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    
+    return {
+      id: `ollama-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      content: data.response,
+      tokensUsed: this.estimateTokenCount(prompt) + this.estimateTokenCount(data.response),
+      cost: 0, // Local inference is free
+      confidence: 0.8
+    };
+  }
+
+  /**
+   * Call Llama.cpp server (local inference)
+   * Alternative local LLM option
+   */
+  private async callLlamaCpp(model: ModelConfig, prompt: string, options: Record<string, unknown>): Promise<LLMResponse> {
+    const llamaCppUrl = process.env.LLAMACPP_BASE_URL || 'http://localhost:8080';
+    
+    try {
+      // Check if server is available
+      const healthResponse = await fetch(`${llamaCppUrl}/health`, { 
+        signal: AbortSignal.timeout(5000) 
+      });
+      if (!healthResponse.ok) {
+        throw new Error('Llama.cpp server not available');
+      }
+    } catch (error) {
+      throw new Error(`Llama.cpp server is not available at ${llamaCppUrl}. Please ensure the server is running.`);
+    }
+
+    const response = await fetch(`${llamaCppUrl}/completion`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        prompt: prompt,
+        temperature: (options.temperature as number) || model.temperature || 0.7,
+        n_predict: (options.maxTokens as number) || model.maxTokens || 2000,
+        top_k: 40,
+        top_p: 0.9,
+        repeat_penalty: 1.1,
+        stop: ['\n\nUser:', '\n\nAssistant:', '###']
+      }),
+      signal: AbortSignal.timeout((options.timeout as number) || 30000)
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Llama.cpp API error: ${response.status} ${response.statusText} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    
+    return {
+      id: `llamacpp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      content: data.content,
+      tokensUsed: data.tokens_predicted || this.estimateTokenCount(prompt) + this.estimateTokenCount(data.content),
+      cost: 0, // Local inference is free
+      confidence: 0.8
+    };
+  }
+
+  /**
+   * Check if Ollama server is running and model is available
+   */
+  private async checkOllamaAvailability(modelName: string, baseUrl: string): Promise<void> {
+    // Check if server is running
+    const healthResponse = await fetch(`${baseUrl}/api/tags`, {
+      signal: AbortSignal.timeout(5000)
+    });
+    
+    if (!healthResponse.ok) {
+      throw new Error('Ollama server not responding');
+    }
+
+    const modelsData = await healthResponse.json();
+    const availableModels = modelsData.models || [];
+    
+    const modelExists = availableModels.some((model: any) => 
+      model.name === modelName || model.name.startsWith(modelName + ':')
+    );
+
+    if (!modelExists) {
+      throw new Error(`Model ${modelName} not found. Available models: ${availableModels.map((m: any) => m.name).join(', ')}`);
+    }
+  }
+
+  /**
+   * Estimate token count for local models (rough approximation)
+   */
+  private estimateTokenCount(text: string): number {
+    // Rough approximation: 1 token ≈ 4 characters for English text
+    return Math.ceil(text.length / 4);
+  }
+
+  /**
+   * Check network connectivity to determine if offline mode should be used
+   */
+  private async isOnline(): Promise<boolean> {
+    try {
+      // Try to reach a reliable endpoint
+      const response = await fetch('https://www.google.com/favicon.ico', {
+        method: 'HEAD',
+        signal: AbortSignal.timeout(3000)
+      });
+      return response.ok;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Get available models for offline operation
+   */
+  async getOfflineCapableModels(): Promise<ModelConfig[]> {
+    const offlineModels: ModelConfig[] = [];
+    
+    for (const model of this.models) {
+      if (model.provider === 'ollama') {
+        try {
+          const ollamaUrl = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
+          await this.checkOllamaAvailability(model.name, ollamaUrl);
+          offlineModels.push(model);
+        } catch {
+          // Model not available offline
+        }
+      } else if (model.provider === 'llamacpp') {
+        try {
+          const llamaCppUrl = process.env.LLAMACPP_BASE_URL || 'http://localhost:8080';
+          const healthResponse = await fetch(`${llamaCppUrl}/health`, { 
+            signal: AbortSignal.timeout(3000) 
+          });
+          if (healthResponse.ok) {
+            offlineModels.push(model);
+          }
+        } catch {
+          // Server not available
+        }
+      }
+    }
+    
+    return offlineModels;
+  }
+
+  /**
+   * Automatically route to offline models when network is unavailable
+   */
+  async routeWithOfflineFallback(prompt: string, options: {
+    temperature?: number;
+    maxTokens?: number;
+    preferredModel?: string;
+    timeout?: number;
+  } = {}): Promise<LLMResponse> {
+    const isOnline = await this.isOnline();
+    
+    if (!isOnline) {
+      console.log('[ModelRouter] Network unavailable, using offline models only');
+      const offlineModels = await this.getOfflineCapableModels();
+      
+      if (offlineModels.length === 0) {
+        throw new Error('No offline models available. Please install Ollama or Llama.cpp with models.');
+      }
+      
+      // Temporarily switch to offline-only models
+      const originalModels = this.models;
+      this.models = offlineModels;
+      
+      try {
+        return await this.route(prompt, options);
+      } finally {
+        this.models = originalModels;
+      }
+    }
+    
+    // Normal online routing with offline fallback
+    try {
+      return await this.route(prompt, options);
+    } catch (error) {
+      console.warn('[ModelRouter] Online models failed, trying offline fallback:', error);
+      
+      const offlineModels = await this.getOfflineCapableModels();
+      if (offlineModels.length > 0) {
+        const originalModels = this.models;
+        this.models = offlineModels;
+        
+        try {
+          return await this.route(prompt, options);
+        } finally {
+          this.models = originalModels;
+        }
+      }
+      
+      throw error;
+    }
   }
 
   private isRateLimited(modelName: string): boolean {

@@ -44,13 +44,31 @@ export class MemoryService {
    * Update an existing memory
    */
   async updateMemory(id: string, updates: Partial<{ content: string; type: MemoryType; metadata: Record<string, any> }>): Promise<Memory | null> {
-    // If content is being updated, regenerate embedding
-    if (updates.content && this.embeddings.isAvailable()) {
-      const embeddingResult = await this.embeddings.generateEmbedding(updates.content);
-      updates = {
-        ...updates,
-        embedding: embeddingResult?.embedding
-      } as any;
+    const canEmbed = this.embeddings.isAvailable();
+    const contentChanged = typeof updates.content === "string";
+
+    if (contentChanged) {
+      if (canEmbed) {
+        const embeddingResult = await this.embeddings.generateEmbedding(updates.content!);
+        if (embeddingResult?.embedding) {
+          updates = {
+            ...updates,
+            embedding: embeddingResult.embedding
+          } as any;
+        } else {
+          // CLEAR when embedding generation fails
+          updates = {
+            ...updates,
+            embedding: null
+          } as any;
+        }
+      } else {
+        // CLEAR when we can't re-embed
+        updates = {
+          ...updates,
+          embedding: null
+        } as any;
+      }
     }
 
     return await this.store.updateMemory(id, updates);

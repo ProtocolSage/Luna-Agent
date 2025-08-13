@@ -27,9 +27,11 @@ export class EmbeddingService {
 
   /**
    * Check if embedding service is available
+   * Sync on purpose (the service is config-based)
    */
   isAvailable(): boolean {
-    return this.apiKey !== null;
+    if (process.env.LUNA_DISABLE_EMBEDDINGS === "1") return false;
+    return !!process.env.OPENAI_API_KEY;
   }
 
   /**

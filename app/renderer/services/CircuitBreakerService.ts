@@ -74,7 +74,7 @@ export class CircuitBreakerService {
       this.onFailure(circuitName);
       
       // If we have a fallback, use it instead of throwing
-      if (fallback && circuit.state === CircuitState.OPEN) {
+      if (fallback && (circuit.state as any) === CircuitState.OPEN) {
         console.log(`Circuit breaker '${circuitName}' failed, using fallback`);
         return await fallback();
       }

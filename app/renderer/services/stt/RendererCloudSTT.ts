@@ -10,8 +10,8 @@ export class RendererCloudSTT implements STTProvider {
   readonly isOnlineService = true;
   
   private config: STTConfig = {};
-  private isInitialized: boolean = false;
-  private isListening: boolean = false;
+  private _isInitialized: boolean = false;
+  private _isListening: boolean = false;
   private eventListeners: Map<string, Array<(...args: any[]) => void>> = new Map();
   private websocket: WebSocket | null = null;
   private mediaRecorder: MediaRecorder | null = null;
@@ -25,21 +25,25 @@ export class RendererCloudSTT implements STTProvider {
     azureKey: '',
     azureRegion: 'eastus',
     deepgramKey: '',
+    googleKey: '',
     language: 'en-US'
   };
 
   constructor() {
-    // Try to get config from environment if available
-    if (typeof process !== 'undefined' && process.env) {
-      this.cloudConfig.azureKey = process.env.AZURE_SPEECH_KEY || '';
-      this.cloudConfig.azureRegion = process.env.AZURE_SPEECH_REGION || 'eastus';
-      this.cloudConfig.deepgramKey = process.env.DEEPGRAM_API_KEY || '';
-      this.cloudConfig.service = process.env.CLOUD_STT_SERVICE || 'azure';
-    }
+    // Initialize cloud config from environment exposed via preload
+    const env = (window as any).__ENV || {};
+    this.cloudConfig = {
+      service: (env.STT_PROVIDER as 'azure' | 'deepgram' | 'google') || 'azure',
+      azureKey: env.AZURE_SPEECH_KEY,
+      azureRegion: env.AZURE_SPEECH_REGION || 'eastus',
+      deepgramKey: env.DEEPGRAM_API_KEY,
+      googleKey: env.GOOGLE_CLOUD_API_KEY,
+      language: 'en-US'
+    };
   }
 
   async initialize(config: STTConfig): Promise<void> {
-    if (this.isInitialized) return;
+    if (this._isInitialized) return;
     
     this.config = {
       language: 'en-US',
@@ -55,21 +59,22 @@ export class RendererCloudSTT implements STTProvider {
       throw new Error('Cloud STT requires browser context with navigator.mediaDevices');
     }
 
-    // Check if credentials are available
+    // Check if credentials are available - if not, fail immediately for fallback
     if (!this.cloudConfig.azureKey && !this.cloudConfig.deepgramKey) {
-      throw new Error('No cloud STT credentials configured. Please add AZURE_SPEECH_KEY or DEEPGRAM_API_KEY to environment.');
+      console.warn('[RendererCloudSTT] No cloud STT credentials configured. Will fallback to Whisper.');
+      throw new Error('NO_CLOUD_CREDENTIALS: No Azure or Deepgram API keys configured');
     }
 
-    this.isInitialized = true;
+    this._isInitialized = true;
     console.log('[RendererCloudSTT] Initialized successfully');
   }
 
   async startListening(): Promise<void> {
-    if (!this.isInitialized) {
+    if (!this._isInitialized) {
       throw new Error('Cloud STT not initialized');
     }
 
-    if (this.isListening) return;
+    if (this._isListening) return;
 
     try {
       this.abortController = new AbortController();
@@ -88,12 +93,12 @@ export class RendererCloudSTT implements STTProvider {
       await this.connectToCloudService();
       this.setupAudioStreaming();
       
-      this.isListening = true;
+      this._isListening = true;
       this.emit('recording-started');
       console.log('[RendererCloudSTT] Started listening');
       
     } catch (error: any) {
-      this.isListening = false;
+      this._isListening = false;
       console.error('[RendererCloudSTT] Failed to start:', error);
       this.emit('error', `Failed to start cloud STT: ${error.message}`);
       throw error;
@@ -101,10 +106,10 @@ export class RendererCloudSTT implements STTProvider {
   }
 
   async stopListening(): Promise<void> {
-    if (!this.isListening) return;
+    if (!this._isListening) return;
 
     try {
-      this.isListening = false;
+      this._isListening = false;
       this.abortController?.abort();
       
       // Stop media recorder
@@ -170,7 +175,7 @@ export class RendererCloudSTT implements STTProvider {
       
       this.websocket.onclose = (event) => {
         console.log('[RendererCloudSTT] Azure WebSocket closed:', event.code, event.reason);
-        if (this.isListening && this.reconnectAttempts < this.maxReconnectAttempts) {
+        if (this._isListening && this.reconnectAttempts < this.maxReconnectAttempts) {
           this.attemptReconnect();
         }
       };
@@ -215,7 +220,7 @@ export class RendererCloudSTT implements STTProvider {
       
       this.websocket.onclose = (event) => {
         console.log('[RendererCloudSTT] Deepgram WebSocket closed:', event.code, event.reason);
-        if (this.isListening && this.reconnectAttempts < this.maxReconnectAttempts) {
+        if (this._isListening && this.reconnectAttempts < this.maxReconnectAttempts) {
           this.attemptReconnect();
         }
       };
@@ -299,7 +304,7 @@ export class RendererCloudSTT implements STTProvider {
     console.log(`[RendererCloudSTT] Attempting reconnection ${this.reconnectAttempts}/${this.maxReconnectAttempts}`);
     
     setTimeout(async () => {
-      if (this.isListening && !this.abortController?.signal.aborted) {
+      if (this._isListening && !this.abortController?.signal.aborted) {
         try {
           await this.connectToCloudService();
           this.setupAudioStreaming();
@@ -324,11 +329,11 @@ export class RendererCloudSTT implements STTProvider {
 
   // Interface implementations
   isListening(): boolean {
-    return this.isListening;
+    return this._isListening;
   }
 
   isInitialized(): boolean {
-    return this.isInitialized;
+    return this._isInitialized;
   }
 
   setLanguage(language: string): void {

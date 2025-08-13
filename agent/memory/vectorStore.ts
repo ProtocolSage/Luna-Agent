@@ -39,6 +39,7 @@ export class VectorStore {
   private embeddingCache = new Map<string, number[]>();
   private ready = false;
   private dbPath: string;
+  private initPromise: Promise<void> | null = null;
   
   constructor(dbPath?: string) {
     const memoryDir = path.join(process.cwd(), 'memory');
@@ -47,43 +48,60 @@ export class VectorStore {
     }
     
     this.dbPath = dbPath || path.join(memoryDir, 'vector-store.db');
-    this.initializeDatabase().catch(console.error);
+    // Initialize immediately but don't await
+    this.initialize();
   }
 
   private async ensureReady(): Promise<void> {
     if (!this.ready) {
-      await this.initializeDatabase();
+      if (this.initPromise) {
+        await this.initPromise;
+      } else {
+        await this.initialize();
+      }
     }
   }
 
-  private async initializeDatabase() {
-    // Initialize database connection using the wrapper
-    this.db = getDatabase(this.dbPath);
+  async initialize(): Promise<void> {
+    if (this.ready) return;
     
-    // Use memory_vectors table as specified in repair plan
-    this.db.exec(`
-      CREATE TABLE IF NOT EXISTS memory_vectors (
-        id TEXT PRIMARY KEY,
-        content TEXT NOT NULL,
-        embedding TEXT,
-        metadata TEXT,
-        timestamp TEXT NOT NULL,
-        type TEXT NOT NULL,
-        sessionId TEXT,
-        created_at INTEGER DEFAULT (strftime('%s', 'now'))
-      );
-      
-      CREATE INDEX IF NOT EXISTS idx_memory_vectors_type ON memory_vectors(type);
-      CREATE INDEX IF NOT EXISTS idx_memory_vectors_timestamp ON memory_vectors(timestamp);
-      CREATE INDEX IF NOT EXISTS idx_memory_vectors_session ON memory_vectors(sessionId);
-    `);
-
-    this.ready = true;
+    if (this.initPromise) {
+      return this.initPromise;
+    }
+    
+    this.initPromise = this.initializeDatabase();
+    await this.initPromise;
   }
 
-  async initialize(): Promise<void> {
-    await this.ensureReady();
-    console.log('VectorStore initialized with SQLite backend');
+  private async initializeDatabase(): Promise<void> {
+    try {
+      // Initialize database connection using the wrapper
+      this.db = getDatabase(this.dbPath);
+      
+      // Use memory_vectors table as specified in repair plan
+      this.db.exec(`
+        CREATE TABLE IF NOT EXISTS memory_vectors (
+          id TEXT PRIMARY KEY,
+          content TEXT NOT NULL,
+          embedding TEXT,
+          metadata TEXT,
+          timestamp TEXT NOT NULL,
+          type TEXT NOT NULL,
+          sessionId TEXT,
+          created_at INTEGER DEFAULT (strftime('%s', 'now'))
+        );
+        
+        CREATE INDEX IF NOT EXISTS idx_memory_vectors_type ON memory_vectors(type);
+        CREATE INDEX IF NOT EXISTS idx_memory_vectors_timestamp ON memory_vectors(timestamp);
+        CREATE INDEX IF NOT EXISTS idx_memory_vectors_session ON memory_vectors(sessionId);
+      `);
+
+      this.ready = true;
+      console.log('VectorStore initialized with database backend');
+    } catch (error) {
+      console.error('Failed to initialize VectorStore:', error);
+      throw error;
+    }
   }
 
   isReady(): boolean {
@@ -97,166 +115,208 @@ export class VectorStore {
     // Generate embedding if available
     if (doc.embedding) {
       embedding = doc.embedding;
-    } else {
-      embedding = await this.createEmbedding(doc.content);
+    } else if (process.env.OPENAI_API_KEY) {
+      try {
+        embedding = await this.generateEmbedding(doc.content);
+      } catch (error) {
+        console.warn('Failed to generate embedding:', error);
+      }
     }
-    
+
+    const row: VectorStoreRow = {
+      id: doc.id,
+      content: doc.content,
+      embedding: embedding ? JSON.stringify(embedding) : null,
+      metadata: JSON.stringify(doc.metadata || {}),
+      timestamp: doc.timestamp || new Date().toISOString(),
+      type: doc.type,
+      sessionId: doc.sessionId || null
+    };
+
     const stmt = this.db.prepare(`
-      INSERT OR REPLACE INTO memory_vectors (id, content, embedding, metadata, timestamp, type, sessionId)
+      INSERT OR REPLACE INTO memory_vectors 
+      (id, content, embedding, metadata, timestamp, type, sessionId)
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `);
     
-    stmt.run(
-      doc.id,
-      doc.content,
-      embedding ? JSON.stringify(embedding) : null,
-      JSON.stringify(doc.metadata || {}),
-      doc.timestamp,
-      doc.type,
-      doc.sessionId || null
+    const result = stmt.run(
+      row.id,
+      row.content,
+      row.embedding,
+      row.metadata,
+      row.timestamp,
+      row.type,
+      row.sessionId
     );
+    
+    console.log(`[VectorStore] Upserted document: ${doc.id}, changes: ${result.changes}`);
   }
 
-  getDocument(id: string): MemoryDocument | undefined {
+  async getDocument(id: string): Promise<MemoryDocument | null> {
+    await this.ensureReady();
+    
     const stmt = this.db.prepare('SELECT * FROM memory_vectors WHERE id = ?');
-    const row = stmt.get(id) as VectorStoreRow;
+    const row = stmt.get(id) as VectorStoreRow | null;
     
-    if (!row) return undefined;
-    
+    if (!row) {
+      return null;
+    }
+
     return {
       id: row.id,
       content: row.content,
       embedding: row.embedding ? JSON.parse(row.embedding) : undefined,
       metadata: JSON.parse(row.metadata || '{}'),
       timestamp: row.timestamp,
-      type: row.type as MemoryDocument['type'],
-      sessionId: row.sessionId ?? undefined
+      type: row.type as any,
+      sessionId: row.sessionId || undefined
     };
   }
 
-  getDocumentCount(): number {
+  async getDocumentCount(): Promise<number> {
+    await this.ensureReady();
+    
     const stmt = this.db.prepare('SELECT COUNT(*) as count FROM memory_vectors');
-    const result = stmt.get() as CountQueryResult;
-    return result.count;
+    const result = stmt.get() as CountQueryResult | null;
+    return result ? result.count : 0;
   }
 
-  deleteDocument(id: string): boolean {
+  async deleteDocument(id: string): Promise<boolean> {
+    await this.ensureReady();
+    
     const stmt = this.db.prepare('DELETE FROM memory_vectors WHERE id = ?');
     const result = stmt.run(id);
-    return result.changes > 0;
+    return (result && result.changes > 0) || false;
   }
 
-  clear(): void {
+  async clear(): Promise<void> {
+    await this.ensureReady();
+    
     this.db.prepare('DELETE FROM memory_vectors').run();
     this.embeddingCache.clear();
+    console.log('[VectorStore] Cleared all documents');
   }
 
   async search(query: string, options: SearchOptions = {}): Promise<SearchResult[]> {
     await this.ensureReady();
-    const { limit = 10, type, sessionId, dateRange } = options;
     
+    const {
+      limit = 10,
+      threshold = 0.7,
+      type,
+      sessionId
+    } = options;
+
     let sql = `
-      SELECT * FROM memory_vectors 
-      WHERE content LIKE ?
+      SELECT id, content, embedding, metadata, timestamp, type, sessionId 
+      FROM memory_vectors
     `;
     
-    const params: (string | number | null)[] = [`%${query}%`];
-    
+    const params: any[] = [];
+    const whereClauses: string[] = [];
+
+    // Add filters
     if (type) {
-      sql += ' AND type = ?';
+      whereClauses.push('type = ?');
       params.push(type);
     }
     
     if (sessionId) {
-      sql += ' AND sessionId = ?';
+      whereClauses.push('sessionId = ?');
       params.push(sessionId);
     }
-    
-    if (dateRange) {
-      sql += ' AND timestamp BETWEEN ? AND ?';
-      params.push(dateRange.start, dateRange.end);
+
+    if (whereClauses.length > 0) {
+      sql += ' WHERE ' + whereClauses.join(' AND ');
     }
-    
-    sql += ' ORDER BY created_at DESC LIMIT ?';
+
+    sql += ' ORDER BY timestamp DESC LIMIT ?';
     params.push(limit);
-    
+
     const stmt = this.db.prepare(sql);
     const rows = stmt.all(...params) as VectorStoreRow[];
-    
-    return rows.map(row => ({
-      document: {
+
+    const results: SearchResult[] = [];
+
+    for (const row of rows) {
+      const document: MemoryDocument = {
         id: row.id,
         content: row.content,
         embedding: row.embedding ? JSON.parse(row.embedding) : undefined,
         metadata: JSON.parse(row.metadata || '{}'),
         timestamp: row.timestamp,
-        type: row.type as MemoryDocument['type'],
-        sessionId: row.sessionId ?? undefined
-      },
-      similarity: 0.8 // Simple text-based similarity score
-    }));
-  }
+        type: row.type as any,
+        sessionId: row.sessionId || undefined
+      };
 
-  async similarity(query: string, limit: number = 10, threshold: number = 0.5): Promise<SearchResult[]> {
-    await this.ensureReady();
-    // Generate query embedding if API available
-    const queryEmbedding = await this.createEmbedding(query);
-    
-    if (queryEmbedding) {
-      return this.vectorSimilaritySearch(queryEmbedding, limit, threshold);
-    } else {
-      // Fallback to text search
-      return this.textSimilaritySearch(query, limit, threshold);
-    }
-  }
+      let similarity = 0;
 
-  private async vectorSimilaritySearch(queryEmbedding: number[], limit: number, threshold: number): Promise<SearchResult[]> {
-    const stmt = this.db.prepare('SELECT * FROM memory_vectors WHERE embedding IS NOT NULL');
-    const rows = stmt.all() as VectorStoreRow[];
-    
-    const results: SearchResult[] = [];
-    
-    for (const row of rows) {
-      if (!row.embedding) continue;  // Skip rows without embeddings
-      const docEmbedding = JSON.parse(row.embedding);
-      const similarity = this.cosineSimilarity(queryEmbedding, docEmbedding);
-      
+      // Try vector similarity if embeddings are available
+      if (row.embedding && process.env.OPENAI_API_KEY) {
+        try {
+          const queryEmbedding = await this.generateEmbedding(query);
+          const docEmbedding = JSON.parse(row.embedding);
+          similarity = this.cosineSimilarity(queryEmbedding, docEmbedding);
+        } catch (error) {
+          console.warn('Failed to calculate vector similarity:', error);
+        }
+      }
+
+      // Fallback to text similarity
+      if (similarity === 0) {
+        similarity = this.textSimilarity(query.toLowerCase(), row.content.toLowerCase());
+      }
+
       if (similarity >= threshold) {
         results.push({
-          document: {
-            id: row.id,
-            content: row.content,
-            embedding: docEmbedding,
-            metadata: JSON.parse(row.metadata || '{}'),
-            timestamp: row.timestamp,
-            type: row.type as MemoryDocument['type'],
-            sessionId: row.sessionId ?? undefined
-          },
+          document,
           similarity
         });
       }
     }
+
+    // Sort by similarity descending
+    results.sort((a, b) => b.similarity - a.similarity);
     
-    return results
-      .sort((a, b) => b.similarity - a.similarity)
-      .slice(0, limit);
+    return results.slice(0, limit);
   }
 
-  private async textSimilaritySearch(query: string, limit: number, threshold: number): Promise<SearchResult[]> {
-    const searchResults = await this.search(query, { limit });
+  async similarity(query: string, k: number = 5, threshold: number = 0.7): Promise<SearchResult[]> {
+    return this.search(query, { limit: k, threshold });
+  }
+
+  private async generateEmbedding(text: string): Promise<number[]> {
+    const cacheKey = createHash('md5').update(text).digest('hex');
     
-    return searchResults.filter(result => {
-      // Simple text similarity: count matching words
-      const queryWords = query.toLowerCase().split(/\s+/);
-      const contentWords = result.document.content.toLowerCase().split(/\s+/);
-      const matches = queryWords.filter(word => contentWords.some(cw => cw.includes(word)));
-      const similarity = matches.length / queryWords.length;
-      
-      // Update similarity score
-      result.similarity = Math.max(similarity, 0.8); // Minimum for text matches
-      
-      return result.similarity >= threshold;
+    if (this.embeddingCache.has(cacheKey)) {
+      return this.embeddingCache.get(cacheKey)!;
+    }
+
+    if (!process.env.OPENAI_API_KEY) {
+      throw new Error('OpenAI API key not configured');
+    }
+
+    const response = await fetch('https://api.openai.com/v1/embeddings', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'text-embedding-ada-002',
+        input: text
+      })
     });
+
+    if (!response.ok) {
+      throw new Error(`OpenAI API error: ${response.status}`);
+    }
+
+    const data: EmbeddingAPIResponse = await response.json();
+    const embedding = data.data[0].embedding;
+    
+    this.embeddingCache.set(cacheKey, embedding);
+    return embedding;
   }
 
   private cosineSimilarity(a: number[], b: number[]): number {
@@ -272,57 +332,21 @@ export class VectorStore {
       normB += b[i] * b[i];
     }
     
+    if (normA === 0 || normB === 0) return 0;
+    
     return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
   }
 
-  async createEmbedding(text: string): Promise<number[] | null> {
-    if (!process.env.OPENAI_API_KEY) {
-      return null;
-    }
-
-    const cacheKey = createHash('md5').update(text).digest('hex');
-    if (this.embeddingCache.has(cacheKey)) {
-      return this.embeddingCache.get(cacheKey)!;
-    }
-
-    try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 10000);
-
-      try {
-        const response = await fetch('https://api.openai.com/v1/embeddings', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            model: 'text-embedding-3-small',
-            input: text.slice(0, 8000)
-          }),
-          signal: controller.signal
-        });
-
-        if (!response.ok) {
-          console.error('Embedding API error:', response.status);
-          return null;
-        }
-
-        const data = await response.json() as EmbeddingAPIResponse;
-        const embedding = data.data[0].embedding as number[];
-        
-        this.embeddingCache.set(cacheKey, embedding);
-        return embedding;
-      } finally {
-        clearTimeout(timeout);
-      }
-    } catch (error) {
-      console.error('Failed to create embedding:', error);
-      return null;
-    }
-  }
-
-  close(): void {
-    this.db.close();
+  private textSimilarity(query: string, content: string): number {
+    // Simple text similarity based on common words
+    const queryWords = new Set(query.toLowerCase().split(/\s+/));
+    const contentWords = new Set(content.toLowerCase().split(/\s+/));
+    
+    const intersection = new Set([...queryWords].filter(x => contentWords.has(x)));
+    const union = new Set([...queryWords, ...contentWords]);
+    
+    return intersection.size / union.size;
   }
 }
+
+export default VectorStore;

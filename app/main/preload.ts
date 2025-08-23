@@ -1,22 +1,20 @@
-// Load environment variables for preload (resolve from project root)
-try {
-  const { resolve } = require('path');
-  const envPath = resolve(__dirname, '../../../.env');
-  require('dotenv').config({ path: envPath });
-  // eslint-disable-next-line no-console
-  console.log('[Preload] Loaded .env from', envPath);
-} catch (e) {
-  // eslint-disable-next-line no-console
-  console.warn('[Preload] Failed to load .env:', e);
-}
+// Environment variables are loaded by main process
+// We just expose what's available in process.env
 import { contextBridge, ipcRenderer } from 'electron';
-import { getRendererHybridSTT } from '../renderer/services/stt/RendererHybridSTT';
+
+// Note: Renderer services should not be imported in preload
+// They will be loaded directly in the renderer process
 type OutChannels = 'transcript' | 'vad' | 'voice:initialize' | 'voice:start-listening' | 'voice:stop-listening' | 'voice:push-to-talk' | 'voice:set-mode' | 'voice:command' | 'voice:clear-history' | 'voice:tts-speak' | 'voice:tts-stop' | 'voice:tts-switch-voice';
 type InChannels  = 'tts-ready' | 'voice:initialized' | 'voice:error' | 'voice:listening-started' | 'voice:listening-stopped' | 'voice:wake-word' | 'voice:transcript' | 'voice:transcription' | 'voice:interim-transcription' | 'voice:speaking-started' | 'voice:speaking-stopped' | 'voice:processing-started' | 'voice:processing-stopped' | 'voice:tts-audio-data' | 'voice:tts-started' | 'voice:tts-stopped' | 'voice:tts-stop-playback' | 'voice:tts-error' | 'voice:mode-changed' | 'voice:history-cleared' | 'voice:command-processed' | 'voice:push-to-talk-pressed' | 'voice:push-to-talk-released' | 'stt:transcript' | 'stt:engine-switched' | 'voice:mic-permission';
 type HandleChannels = 'voice:get-state' | 'voice:get-history' | 'voice:chat-with-tts' | 'stt:start' | 'stt:stop' | 'stt:get-status' | 'stt:switch-to-cloud' | 'stt:switch-to-whisper' | 'stt:health-check';
 
-// Expose environment variables needed by renderer STT services EARLY
+// ENSURE this ENV exposure exists with your required vars
 contextBridge.exposeInMainWorld('__ENV', {
+  LUNA_API_BASE: process.env.LUNA_API_BASE,
+  API_BASE: process.env.API_BASE,
+  VOICE_AUTO_LISTEN: false,
+  WAKE_WORD_ENABLED: false,
+  // Keep existing env vars that may be needed
   AZURE_SPEECH_KEY: process.env.AZURE_SPEECH_KEY,
   AZURE_SPEECH_REGION: process.env.AZURE_SPEECH_REGION,
   DEEPGRAM_API_KEY: process.env.DEEPGRAM_API_KEY,
@@ -27,8 +25,6 @@ contextBridge.exposeInMainWorld('__ENV', {
   STT_PREFER_LOCAL: process.env.STT_PREFER_LOCAL === 'true',
   // Wake word configuration
   PICOVOICE_ACCESS_KEY: process.env.PICOVOICE_ACCESS_KEY,
-  WAKE_WORD_ENABLED: process.env.WAKE_WORD_ENABLED === 'true',
-  VOICE_AUTO_LISTEN: process.env.VOICE_AUTO_LISTEN === 'true',
   WAKE_WORD: process.env.WAKE_WORD || 'luna'
 });
 
@@ -81,40 +77,31 @@ contextBridge.exposeInMainWorld('voiceIPC', {
   },
 });
 
-// Expose STT interface backed by renderer-based Hybrid STT
-const hybrid = getRendererHybridSTT();
-
+// Expose STT interface - handled via IPC to main process
+// Note: STT processing happens in renderer, but we provide IPC bridge for coordination
 contextBridge.exposeInMainWorld('stt', {
-  start: () => hybrid.start(),
-  stop: () => hybrid.stop(),
-  getStatus: () => Promise.resolve((() => {
-    const s = hybrid.getStatus();
-    // Provide backward-compatible shape expected by renderer UI
-    return {
-      ...s,
-      currentEngine: s.engine,
-      isCloud: s.isCloud,
-      isLocal: s.isLocal,
-      isStarted: s.isStarted,
-      error: s.lastError || undefined,
-    };
-  })()),
-  switchToCloud: async () => { await hybrid.switchToCloud(); return { success: true }; },
-  // Switch explicitly to Whisper-based STT
-  switchToWhisper: async () => { await hybrid.switchToWhisper(); return { success: true }; },
-  healthCheck: () => hybrid.healthCheck(),
+  start: () => ipcRenderer.invoke('stt:start'),
+  stop: () => ipcRenderer.invoke('stt:stop'),
+  getStatus: () => ipcRenderer.invoke('stt:get-status'),
+  switchToCloud: async () => {
+    await ipcRenderer.invoke('stt:switch-to-cloud');
+    return { success: true };
+  },
+  switchToWhisper: async () => {
+    await ipcRenderer.invoke('stt:switch-to-whisper');
+    return { success: true };
+  },
+  healthCheck: () => ipcRenderer.invoke('stt:health-check'),
   onTranscript: (cb: (transcript: { text: string; isFinal: boolean }) => void) => {
-    const handler = (payload: { text: string; isFinal: boolean }) => cb(payload);
-    hybrid.on('transcript', handler as any);
-    return () => hybrid.off('transcript', handler as any);
+    const handler = (_: any, payload: { text: string; isFinal: boolean }) => cb(payload);
+    ipcRenderer.on('stt:transcript', handler);
+    return () => ipcRenderer.removeListener('stt:transcript', handler);
   },
   onEngineSwitch: (cb: (info: { engine: string; isCloud: boolean }) => void) => {
-    const handler = (info: { engine: string; isCloud: boolean }) => cb(info);
-    hybrid.on('engine-switched', handler as any);
-    return () => hybrid.off('engine-switched', handler as any);
+    const handler = (_: any, info: { engine: string; isCloud: boolean }) => cb(info);
+    ipcRenderer.on('stt:engine-switched', handler);
+    return () => ipcRenderer.removeListener('stt:engine-switched', handler);
   },
   // Allow renderer to raise IPC listener cap to avoid warnings
   setMaxListeners: (max: number) => { try { ipcRenderer.setMaxListeners(max); } catch {} }
 });
-
-// __ENV already exposed above

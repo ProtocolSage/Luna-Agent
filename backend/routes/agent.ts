@@ -1,11 +1,11 @@
 import { Router, Request, Response } from 'express';
-import { ReasoningEngine } from '../../agent/orchestrator/reasoningEngine';
-import { ToolExecutive } from '../../agent/tools/executive';
-import { VectorStore } from '../../agent/memory/vectorStore';
-import { ModelRouter } from '../../agent/orchestrator/modelRouter';
-import { PIIFilter } from '../../agent/validators/piiFilter';
-import { GoalManager } from '../../agent/tools/goals';
-import { ReminderManager } from '../../agent/tools/reminders';
+import { ReasoningEngine } from '@agent/orchestrator/reasoningEngine';
+import { ToolExecutive } from '@agent/tools/executive';
+import { VectorStore } from '@agent/memory/vectorStore';
+import { ModelRouter } from '@agent/orchestrator/modelRouter';
+import { PIIFilter } from '@agent/validators/piiFilter';
+import { GoalManager } from '@agent/tools/goals';
+import { ReminderManager } from '@agent/tools/reminders';
 import { MemoryDocument } from '../../types';
 import * as fs from 'fs/promises';
 import * as path from 'path';
@@ -71,7 +71,7 @@ export async function createAgentRouter(modelRouter: ModelRouter): Promise<Route
 
     // ---- ENDPOINTS ----
 
-    router.post('/agent/chat', async (req: Request, res: Response) => {
+    router.post('/chat', async (req: Request, res: Response) => {
         try {
             const { message, mode, persona, useTools = true, sessionId } = req.body;
             const cleanMessage = await piiFilter.filter(message);
@@ -99,7 +99,7 @@ export async function createAgentRouter(modelRouter: ModelRouter): Promise<Route
         }
     });
 
-    router.post('/agent/execute-tool', async (req: Request, res: Response) => {
+    router.post('/execute-tool', async (req: Request, res: Response) => {
         try {
             const { tool, args, sessionId } = req.body;
             const result = await toolExecutive.executePlan([{ tool, args }], sessionId);
@@ -112,7 +112,7 @@ export async function createAgentRouter(modelRouter: ModelRouter): Promise<Route
 
     // ---- MEMORY ENDPOINTS ----
 
-    router.post('/agent/memory/store', async (req: Request, res: Response) => {
+    router.post('/memory/store', async (req: Request, res: Response) => {
         try {
             const { content, metadata = {} } = req.body;
             const doc: MemoryDocument = {
@@ -130,7 +130,7 @@ export async function createAgentRouter(modelRouter: ModelRouter): Promise<Route
         }
     });
 
-    router.post('/agent/memory/search', async (req: Request, res: Response) => {
+    router.post('/memory/search', async (req: Request, res: Response) => {
         try {
             const { query, limit = 5, type = 'document' } = req.body;
             const results = await vectorStore.search(query, { limit, type });
@@ -143,31 +143,31 @@ export async function createAgentRouter(modelRouter: ModelRouter): Promise<Route
 
     // ---- MODES, GOALS, REMINDERS ----
 
-    router.post('/agent/civil', (req, res) => {
+    router.post('/civil', (req, res) => {
         civilMode = !!req.body.enabled;
         return res.json({ civilMode });
     });
 
     // Goal tracking
-    router.post('/agent/task/add', (req, res) => {
+    router.post('/task/add', (req, res) => {
         const { task, due } = req.body;
         const newTask = goalManager.addTask(task, due);
         return res.json({ added: true, task: newTask });
     });
 
-    router.get('/agent/tasks', (req, res) => {
+    router.get('/tasks', (req, res) => {
         const tasks = goalManager.getTasks();
         return res.json(tasks);
     });
 
-    router.post('/agent/task/done', (req, res) => {
+    router.post('/task/done', (req, res) => {
         const { task } = req.body;
         const success = goalManager.markTaskDone(task);
         return res.json({ markedDone: success });
     });
 
     // Status
-    router.get('/agent/status', (req, res) => {
+    router.get('/status', (req, res) => {
         return res.json({
             uptime: process.uptime(),
             memory: process.memoryUsage(),
@@ -179,7 +179,7 @@ export async function createAgentRouter(modelRouter: ModelRouter): Promise<Route
     });
 
     // Reminders
-    router.post('/agent/reminder/add', (req, res) => {
+    router.post('/reminder/add', (req, res) => {
         const { message, time } = req.body;
         const result = reminderManager.addReminder(message, time);
         if (!result.scheduled) {
@@ -188,13 +188,13 @@ export async function createAgentRouter(modelRouter: ModelRouter): Promise<Route
         return res.json({ scheduled: true });
     });
 
-    router.get('/agent/reminders', (req, res) => {
+    router.get('/reminders', (req, res) => {
         const reminders = reminderManager.getReminders();
         return res.json(reminders);
     });
 
     // Journal
-    router.get('/agent/journal/today', async (req, res) => {
+    router.get('/journal/today', async (req, res) => {
         const today = new Date().toISOString().slice(0, 10);
         const entries = await vectorStore.search(`[Journal] ${today}`, { limit: 1, type: 'document' });
         return res.json({ journal: entries[0] ?? 'No entry yet.' });

@@ -78,7 +78,7 @@ export class VoiceInputService extends EventEmitter {
     if (this.isListening || !this.mediaStream) return;
 
     this.isListening = true;
-    this.vadManager.start(this.mediaStream);
+    this.vadManager.start();
     this.startVolumeMonitoring();
     this.emit('listening_started');
     console.log('[VoiceInputService] Started listening.');

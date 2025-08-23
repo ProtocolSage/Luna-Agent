@@ -1,4 +1,5 @@
 import { EventEmitter } from 'events';
+import { STTProvider, STTConfig } from './STTInterface';
 
 export interface TranscriptResult {
   text: string;
@@ -6,8 +7,11 @@ export interface TranscriptResult {
   confidence?: number;
 }
 
-export class RendererWhisperSTT extends EventEmitter {
-  private isListening: boolean = false;
+export class RendererWhisperSTT extends EventEmitter implements STTProvider {
+  public readonly name: string = 'RendererWhisperSTT';
+  public readonly isOnlineService: boolean = false;
+  private _isListening: boolean = false;
+  private initialized: boolean = false;
   private audioContext: AudioContext | null = null;
   private stream: MediaStream | null = null;
 
@@ -16,14 +20,67 @@ export class RendererWhisperSTT extends EventEmitter {
     this.setMaxListeners(20);
   }
 
+  public async initialize(config: STTConfig): Promise<void> {
+    this.initialized = true;
+    console.log('RendererWhisperSTT initialized with config:', config);
+  }
+
+  public async startListening(): Promise<void> {
+    await this.start();
+  }
+
+  public async stopListening(): Promise<void> {
+    await this.stop();
+  }
+
+  public isListening(): boolean {
+    return this._isListening;
+  }
+
+  public isInitialized(): boolean {
+    return this.initialized;
+  }
+
+  public setLanguage(language: string): void {
+    console.log('Language set to:', language);
+  }
+
+  public destroy(): void {
+    this.stop();
+    this.removeAllListeners();
+  }
+
+  public getCapabilities(): {
+    streamingSupport: boolean;
+    offlineSupport: boolean;
+    languageDetection: boolean;
+    punctuation: boolean;
+    profanityFilter: boolean;
+  } {
+    return {
+      streamingSupport: true,
+      offlineSupport: true,
+      languageDetection: false,
+      punctuation: true,
+      profanityFilter: false
+    };
+  }
+
+  public checkHealth(): Promise<{ healthy: boolean; latency?: number; error?: string }> {
+    return Promise.resolve({
+      healthy: this.initialized,
+      latency: 100
+    });
+  }
+
   public async start(): Promise<void> {
-    if (this.isListening) return;
+    if (this._isListening) return;
 
     try {
       this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
       
-      this.isListening = true;
+      this._isListening = true;
       this.emit('listening_started');
 
       // Placeholder for Whisper STT implementation
@@ -42,7 +99,7 @@ export class RendererWhisperSTT extends EventEmitter {
   }
 
   public async stop(): Promise<void> {
-    if (!this.isListening) return;
+    if (!this._isListening) return;
 
     try {
       if (this.stream) {
@@ -55,7 +112,7 @@ export class RendererWhisperSTT extends EventEmitter {
         this.audioContext = null;
       }
 
-      this.isListening = false;
+      this._isListening = false;
       this.emit('listening_stopped');
     } catch (error) {
       this.emit('error', error);
@@ -63,12 +120,12 @@ export class RendererWhisperSTT extends EventEmitter {
   }
 
   public isActive(): boolean {
-    return this.isListening;
+    return this.isListening();
   }
 
   public getStatus(): { isListening: boolean; engine: string } {
     return {
-      isListening: this.isListening,
+      isListening: this.isListening(),
       engine: 'whisper'
     };
   }

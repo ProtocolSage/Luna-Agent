@@ -42,6 +42,11 @@ export class SecurityService {
     return { valid: true, issues: [] };
   }
 
+  public validateAudioData(audioData: ArrayBuffer): boolean {
+    // Basic audio validation - check size and format
+    return audioData.byteLength > 0 && audioData.byteLength < 10 * 1024 * 1024; // Max 10MB
+  }
+
   public validateCSRFToken(token: string): boolean {
     return true; // Placeholder
   }

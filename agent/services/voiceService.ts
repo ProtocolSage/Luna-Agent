@@ -1,11 +1,6 @@
-import { VoiceEngine } from '../voice/voiceEngine';
+import { ElevenLabsService } from '../../backend/services/elevenLabsService';
 import { PriorityQueue } from '../voice/priorityQueue';
 import { Voices, VoiceName } from '../voice/voices';
-
-export interface VoiceConfig {
-  apiKey: string;
-  voiceId?: string; // Optional since we use Nova Westbrook by default
-}
 
 export interface SpeakOptions {
   interrupt?: boolean;
@@ -13,87 +8,60 @@ export interface SpeakOptions {
 }
 
 export class VoiceService {
-  private voiceEngine: VoiceEngine;
+  private elevenLabsService: ElevenLabsService;
   private queue: PriorityQueue;
 
-  constructor(config: VoiceConfig) {
-    // VoiceEngine handles all the configuration internally
-    this.voiceEngine = new VoiceEngine();
-    
-    // Initialize priority queue with voice engine's playText method
-    this.queue = new PriorityQueue((text: string) => this.voiceEngine.playText(text));
+  constructor() {
+    this.elevenLabsService = new ElevenLabsService();
+    this.queue = new PriorityQueue((text: string) => this.elevenLabsService.playText(text));
   }
 
   async initialize(): Promise<void> {
-    // No initialization needed for the new voice engine
-    console.log('🎤 Voice service initialized with Nova Westbrook streaming engine');
+    console.log('🎤 Voice service initialized');
   }
 
-  /**
-   * Speak text with priority queue and caching support
-   */
   async speak(text: string, options: SpeakOptions = {}): Promise<void> {
     const { interrupt = false, priority = 0 } = options;
-    
+
     if (interrupt) {
-      // Clear queue and interrupt current playback
       this.queue.clear();
-      await this.voiceEngine.destroy();
+      await this.elevenLabsService.destroy();
     }
-    
+
     return this.queue.enqueue(text, priority);
   }
 
-  /**
-   * Switch voice on the fly
-   */
   switchVoice(name: VoiceName, options: { interrupt?: boolean } = {}): void {
-    this.voiceEngine.switchVoice(name, options);
+    this.elevenLabsService.switchVoice(name, options);
   }
 
-  /**
-   * Get current voice ID
-   */
   getCurrentVoiceId(): string {
-    return this.voiceEngine.getCurrentVoiceId();
+    return this.elevenLabsService.getCurrentVoiceId();
   }
 
-  /**
-   * Get available voices
-   */
   getAvailableVoices(): typeof Voices {
     return Voices;
   }
 
-  /**
-   * Get queue status
-   */
   getQueueStatus(): { size: number } {
     return { size: this.queue.size() };
   }
 
-  /**
-   * Graceful shutdown
-   */
   async destroy(): Promise<void> {
     this.queue.clear();
-    await this.voiceEngine.destroy();
+    await this.elevenLabsService.destroy();
   }
 
-  /**
-   * Stop any currently playing audio and clear queue
-   */
   stop(): void {
     this.queue.clear();
-    this.voiceEngine.destroy();
+    this.elevenLabsService.destroy();
   }
 }
 
-// Singleton instance
 let voiceService: VoiceService | null = null;
 
-export function initializeVoiceService(config: VoiceConfig): VoiceService {
-  voiceService = new VoiceService(config);
+export function initializeVoiceService(): VoiceService {
+  voiceService = new VoiceService();
   return voiceService;
 }
 

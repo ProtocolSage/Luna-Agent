@@ -368,39 +368,82 @@ const electronAPI: ElectronAPI = {
   }
 };
 
-// Expose the API to the renderer process
+// Expose the API to the renderer process with comprehensive error handling
 try {
-  contextBridge.exposeInMainWorld('electronAPI', electronAPI);
+  // Wrap all API methods with error handling
+  const safeElectronAPI = Object.fromEntries(
+    Object.entries(electronAPI).map(([key, value]) => {
+      if (typeof value === 'object' && value !== null) {
+        const safeValue = Object.fromEntries(
+          Object.entries(value).map(([subKey, subValue]) => {
+            if (typeof subValue === 'function') {
+              return [subKey, async (...args: any[]) => {
+                try {
+                  return await (subValue as Function).apply(null, args);
+                } catch (error) {
+                  logger.error(`Error in ${key}.${subKey}:`, error, 'preload');
+                  throw error;
+                }
+              }];
+            }
+            return [subKey, subValue];
+          })
+        );
+        return [key, safeValue];
+      }
+      return [key, value];
+    })
+  );
+
+  contextBridge.exposeInMainWorld('electronAPI', safeElectronAPI);
   
-  // Also expose a simplified version for backward compatibility
+  // Also expose a simplified version for backward compatibility with error handling
   contextBridge.exposeInMainWorld('electron', {
     ipcRenderer: {
-      invoke: (channel: string, ...args: any[]) => {
-        if (validateChannel(channel)) {
-          const sanitizedArgs = args.map(arg => sanitizeInput(arg));
-          return ipcRenderer.invoke(channel, ...sanitizedArgs);
-        } else {
-          logger.warn('Blocked invalid IPC channel', 'preload', { channel });
-          throw new Error(`Invalid channel: ${channel}`);
+      invoke: async (channel: string, ...args: any[]) => {
+        try {
+          if (validateChannel(channel)) {
+            const sanitizedArgs = args.map(arg => sanitizeInput(arg));
+            return await ipcRenderer.invoke(channel, ...sanitizedArgs);
+          } else {
+            logger.warn('Blocked invalid IPC channel', 'preload', { channel });
+            throw new Error(`Invalid channel: ${channel}`);
+          }
+        } catch (error) {
+          logger.error(`IPC invoke error on ${channel}:`, error, 'preload');
+          throw error;
         }
       },
       
       on: (channel: string, listener: (...args: any[]) => void) => {
-        if (validateChannel(channel)) {
-          const sanitizedListener = (...args: any[]) => {
-            const sanitizedArgs = args.map(arg => sanitizeInput(arg));
-            listener(...sanitizedArgs);
-          };
-          ipcRenderer.on(channel, sanitizedListener);
-        } else {
-          logger.warn('Blocked invalid IPC channel listener', 'preload', { channel });
-          throw new Error(`Invalid channel: ${channel}`);
+        try {
+          if (validateChannel(channel)) {
+            const sanitizedListener = (...args: any[]) => {
+              try {
+                const sanitizedArgs = args.map(arg => sanitizeInput(arg));
+                listener(...sanitizedArgs);
+              } catch (error) {
+                logger.error(`IPC listener error on ${channel}:`, error, 'preload');
+              }
+            };
+            ipcRenderer.on(channel, sanitizedListener);
+          } else {
+            logger.warn('Blocked invalid IPC channel listener', 'preload', { channel });
+            throw new Error(`Invalid channel: ${channel}`);
+          }
+        } catch (error) {
+          logger.error(`IPC on error for ${channel}:`, error, 'preload');
+          throw error;
         }
       },
       
       removeListener: (channel: string, listener: (...args: any[]) => void) => {
-        if (validateChannel(channel)) {
-          ipcRenderer.removeListener(channel, listener);
+        try {
+          if (validateChannel(channel)) {
+            ipcRenderer.removeListener(channel, listener);
+          }
+        } catch (error) {
+          logger.error(`IPC removeListener error for ${channel}:`, error, 'preload');
         }
       }
     }
@@ -409,7 +452,23 @@ try {
   logger.info('Preload script initialized successfully', 'preload');
   
 } catch (error) {
-  console.error('Failed to expose electron API:', error);
+  console.error('Critical failure in preload script:', error);
+  // Still expose a minimal API even if there are errors
+  try {
+    contextBridge.exposeInMainWorld('electronAPI', {
+      system: {
+        getInfo: () => Promise.resolve({ 
+          platform: 'unknown', 
+          arch: 'unknown', 
+          version: 'unknown',
+          electronVersion: 'unknown',
+          appVersion: 'unknown'
+        })
+      }
+    });
+  } catch (fallbackError) {
+    console.error('Failed to create fallback API:', fallbackError);
+  }
 }
 
 // Additional security measures
@@ -421,13 +480,7 @@ delete (window as any).module;
 // Prevent access to electron APIs outside of the exposed interface
 Object.freeze(electronAPI);
 
-// Add CSP meta tag if not already present
-if (!document.querySelector('meta[http-equiv="Content-Security-Policy"]')) {
-  const cspMeta = document.createElement('meta');
-  cspMeta.httpEquiv = 'Content-Security-Policy';
-  cspMeta.content = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' ws: wss:; media-src 'self' blob:;";
-  document.head.appendChild(cspMeta);
-}
+// CSP is handled in the HTML file directly - no DOM manipulation needed in preload
 
 // Export types for TypeScript support
 // Export types moved to avoid conflict

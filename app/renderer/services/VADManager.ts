@@ -11,6 +11,11 @@ export class VADManager extends EventEmitter {
     this.setMaxListeners(20);
   }
 
+  public async initialize(): Promise<void> {
+    // Initialize VAD system if needed
+    console.log('VAD Manager initialized');
+  }
+
   public async start(): Promise<void> {
     if (this.isActive) return;
 
@@ -75,6 +80,11 @@ export class VADManager extends EventEmitter {
       sum += buffer[i] * buffer[i];
     }
     return Math.sqrt(sum / buffer.length);
+  }
+
+  public async destroy(): Promise<void> {
+    await this.stop();
+    this.removeAllListeners();
   }
 
   public getStatus(): { isActive: boolean } {

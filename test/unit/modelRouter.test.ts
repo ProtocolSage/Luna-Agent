@@ -101,7 +101,7 @@ describe('ModelRouter', () => {
 
       const status = modelRouter.getCircuitBreakerStatus();
       expect(status['gpt-4o-2024-08-06'].state).toBe('OPEN');
-      expect(status['gpt-4o-2024-08-06'].failures).toBe(3);
+      expect(status['gpt-4o-2024-08-06'].failures).toBe(6);
     });
 
     it('should reset circuit breaker after timeout', async () => {

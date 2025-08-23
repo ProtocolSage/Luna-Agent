@@ -2,13 +2,7 @@
 let Database;
 let dbInstance = null;
 
-// Try to load better-sqlite3, but don't fail if it's not available
-try {
-  Database = require('better-sqlite3');
-} catch (error) {
-  console.warn('better-sqlite3 not available, using in-memory fallback');
-  
-  // Enhanced in-memory database fallback with full SQL emulation
+// Enhanced in-memory database fallback with full SQL emulation
   class InMemoryDatabase {
     constructor() {
       this.data = new Map(); // table_name -> array of rows
@@ -327,6 +321,11 @@ try {
     }
   }
   
+// Try to load better-sqlite3, but don't fail if it's not available
+try {
+  Database = require('better-sqlite3');
+} catch (error) {
+  console.warn('better-sqlite3 not available, using in-memory fallback');
   Database = InMemoryDatabase;
 }
 

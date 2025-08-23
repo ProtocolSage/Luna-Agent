@@ -35,7 +35,7 @@ export class VoiceHandler extends EventEmitter {
     if (!ELEVEN_API_KEY) {
       throw new Error('ElevenLabs API key not configured');
     }
-    initializeVoiceService({ apiKey: ELEVEN_API_KEY });
+    initializeVoiceService();
     this.initializeConversationManager();
     // Hybrid STT initialization removed - using renderer-based STT
   }

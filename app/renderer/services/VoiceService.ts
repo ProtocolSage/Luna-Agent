@@ -1,5 +1,6 @@
 import EventEmitter from 'events';
 import { SecurityService } from './SecurityService';
+import { API_BASE, apiFetch } from './config';
 
 // Voice Service Events Interface
 export interface VoiceServiceEvents {
@@ -268,7 +269,9 @@ export class VoiceService extends EventEmitter {
       console.log('[VoiceService] Web Speech API STT provider initialized');
     }
     
-    // Whisper API STT Provider (requires backend)
+    // Whisper API STT Provider (requires backend) - Gate behind environment flag
+    // Note: In renderer process, we don't have direct access to process.env
+    // So we'll try to initialize and let it fail gracefully if not available
     const whisperSTT = new WhisperSTTProvider();
     try {
       if (whisperSTT.isSupported()) {
@@ -277,7 +280,7 @@ export class VoiceService extends EventEmitter {
         console.log('[VoiceService] Whisper STT provider initialized');
       }
     } catch (error) {
-      console.warn('[VoiceService] Whisper STT provider failed to initialize:', error);
+      console.warn('[VoiceService] Whisper STT provider failed to initialize (this is normal if backend is not configured for Whisper):', error);
     }
   }
 
@@ -628,7 +631,7 @@ export class VoiceService extends EventEmitter {
     try {
       let fullResponse = '';
       
-      const response = await fetch('/api/agent/chat/stream', {
+      const response = await fetch(`${API_BASE}/api/agent/chat/stream`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -688,7 +691,7 @@ export class VoiceService extends EventEmitter {
   }
 
   private async sendMessageToAgent(message: string): Promise<string> {
-    const response = await fetch('/api/agent/chat', {
+    const response = await fetch(`${API_BASE}/api/agent/chat`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -740,12 +743,15 @@ export class VoiceService extends EventEmitter {
       this.handleError(error).catch(console.error);
     });
 
-    // Handle unexpected errors
-    process.on('uncaughtException', (error) => {
-      if (error.message.includes('voice') || error.message.includes('audio')) {
-        this.handleError(error).catch(console.error);
-      }
-    });
+    // Handle unexpected errors - browser-safe version
+    if (typeof window !== 'undefined') {
+      window.addEventListener('error', (event) => {
+        if (event.error && event.error.message && 
+            (event.error.message.includes('voice') || event.error.message.includes('audio'))) {
+          this.handleError(event.error).catch(console.error);
+        }
+      });
+    }
   }
 
   private classifyError(error: Error, context?: Record<string, any>): ErrorType {
@@ -1149,9 +1155,11 @@ class WebSpeechSTTProvider implements STTProvider {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     this.recognition = new SpeechRecognition();
     
-    this.recognition.continuous = false;
-    this.recognition.interimResults = false;
-    this.recognition.lang = 'en-US';
+    if (this.recognition) {
+      this.recognition.continuous = false;
+      this.recognition.interimResults = false;
+      this.recognition.lang = 'en-US';
+    }
   }
   
   async transcribe(audioData: ArrayBuffer): Promise<string> {
@@ -1189,7 +1197,7 @@ class WebSpeechSTTProvider implements STTProvider {
 }
 
 class WhisperSTTProvider implements STTProvider {
-  private apiEndpoint = '/api/voice/transcribe';
+  private apiEndpoint = `${API_BASE}/api/voice/transcribe`;
   
   isSupported(): boolean {
     return true; // Assume backend support
@@ -1198,7 +1206,7 @@ class WhisperSTTProvider implements STTProvider {
   async initialize(): Promise<void> {
     // Test connection to backend
     try {
-      const response = await fetch('/health');
+      const response = await fetch(`${API_BASE}/health`);
       if (!response.ok) {
         throw new Error('Backend not available');
       }
@@ -1301,18 +1309,22 @@ class WebSpeechTTSProvider implements TTSProvider {
 
 class ElevenLabsTTSProvider implements TTSProvider {
   private apiKey: string | null = null;
-  private apiEndpoint = '/api/voice/tts';
+  private apiEndpoint = `${API_BASE}/api/voice/tts`;
   
   isSupported(): boolean {
     return true; // Check will be done in initialize
   }
   
   async initialize(): Promise<void> {
-    // Check if ElevenLabs is configured
+    // Check if ElevenLabs is configured with proper 404 handling
     try {
-      const response = await fetch('/api/voice/tts/check');
-      if (!response.ok) {
-        throw new Error('ElevenLabs not configured');
+      const res = await fetch(`${API_BASE}/api/voice/tts/check`).catch(() => null);
+      if (res?.ok) {
+        // ElevenLabs is available
+        console.log('ElevenLabs TTS provider available');
+      } else {
+        // Skip provider - endpoint not available or not configured
+        throw new Error('ElevenLabs endpoint not available');
       }
     } catch (error) {
       throw new Error('ElevenLabs TTS not available');
@@ -1442,4 +1454,3 @@ export async function destroyVoiceService(): Promise<void> {
   }
 }
 
-export { VoiceService };

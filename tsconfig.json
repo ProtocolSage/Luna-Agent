@@ -23,7 +23,8 @@
     "noEmit": false,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "@agent/*": ["agent/*"]
     }
   },
   "include": [
@@ -38,7 +39,8 @@
     "dist",
     "coverage",
     "**/*.test.ts",
-    "**/*.spec.ts"
+    "**/*.spec.ts",
+    "app/renderer/**/*"
   ]
 }
 

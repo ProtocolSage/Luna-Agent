@@ -4,9 +4,15 @@ import { VoiceErrorBoundary } from './ErrorBoundary';
 import { SecurityService } from '../services/SecurityService';
 import { getDatabaseService } from '../services/DatabaseService';
 import '../styles/luxury.css';
+import { API_BASE, apiFetch, initializeSecureSession } from '../services/config';
+
+// Enhanced Voice Imports
+import { GlobalDebugService } from '../services/GlobalDebugService';
+import { getEnhancedVoiceService } from '../services/EnhancedVoiceService';
+import { getFinalVoiceConfig } from '../config/voiceConfig';
+import EnhancedVoiceControls from './EnhancedVoiceControls'; // Import directly instead of lazy loading
 
 // Lazy load heavy components for code splitting
-const EnhancedVoiceControls = lazy(() => import('./EnhancedVoiceControls'));
 const StreamingConversation = lazy(() => import('./StreamingConversation'));
 const ToolsPanel = lazy(() => import('./ToolsPanel'));
 const WakeWordListener = lazy(() => import('./WakeWordListener'));
@@ -112,11 +118,14 @@ const LuxuryApp: React.FC = () => {
   const [showToolsPanel, setShowToolsPanel] = useState(false);
   const [showEnhancedControls, setShowEnhancedControls] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'connecting' | 'disconnected'>('connecting');
+  const [isInitializing, setIsInitializing] = useState(true);
+  const [initError, setInitError] = useState<string | null>(null);
 
   // Refs
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const audioVisualizerRef = useRef<HTMLCanvasElement>(null);
   const voiceServiceRef = useRef(getVoiceService());
+  const enhancedVoiceServiceRef = useRef(getEnhancedVoiceService());
   const securityServiceRef = useRef(new SecurityService());
   const databaseServiceRef = useRef(getDatabaseService());
   const recoveryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -139,11 +148,17 @@ const LuxuryApp: React.FC = () => {
         await databaseServiceRef.current.initialize();
         console.log('Database service initialized');
         
-        // Create or retrieve session
-        await initializeSecureSession();
+        // Create or retrieve session with cold boot resilience
+        await initializeSecureSessionWithResilience();
         
         // Initialize voice service with security context
         await initializeVoiceService();
+        
+        // Initialize enhanced voice system
+        await initializeEnhancedVoiceSystem();
+        
+        // Initialize global debug service (enables Ctrl+Shift+D)
+        GlobalDebugService.initializeGlobally();
         
         // Load conversation history
         await loadConversationHistory();
@@ -181,12 +196,24 @@ const LuxuryApp: React.FC = () => {
           }));
         }
         
-        // Attempt recovery
-        setTimeout(() => {
-          if (mounted) {
-            initializeSecureApp();
-          }
-        }, 5000);
+        // UX guard - clear token and show user-friendly message
+        try { localStorage.removeItem('luna-session-id'); } catch {}
+        
+        // Limited recovery attempts to prevent infinite loops
+        if (mounted && errorRecoveryCount < 3) {
+          setErrorRecoveryCount(prev => prev + 1);
+          const delay = 5000 * Math.pow(2, errorRecoveryCount); // Exponential backoff
+          console.warn(`App initialization failed, attempting recovery in ${delay}ms (attempt ${errorRecoveryCount + 1}/3)`);
+          setTimeout(() => {
+            if (mounted) {
+              initializeSecureApp();
+            }
+          }, delay);
+        } else {
+          console.error('App initialization failed permanently after multiple attempts');
+          setInitError('Your session expired. We\'ll grab a new one when you try again.');
+          setIsInitializing(false);
+        }
       }
     };
     
@@ -210,6 +237,7 @@ const LuxuryApp: React.FC = () => {
       
       try {
         voiceServiceRef.current.destroy();
+        enhancedVoiceServiceRef.current.destroy();
         securityServiceRef.current.cleanup();
       } catch (error) {
         console.error('Error during cleanup:', error);
@@ -217,53 +245,21 @@ const LuxuryApp: React.FC = () => {
     };
   }, []);
 
-  const initializeSecureSession = async () => {
+  const initializeSecureSessionWithResilience = async () => {
     try {
-      // Check for existing session
-      let sessionId = localStorage.getItem('luna-session-id');
-      
-      if (!sessionId) {
-        // Create new session
-        const response = await fetch('/api/auth/session', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include'
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          sessionId = data.sessionId;
-          if (sessionId) localStorage.setItem('luna-session-id', sessionId);
-        } else {
-          throw new Error('Failed to create session');
-        }
+      // Cold boot resilience reset - clear stale tokens on fresh app start
+      if (performance?.now && performance.now() < 3000) {
+        // very first run after app start → clear obviously stale token
+        try { localStorage.removeItem('luna-session-id'); } catch {}
       }
-      
-      // Validate session
-      const validateResponse = await fetch('/api/auth/validate', {
-        method: 'GET',
-        headers: {
-          'X-Session-ID': sessionId || 'anonymous'
-        },
-        credentials: 'include'
-      });
-      
-      if (!validateResponse.ok) {
-        // Session invalid, create new one
-        localStorage.removeItem('luna-session-id');
-        return await initializeSecureSession();
-      }
+
+      // Use the bulletproof session initialization
+      await initializeSecureSession();
       
       // Get CSRF token
-      const csrfResponse = await fetch('/api/auth/csrf-token', {
+      const csrfResponse = await apiFetch('/api/auth/csrf-token', {
         method: 'POST',
-        headers: {
-          'X-Session-ID': sessionId || 'anonymous',
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include'
+        headers: { 'Content-Type': 'application/json' }
       });
       
       let csrfToken = '';
@@ -272,9 +268,11 @@ const LuxuryApp: React.FC = () => {
         csrfToken = csrfData.csrfToken;
       }
       
+      const sessionId = localStorage.getItem('luna-session-id') || 'anonymous';
+      
       setSecurityStatus({
         authenticated: true,
-        sessionId: sessionId || 'anonymous',
+        sessionId,
         csrfToken,
         rateLimitRemaining: 100,
         securityLevel: 'high'
@@ -285,14 +283,23 @@ const LuxuryApp: React.FC = () => {
       setCurrentConversationId(conversationId);
       
       // Store conversation in database
-      await databaseServiceRef.current.createConversation(
-        conversationId,
-        'Luna Chat Session',
-        { sessionId, startTime: new Date().toISOString() }
-      );
+      await databaseServiceRef.current.createConversation(conversationId);
+      
+      // Mark initialization as complete
+      setIsInitializing(false);
       
     } catch (error) {
-      console.error('Failed to initialize secure session:', error);
+      console.error('Failed to initialize secure session with resilience:', error);
+      
+      // UX guard - clear token and show user-friendly message
+      try { localStorage.removeItem('luna-session-id'); } catch {}
+      
+      // Show error but don't fail permanently - let user retry
+      setVoiceState(prev => ({ 
+        ...prev, 
+        lastError: 'Your session expired. We\'ll grab a new one when you try again.' 
+      }));
+      
       throw error;
     }
   };
@@ -324,8 +331,8 @@ const LuxuryApp: React.FC = () => {
         console.log('Transcription received:', transcript);
         
         // Security validation
-        const validation = securityServiceRef.current.validateInput(transcript, 'voice');
-        if (!validation.isValid) {
+        const validation = securityServiceRef.current.validateInput(transcript);
+        if (!validation.valid) {
           console.warn('Invalid voice input detected:', validation.issues);
           setVoiceState(prev => ({ 
             ...prev, 
@@ -363,12 +370,10 @@ const LuxuryApp: React.FC = () => {
         }));
         
         // Log security event
-        securityServiceRef.current.logSecurityEvent({
-          type: 'suspicious_activity',
-          timestamp: Date.now(),
-          details: `Voice input error: ${error.message}`,
-          severity: 'low'
-        });
+        securityServiceRef.current.logSecurityEvent(
+          'suspicious_activity',
+          `Voice input error: ${error.message}`
+        );
       });
 
       setSystemHealth(prev => ({ ...prev, voice: true, lastCheck: new Date() }));
@@ -380,14 +385,56 @@ const LuxuryApp: React.FC = () => {
     }
   };
 
+  const initializeEnhancedVoiceSystem = async () => {
+    try {
+      console.log('[LuxuryApp] Initializing enhanced voice system...');
+      
+      // Get optimal configuration for user's environment
+      const voiceConfig = getFinalVoiceConfig();
+      console.log('[LuxuryApp] Using voice configuration:', voiceConfig);
+      
+      // Update enhanced voice service with optimal config
+      enhancedVoiceServiceRef.current.updateConfig(voiceConfig);
+      
+      // Initialize the enhanced voice service
+      await enhancedVoiceServiceRef.current.initialize();
+      
+      console.log('[LuxuryApp] Enhanced voice system initialized successfully');
+      console.log(`
+🎤 Luna Enhanced Voice System Ready!
+
+Features Available:
+• Press Ctrl+Shift+D for debug panel
+• Voice Activity Detection (auto-detect speech)
+• Push-to-Talk mode (${voiceConfig.pttKey} key)
+• Real-time audio visualization
+• Environment auto-detection
+
+Current Configuration:
+• VAD Threshold: ${voiceConfig.vadThreshold} dB
+• Silence Timeout: ${voiceConfig.silenceTimeout}ms
+• Noise Gate: ${voiceConfig.noiseGateThreshold} dB
+• PTT Key: ${voiceConfig.pttKey}
+      `);
+
+    } catch (error) {
+      console.error('[LuxuryApp] Enhanced voice system initialization failed:', error);
+      // Don't throw - let the app continue with base voice service
+      setVoiceState(prev => ({ 
+        ...prev, 
+        lastError: `Enhanced voice features unavailable: ${error.message}` 
+      }));
+    }
+  };
+
   const loadConversationHistory = async () => {
     try {
       if (!currentConversationId) return;
       
       const result = await databaseServiceRef.current.getConversationMessages(currentConversationId);
       
-      if (result.success && result.data) {
-        const historicalMessages: Message[] = result.data.map((row: any) => ({
+      if (result && Array.isArray(result)) {
+        const historicalMessages: Message[] = result.map((row: any) => ({
           id: row.id,
           role: row.role,
           content: row.content,
@@ -408,15 +455,14 @@ const LuxuryApp: React.FC = () => {
     healthCheckInterval.current = setInterval(async () => {
       try {
         // Check server health
-        const serverResponse = await fetch('/health', { 
+        const serverResponse = await fetch(`${API_BASE}/health`, { 
           method: 'GET',
           signal: AbortSignal.timeout(5000)
         });
         const serverHealthy = serverResponse.ok;
         
         // Check database health
-        const dbHealth = await databaseServiceRef.current.healthCheck();
-        const dbHealthy = dbHealth.isHealthy;
+        const dbHealthy = await databaseServiceRef.current.healthCheck();
         
         // Check voice service
         const voiceHealthy = voiceServiceRef.current.isInitializedState;
@@ -456,13 +502,9 @@ const LuxuryApp: React.FC = () => {
     heartbeatInterval.current = setInterval(async () => {
       if (securityStatus.sessionId) {
         try {
-          await fetch('/api/auth/heartbeat', {
+          await apiFetch('/api/auth/heartbeat', {
             method: 'POST',
-            headers: {
-              'X-Session-ID': securityStatus.sessionId,
-              'Content-Type': 'application/json'
-            },
-            credentials: 'include'
+            headers: { 'Content-Type': 'application/json' }
           });
         } catch (error) {
           console.warn('Heartbeat failed:', error);
@@ -515,8 +557,8 @@ const LuxuryApp: React.FC = () => {
     if (!inputValue.trim() || !securityStatus.authenticated) return;
 
     // Security validation
-    const validation = securityServiceRef.current.validateInput(inputValue, 'chat');
-    if (!validation.isValid) {
+    const validation = securityServiceRef.current.validateInput(inputValue);
+    if (!validation.valid) {
       console.warn('Message failed security validation:', validation.issues);
       setVoiceState(prev => ({ 
         ...prev, 
@@ -598,18 +640,13 @@ const LuxuryApp: React.FC = () => {
           'Content-Type': 'application/json',
         };
         
-        if (securityStatus.sessionId) {
-          headers['X-Session-ID'] = securityStatus.sessionId;
-        }
-        
         if (securityStatus.csrfToken) {
           headers['X-CSRF-Token'] = securityStatus.csrfToken;
         }
 
-        const response = await fetch('/api/agent/chat', {
+        const response = await apiFetch('/api/agent/chat', {
           method: 'POST',
           headers,
-          credentials: 'include',
           body: JSON.stringify({
             message: sanitizedInput,
             sessionId: securityStatus.sessionId,
@@ -642,12 +679,10 @@ const LuxuryApp: React.FC = () => {
       console.error('Failed to send message:', error);
       
       // Log security event
-      await securityServiceRef.current.logSecurityEvent({
-        type: 'suspicious_activity',
-        timestamp: Date.now(),
-        details: `Chat request failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        severity: 'medium'
-      });
+      await securityServiceRef.current.logSecurityEvent(
+        'suspicious_activity',
+        `Chat request failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
       
       // Update assistant message with error
       setMessages(prev => prev.map(msg => 
@@ -778,11 +813,7 @@ const LuxuryApp: React.FC = () => {
     setCurrentConversationId(newConversationId);
     
     try {
-      await databaseServiceRef.current.createConversation(
-        newConversationId,
-        'Luna Chat Session',
-        { sessionId: securityStatus.sessionId, startTime: new Date().toISOString() }
-      );
+      await databaseServiceRef.current.createConversation(newConversationId);
     } catch (error) {
       console.error('Failed to create new conversation:', error);
     }
@@ -817,6 +848,44 @@ const LuxuryApp: React.FC = () => {
     console.log('Tools toggled:', enabled);
   };
 
+  // Enhanced voice transcript handler
+  const handleEnhancedVoiceTranscript = useCallback((transcript: string) => {
+    console.log('[LuxuryApp] Enhanced voice transcript received:', transcript);
+    
+    // Security validation
+    const validation = securityServiceRef.current.validateInput(transcript);
+    if (!validation.valid) {
+      console.warn('Enhanced voice input failed security validation:', validation.issues);
+      setVoiceState(prev => ({ 
+        ...prev, 
+        lastError: 'Voice input failed security validation' 
+      }));
+      return;
+    }
+
+    const sanitizedTranscript = securityServiceRef.current.sanitizeText(transcript);
+    setInputValue(sanitizedTranscript);
+    setVoiceState(prev => ({ ...prev, transcript: sanitizedTranscript }));
+    
+    // Auto-send message for continuous conversation
+    if (sanitizedTranscript.trim()) {
+      setTimeout(() => {
+        handleSendMessage();
+      }, 500);
+    }
+  }, [handleSendMessage]);
+
+  // Enhanced voice error handler
+  const handleEnhancedVoiceError = useCallback((error: string) => {
+    console.error('[LuxuryApp] Enhanced voice error:', error);
+    setVoiceState(prev => ({ 
+      ...prev, 
+      lastError: error,
+      isListening: false,
+      isProcessing: false
+    }));
+  }, []);
+
   const handleExecuteTool = async (toolName: string, parameters: any) => {
     if (!securityStatus.authenticated) {
       console.error('Cannot execute tools without authentication');
@@ -836,11 +905,10 @@ const LuxuryApp: React.FC = () => {
     try {
       // Validate tool parameters
       const validation = securityServiceRef.current.validateInput(
-        JSON.stringify(parameters), 
-        'tool'
+        JSON.stringify(parameters)
       );
       
-      if (!validation.isValid) {
+      if (!validation.valid) {
         throw new Error('Tool parameters failed security validation');
       }
 
@@ -856,18 +924,13 @@ const LuxuryApp: React.FC = () => {
         'Content-Type': 'application/json',
       };
       
-      if (securityStatus.sessionId) {
-        headers['X-Session-ID'] = securityStatus.sessionId;
-      }
-      
       if (securityStatus.csrfToken) {
         headers['X-CSRF-Token'] = securityStatus.csrfToken;
       }
 
-      const response = await fetch('/api/agent/execute-tool', {
+      const response = await apiFetch('/api/agent/execute-tool', {
         method: 'POST',
         headers,
-        credentials: 'include',
         body: JSON.stringify({
           tool: toolName,
           args: parameters,
@@ -942,6 +1005,96 @@ const LuxuryApp: React.FC = () => {
     }
   };
 
+  // Show initialization screen
+  if (isInitializing) {
+    return (
+      <div className="luxury-app dark initializing">
+        <ParticleField />
+        <div className="init-screen">
+          <div className="init-content">
+            <div className="app-icon animate-pulse">🤖</div>
+            <h2>LUNA PRO</h2>
+            <p>Initializing secure session...</p>
+            <div className="loading-bar">
+              <div className="loading-progress"></div>
+            </div>
+            <small>API_BASE: {API_BASE}</small>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Copy error to clipboard
+  const copyErrorToClipboard = async () => {
+    const errorInfo = `LUNA PRO ERROR REPORT\n===================\n\nError: ${initError}\n\nAPI Base: ${API_BASE}\n\nTimestamp: ${new Date().toISOString()}\n\nSystem Info:\n- User Agent: ${navigator.userAgent}\n- Platform: ${navigator.platform}\n- Connection: ${connectionStatus}\n\nTroubleshooting Steps:\n1. Verify backend server is running on port 3000\n2. Check API keys are configured in .env\n3. Ensure auth routes are accessible\n4. Check browser console for additional errors`;
+    
+    try {
+      await navigator.clipboard.writeText(errorInfo);
+      // Brief visual feedback
+      const button = document.querySelector('.copy-error-btn') as HTMLButtonElement;
+      if (button) {
+        const originalText = button.textContent;
+        button.textContent = '✅ Copied!';
+        button.style.backgroundColor = '#00ff88';
+        setTimeout(() => {
+          button.textContent = originalText;
+          button.style.backgroundColor = '';
+        }, 2000);
+      }
+    } catch (err) {
+      console.error('Failed to copy error log:', err);
+    }
+  };
+
+  // Show initialization error
+  if (initError) {
+    return (
+      <div className="luxury-app dark error">
+        <ParticleField />
+        <div className="init-screen">
+          <div className="init-content error-content compact">
+            <div className="app-icon">❌</div>
+            <h2>Initialization Failed</h2>
+            <p className="error-message">{initError}</p>
+            <div className="error-actions">
+              <button 
+                onClick={copyErrorToClipboard}
+                className="copy-error-btn"
+                title="Copy error details to clipboard"
+              >
+                📋 Copy Error Log
+              </button>
+              <button 
+                onClick={() => {
+                  setInitError(null);
+                  setIsInitializing(true);
+                  setErrorRecoveryCount(0); // Reset recovery count for manual retry
+                  initializeSecureSession(0); // Start with retry attempt 0
+                }}
+                className="retry-btn"
+              >
+                🔄 Retry
+              </button>
+            </div>
+            <div className="error-details collapsed">
+              <details>
+                <summary>Show Details</summary>
+                <p><strong>API Base:</strong> {API_BASE}</p>
+                <p><strong>Check:</strong></p>
+                <ul>
+                  <li>Backend server is running on port 3000</li>
+                  <li>API keys are configured in .env</li>
+                  <li>Auth routes are accessible</li>
+                </ul>
+              </details>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={`luxury-app ${darkMode ? 'dark' : 'light'} ${voiceState.isListening ? 'listening' : ''}`}>
       <ParticleField />
@@ -988,45 +1141,15 @@ const LuxuryApp: React.FC = () => {
 
       {/* App Content */}
       <div className="app-content">
-        {/* Voice Bar */}
+        {/* Enhanced Voice Bar */}
         <div className="voice-bar">
-          <div className="voice-controls">
-            <div className="voice-main-controls">
-              <button 
-                className={`voice-button ${voiceState.isListening ? 'listening' : ''} ${voiceState.isProcessing ? 'processing' : ''}`}
-                onClick={toggleVoiceRecording}
-                disabled={!securityStatus.authenticated || connectionStatus === 'disconnected'}
-                title={voiceState.isListening ? 'Stop Listening' : 'Start Voice Chat'}
-              >
-                {voiceState.isListening ? '🎤' : !securityStatus.authenticated ? '🔒' : '🔇'}
-              </button>
-            </div>
-            
-            {voiceState.isListening && (
-              <div className="audio-visualizer">
-                {Array.from({ length: 12 }, (_, i) => (
-                  <div 
-                    key={i} 
-                    className="visualizer-bar" 
-                    style={{ 
-                      height: `${20 + Math.random() * 60}%`,
-                      animationDelay: `${i * 0.1}s`
-                    }}
-                  />
-                ))}
-              </div>
-            )}
-            
-            {voiceState.lastError && (
-              <div className="voice-error">
-                <span>⚠️</span>
-                {voiceState.lastError}
-                <button onClick={() => setVoiceState(prev => ({ ...prev, lastError: undefined }))}>
-                  ✕
-                </button>
-              </div>
-            )}
-          </div>
+          <EnhancedVoiceControls
+            onTranscript={handleEnhancedVoiceTranscript}
+            onError={handleEnhancedVoiceError}
+            showVisualizer={true}
+            enableDebugPanel={true}
+            className="luna-voice-bar"
+          />
         </div>
         
         {/* Main Layout */}
@@ -1150,9 +1273,7 @@ const LuxuryApp: React.FC = () => {
                 <div className="tools-content">
                   <Suspense fallback={<div>Loading tools...</div>}>
                     <ToolsPanel
-                      executions={toolExecutions}
-                      availableTools={availableTools}
-                      onExecuteTool={handleExecuteTool}
+                      tools={availableTools.map(name => ({ id: name, name, description: '', status: 'inactive' as const }))}
                     />
                   </Suspense>
                 </div>
@@ -1419,21 +1540,13 @@ const LuxuryApp: React.FC = () => {
           overflow: 'auto',
           zIndex: 10000
         }}>
-          <Suspense fallback={<div className="loading-indicator">Loading enhanced controls...</div>}>
-            <EnhancedVoiceControls
-              onStreamingToggle={handleStreamingToggle}
-              onModelChange={handleModelChange}
-              onPersonaChange={handlePersonaChange}
-              onToolsToggle={handleToolsToggle}
-              isStreaming={isStreaming}
-              currentModel={selectedModel}
-              currentPersona={currentPersona}
-              toolsEnabled={toolsEnabled}
-              isListening={voiceState.isListening}
-              onStartListening={toggleVoiceRecording}
-              onStopListening={toggleVoiceRecording}
-            />
-          </Suspense>
+          <EnhancedVoiceControls
+            onTranscript={handleEnhancedVoiceTranscript}
+            onError={handleEnhancedVoiceError}
+            showVisualizer={true}
+            enableDebugPanel={true}
+            className="luna-enhanced-panel"
+          />
         </div>
       )}
 
@@ -1449,9 +1562,7 @@ const LuxuryApp: React.FC = () => {
         }}>
           <Suspense fallback={<div className="loading-indicator">Loading tools panel...</div>}>
             <ToolsPanel
-              executions={toolExecutions}
-              availableTools={availableTools}
-              onExecuteTool={handleExecuteTool}
+              tools={availableTools.map(name => ({ id: name, name, description: '', status: 'inactive' as const }))}
             />
           </Suspense>
         </div>

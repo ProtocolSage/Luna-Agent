@@ -126,8 +126,8 @@ export class WhisperSTT extends EventEmitter implements STTEngine {
     // Check multiple possible locations for Whisper executable
     const possiblePaths = [
       // Bundled with the app
-      path.join(process.resourcesPath || '', 'whisper', 'whisper.exe'),
-      path.join(process.resourcesPath || '', 'whisper', 'whisper'),
+      path.join((process as any).resourcesPath || '', 'whisper', 'whisper.exe'),
+      path.join((process as any).resourcesPath || '', 'whisper', 'whisper'),
       // System installation
       'whisper',
       'whisper.exe',
@@ -157,9 +157,9 @@ export class WhisperSTT extends EventEmitter implements STTEngine {
     // Check for model files
     const possibleModels = [
       // Bundled models
-      path.join(process.resourcesPath || '', 'whisper', 'ggml-tiny.en.bin'),
-      path.join(process.resourcesPath || '', 'whisper', 'ggml-tiny.bin'),
-      path.join(process.resourcesPath || '', 'whisper', 'tiny.en.bin'),
+      path.join((process as any).resourcesPath || '', 'whisper', 'ggml-tiny.en.bin'),
+      path.join((process as any).resourcesPath || '', 'whisper', 'ggml-tiny.bin'),
+      path.join((process as any).resourcesPath || '', 'whisper', 'tiny.en.bin'),
       // Default model locations
       path.join(process.cwd(), 'models', 'ggml-tiny.en.bin'),
       // User's home directory

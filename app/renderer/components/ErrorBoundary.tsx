@@ -198,25 +198,23 @@ export class VoiceErrorBoundary extends Component<ErrorBoundaryProps, ErrorBound
     if (!this.props.enableSecurityLogging) return;
 
     try {
-      await this.securityService.logSecurityEvent({
-        type: 'suspicious_activity',
-        timestamp: Date.now(),
-        details: `${eventType}: ${error.message}`,
-        severity: this.state.securityLevel === 'high' ? 'high' : 'medium'
-      });
+      await this.securityService.logSecurityEvent(
+        'suspicious_activity',
+        `${eventType}: ${error.message}`
+      );
 
       // Also log to database audit log
-      await this.databaseService.logAuditEvent({
-        eventType: `error_${eventType}`,
-        details: JSON.stringify({
+      await this.databaseService.logAuditEvent(
+        `error_${eventType}`,
+        {
           message: error.message,
           stack: error.stack,
           componentStack: errorInfo?.componentStack,
-          errorId: this.state.errorId
-        }),
-        sessionId: this.state.sessionId,
-        severity: this.state.securityLevel
-      });
+          errorId: this.state.errorId,
+          sessionId: this.state.sessionId,
+          severity: this.state.securityLevel
+        }
+      );
 
     } catch (logError) {
       console.error('Failed to log security event:', logError);
@@ -228,7 +226,7 @@ export class VoiceErrorBoundary extends Component<ErrorBoundaryProps, ErrorBound
       errorId: this.state.errorId,
       message: error.message,
       stack: error.stack,
-      componentStack: errorInfo?.componentStack,
+      componentStack: errorInfo?.componentStack || undefined,
       userAgent: navigator.userAgent,
       url: window.location.href,
       timestamp: new Date().toISOString(),
@@ -509,7 +507,7 @@ ${report.componentStack}`;
 }
 
 // Simplified Error Boundary for specific components
-export class ComponentErrorBoundary extends Component<
+class ComponentErrorBoundaryClass extends Component<
   { children: ReactNode; componentName: string },
   { hasError: boolean; error: Error | null }
 > {
@@ -552,4 +550,4 @@ export class ComponentErrorBoundary extends Component<
 }
 
 // Export both error boundaries
-export { VoiceErrorBoundary as default, ComponentErrorBoundary };
+export { VoiceErrorBoundary as default, ComponentErrorBoundaryClass as ComponentErrorBoundary };

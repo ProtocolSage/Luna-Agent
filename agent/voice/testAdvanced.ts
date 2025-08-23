@@ -4,9 +4,7 @@ import { VoiceService, initializeVoiceService } from '../services/voiceService';
   console.log('🚀 Testing Advanced Voice Engine Features...\n');
 
   // Initialize voice service
-  const voiceService = initializeVoiceService({
-    apiKey: process.env.ELEVEN_API_KEY!
-  });
+  const voiceService = initializeVoiceService();
   await voiceService.initialize();
 
   try {

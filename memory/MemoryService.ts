@@ -16,7 +16,9 @@ export class MemoryService {
   private embeddings: EmbeddingService;
 
   constructor(dbPath?: string) {
-    this.store = new MemoryStore(dbPath);
+    // Use a separate database file to avoid conflicts with the new backend memory system
+    const legacyDbPath = dbPath || 'memory/luna-memory-legacy.db';
+    this.store = new MemoryStore(legacyDbPath);
     this.embeddings = embeddingService;
   }
 

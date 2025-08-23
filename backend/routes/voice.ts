@@ -1,33 +1,118 @@
-import { Router } from 'express';
+import express, { Request, Response } from 'express';
+import { ElevenLabsService } from '../services/elevenLabsService';
+import OpenAI from 'openai';
+import { toFile } from 'openai/uploads';
+import multer from 'multer';
 
-const voiceRouter = Router();
+const router = express.Router();
+const elevenLabsService = new ElevenLabsService();
+const upload = multer({ limits: { fileSize: 25 * 1024 * 1024 } });
 
-// Voice-related routes
-voiceRouter.get('/status', (req, res) => {
+// Initialize OpenAI client
+const openai = process.env.OPENAI_API_KEY ? new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+}) : null;
+
+router.get('/tts/check', (req: Request, res: Response) => {
+  const hasElevenLabs = !!process.env.ELEVEN_API_KEY;
+  const hasOpenAI = !!process.env.OPENAI_API_KEY;
+  const providers = {
+    elevenlabs: hasElevenLabs,
+    openai: hasOpenAI,
+    webSpeech: true, // Always available in browsers
+  };
+  const availableProviders = Object.entries(providers)
+    .filter(([, available]) => available)
+    .map(([provider]) => provider);
   res.json({
     status: 'ok',
-    voice: {
-      stt: 'available',
-      tts: 'available'
+    providers,
+    availableProviders,
+    recommended: availableProviders[0] || 'webSpeech',
+    timestamp: new Date().toISOString(),
+  });
+});
+
+router.post('/tts', async (req: Request, res: Response) => {
+  try {
+    const { text, voiceId, stability, similarityBoost, provider } = req.body;
+    if (!text) {
+      res.status(400).json({ error: 'Text is required' });
+      return;
     }
-  });
+
+    // Try ElevenLabs first (if no provider specified or explicitly requested)
+    if (!provider || provider === 'elevenlabs') {
+      try {
+        const audioStream = await elevenLabsService.fetchAudioStream(text, voiceId, { stability, similarityBoost });
+        res.setHeader('Content-Type', 'audio/mpeg');
+        audioStream.pipe(res);
+        return;
+      } catch (elevenLabsError: any) {
+        console.warn('ElevenLabs TTS failed, trying OpenAI fallback:', elevenLabsError.message);
+        // Fall through to OpenAI
+      }
+    }
+
+    // Try OpenAI TTS as fallback or if explicitly requested
+    if (openai && (provider === 'openai' || !provider)) {
+      try {
+        const response = await openai.audio.speech.create({
+          model: 'tts-1',
+          voice: voiceId || 'alloy', // OpenAI voices: alloy, echo, fable, onyx, nova, shimmer
+          input: text,
+          response_format: 'mp3',
+        });
+
+        res.setHeader('Content-Type', 'audio/mpeg');
+        
+        // Convert the response to a readable stream
+        const buffer = Buffer.from(await response.arrayBuffer());
+        res.send(buffer);
+        return;
+      } catch (openaiError: any) {
+        console.error('OpenAI TTS failed:', openaiError.message);
+        if (provider === 'openai') {
+          // If OpenAI was explicitly requested, return the error
+          res.status(500).json({ error: 'OpenAI TTS failed', details: openaiError.message });
+          return;
+        }
+      }
+    }
+
+    // If all providers fail
+    res.status(500).json({ error: 'All TTS providers failed' });
+    return;
+  } catch (error: any) {
+    console.error('TTS Error:', error.message);
+    res.status(500).json({ error: 'Failed to generate speech' });
+    return;
+  }
 });
 
-voiceRouter.post('/transcribe', (req, res) => {
-  // Placeholder for voice transcription
-  res.json({
-    success: true,
-    text: 'Transcription placeholder',
-    confidence: 0.95
-  });
+router.post('/transcribe', upload.single('file'), async (req, res): Promise<void> => {
+  try {
+    if (!process.env.OPENAI_API_KEY) {
+      res.status(500).json({ error: 'OPENAI_API_KEY not configured' });
+      return;
+    }
+    if (!req.file) {
+      res.status(400).json({ error: 'audio file missing: field "file"' });
+      return;
+    }
+
+    const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    // Use OpenAI's toFile helper for better Node.js compatibility
+    const file = await toFile(req.file.buffer, req.file.originalname || 'audio.webm', {
+      type: req.file.mimetype || 'audio/webm'
+    });
+
+    const result = await client.audio.transcriptions.create({ model: 'whisper-1', file, language: 'en' });
+    res.json({ transcription: result.text ?? '' });
+  } catch (e: any) {
+    console.error('[voice/transcribe]', e);
+    res.status(500).json({ error: 'transcription-failed', details: String(e?.message || e) });
+  }
 });
 
-voiceRouter.post('/synthesize', (req, res) => {
-  // Placeholder for TTS synthesis
-  res.json({
-    success: true,
-    audioUrl: '/audio/placeholder.wav'
-  });
-});
-
-export default voiceRouter;
+export default router;

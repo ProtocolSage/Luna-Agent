@@ -41,7 +41,8 @@ const WakeWordListener: React.FC<WakeWordListenerProps> = ({
       }
 
       try {
-        const { PorcupineWorkerFactory } = await import('@picovoice/porcupine-web');
+        const porcupineModule = await import('@picovoice/porcupine-web');
+        const PorcupineWorkerFactory = porcupineModule.default || porcupineModule.PorcupineWorker || porcupineModule;
 
         const keyword = {
           label: 'Hey Luna',
@@ -52,7 +53,7 @@ const WakeWordListener: React.FC<WakeWordListenerProps> = ({
 
         console.log('[WAKE WORD] Initializing with keyword:', keyword);
 
-        const porcupineWorker = await PorcupineWorkerFactory.create(
+        const porcupineWorker = await (PorcupineWorkerFactory as any).create(
           accessKey,
           [keyword],
           (detection: any) => {

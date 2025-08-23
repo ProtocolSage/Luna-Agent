@@ -1,0 +1,28 @@
+export declare const Voices: {
+    readonly Aria: "9BWtsMINqrJLrRacOk9x";
+    readonly Sarah: "EXAVITQu4vr4xnSDxMaL";
+    readonly Laura: "FGY2WhTYpPnrIDTdsKH5";
+    readonly Charlie: "IKne3meq5aSn9XLyUdCD";
+    readonly George: "JBFqnCBsd6RMkjVDRZzb";
+    readonly Callum: "N2lVS1w4EtoT3dr4eOWO";
+    readonly River: "SAz9YHcvj6GT2YYXdXww";
+    readonly Liam: "TX3LPaxmHKxFdv7VOQHJ";
+    readonly Charlotte: "XB0fDUnXU5powFXDhCwa";
+    readonly Alice: "Xb7hH8MSUJpSbSDYk0k2";
+    readonly Matilda: "XrExE9yKIg1WjnnlVkGX";
+    readonly Will: "bIHbv24MWmeRgasZH58o";
+    readonly Jessica: "cgSgspJ2msm6clMCkdW9";
+    readonly Eric: "cjVigY5qzO86Huf0OWal";
+    readonly Chris: "iP95p4xoKVk53GoZ742B";
+    readonly Brian: "nPczCjzI2devNBz1zQrb";
+    readonly Daniel: "onwK4e9ZLuTAKqWW03F9";
+    readonly Lily: "pFZP5JQG7iQjIQuC4Bku";
+    readonly Bill: "pqHfZKP75CvOlQylNhV4";
+    readonly Cassidy: "56AoDkrOh6qfVPDXZ7Pt";
+    readonly Susana: "cAvMBIZ0VNTU8XdsUpEq";
+    readonly Alex: "dy2OtpAv7rTroA3VBRUd";
+    readonly Lucy: "lcMyyd2HUfFzxdCaC4Ta";
+    readonly Nova: "rSZFtT0J8GtnLqoDoFAp";
+    readonly DanSoft: "sGH7639PdpWFc5ciMkxv";
+};
+export type VoiceName = keyof typeof Voices;

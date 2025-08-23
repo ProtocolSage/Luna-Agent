@@ -1,7 +1,19 @@
 {
-  "allowlist": ["https://api.github.com", "https://registry.npmjs.org"],
-  "pii": {"enabled": true},
-  "destructive_ops": {"require_mfa": true, "scopes": ["git_push","file_write","process_kill"]},
-  "rate_limits": {"tool_calls_per_minute": 30}
+  "maxTokens": 4096,
+  "temperature": 0.7,
+  "topP": 0.9,
+  "frequencyPenalty": 0,
+  "presencePenalty": 0,
+  "retryAttempts": 3,
+  "retryDelay": 1000,
+  "timeout": 60000,
+  "safety": {
+    "filterPII": true,
+    "blockHarmfulContent": true,
+    "maxContentLength": 100000
+  },
+  "rateLimit": {
+    "maxRequestsPerMinute": 60,
+    "maxTokensPerMinute": 40000
+  }
 }
-

@@ -90,6 +90,7 @@ Luna Agent is an Electron-based AI assistant with a multi-layered architecture:
 OPENAI_API_KEY=your-key
 ANTHROPIC_API_KEY=your-key
 LUNA_DISABLE_EMBEDDINGS=1  # Disables embeddings for testing
+LUNA_ENABLE_WHISPER=true   # Enables Whisper STT provider (auto-enabled in development)
 ```
 
 **Database System**

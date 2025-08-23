@@ -1,8 +1,9 @@
 import React from 'react';
-import LuxuryApp from './components/LuxuryApp';
+import FuturisticUI from './components/FuturisticUI';
+import './components/FuturisticUI.css';
 
 function App() {
-  return <LuxuryApp />;
+  return <FuturisticUI />;
 }
 
 export default App;

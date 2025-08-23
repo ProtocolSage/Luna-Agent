@@ -1,7 +1,36 @@
-import { app, BrowserWindow, ipcMain, shell, dialog, Menu, globalShortcut } from 'electron';
-import path from 'path';
+// Types only (compile-time)
+import type { IpcMainInvokeEvent, WebContents } from 'electron';
+// Runtime from main-process entrypoint (prevents renderer stubs)
+const { app, BrowserWindow, ipcMain, shell, dialog, Menu, globalShortcut } = require('electron/main');
+// Early guard: bail if somehow started in Node mode
+const isNodeMode = process.env.ELECTRON_RUN_AS_NODE === '1' || typeof require('electron') === 'string';
+if (isNodeMode) {
+  console.error('[Fatal] Electron is in Node mode. Check your launcher/env. Aborting.');
+  process.exit(1);
+}
+// Extra assertion: verify Electron resolve is not a string path
+const testElectron = require('electron');
+if (typeof testElectron === 'string') {
+  console.error('[Fatal] Electron is still a path (Node mode). Aborting.');
+  process.exit(1);
+}
+import * as path from 'path';
 import { spawn, ChildProcess } from 'child_process';
-import { logger } from '../renderer/services/analytics/Logger';
+
+// Create a simple logger fallback if the main logger fails
+const logger = {
+  info: (msg: string, category: string = '', data?: any) => console.log(`[${category}] ${msg}`, data || ''),
+  warn: (msg: string, category: string = '', data?: any) => console.warn(`[${category}] ${msg}`, data || ''),
+  error: (msg: string, error?: Error, category: string = '') => console.error(`[${category}] ${msg}`, error)
+};
+
+// Load environment variables early
+try {
+  require('dotenv').config({ path: path.resolve(__dirname, '../../../.env') });
+  console.log('[Main] Environment variables loaded from .env');
+} catch (error) {
+  console.warn('[Main] Failed to load .env file:', error);
+}
 
 /**
  * Luna Agent Electron Main Process
@@ -18,7 +47,7 @@ interface WindowState {
 }
 
 class LunaMainProcess {
-  private mainWindow: BrowserWindow | null = null;
+  private mainWindow: Electron.BrowserWindow | null = null;
   private serverProcess: ChildProcess | null = null;
   private isDevelopment = process.env.NODE_ENV === 'development';
   private windowState: WindowState = {
@@ -35,8 +64,10 @@ class LunaMainProcess {
   }
 
   private setupApp(): void {
-    // Security: Enable sandbox for all renderers
-    app.enableSandbox();
+    // Security: Enable sandbox for all renderers (must be called before app is ready)
+    if (app && typeof app.enableSandbox === 'function') {
+      app.enableSandbox();
+    }
 
     // Handle app events
     app.whenReady().then(() => {
@@ -63,8 +94,8 @@ class LunaMainProcess {
     });
 
     // Security: Prevent new window creation
-    app.on('web-contents-created', (event, contents) => {
-      contents.setWindowOpenHandler(({ url }) => {
+    app.on('web-contents-created', (event: unknown, contents: WebContents) => {
+      contents.setWindowOpenHandler(({ url }: { url: string }) => {
         shell.openExternal(url);
         return { action: 'deny' };
       });
@@ -100,7 +131,7 @@ class LunaMainProcess {
         contextIsolation: true,
         // enableRemoteModule deprecated in newer Electron versions
         sandbox: true,
-        preload: path.join(__dirname, '../preload/preload.js'),
+        preload: path.join(__dirname, 'preload.js'),
         
         // Performance and features
         webSecurity: true,
@@ -115,66 +146,72 @@ class LunaMainProcess {
       }
     });
 
-    // Load the renderer
+    // Load the renderer - always use local file for Electron desktop app
+    // ENSURE this apiBase line exists and uses your env vars
+    const apiBase = process.env.LUNA_API_BASE || process.env.API_BASE || 'http://localhost:3000';
+    
+    this.mainWindow?.loadFile(
+      path.join(__dirname, '../renderer/index.html'),
+      { query: { apiBase } }
+    );
+    
+    // Open dev tools in development
     if (this.isDevelopment) {
-      this.mainWindow.loadURL('http://localhost:3000');
-      this.mainWindow.webContents.openDevTools();
-    } else {
-      this.mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
+      this.mainWindow?.webContents.openDevTools();
     }
 
     // Window event handlers
-    this.mainWindow.once('ready-to-show', () => {
+    this.mainWindow?.once('ready-to-show', () => {
       if (!this.mainWindow) return;
 
       // Restore window state
       if (this.windowState.isMaximized) {
-        this.mainWindow.maximize();
+        this.mainWindow?.maximize();
       }
       if (this.windowState.isFullscreen) {
-        this.mainWindow.setFullScreen(true);
+        this.mainWindow?.setFullScreen(true);
       }
 
-      this.mainWindow.show();
-      this.mainWindow.focus();
+      this.mainWindow?.show();
+      this.mainWindow?.focus();
 
       logger.info('Main window ready and shown', 'main-process');
     });
 
-    this.mainWindow.on('close', () => {
+    this.mainWindow?.on('close', () => {
       this.saveWindowState();
     });
 
-    this.mainWindow.on('closed', () => {
+    this.mainWindow?.on('closed', () => {
       this.mainWindow = null;
     });
 
     // Window state tracking
-    this.mainWindow.on('maximize', () => {
+    this.mainWindow?.on('maximize', () => {
       this.windowState.isMaximized = true;
       this.notifyRendererOfWindowState();
     });
 
-    this.mainWindow.on('unmaximize', () => {
+    this.mainWindow?.on('unmaximize', () => {
       this.windowState.isMaximized = false;
       this.notifyRendererOfWindowState();
     });
 
-    this.mainWindow.on('enter-full-screen', () => {
+    this.mainWindow?.on('enter-full-screen', () => {
       this.windowState.isFullscreen = true;
       this.notifyRendererOfWindowState();
     });
 
-    this.mainWindow.on('leave-full-screen', () => {
+    this.mainWindow?.on('leave-full-screen', () => {
       this.windowState.isFullscreen = false;
       this.notifyRendererOfWindowState();
     });
 
-    this.mainWindow.on('moved', () => {
+    this.mainWindow?.on('moved', () => {
       this.saveWindowBounds();
     });
 
-    this.mainWindow.on('resized', () => {
+    this.mainWindow?.on('resized', () => {
       this.saveWindowBounds();
     });
 
@@ -185,41 +222,70 @@ class LunaMainProcess {
   }
 
   private async startBackendServer(): Promise<void> {
-    if (this.isDevelopment) {
-      logger.info('Development mode: Backend server should be started separately', 'main-process');
-      return;
-    }
-
-    try {
-      const serverPath = path.join(__dirname, '../backend/server.js');
+    // In packaged app, start the backend server automatically
+    const isDev = process.env.NODE_ENV === 'development';
+    
+    if (!isDev) {
+      // Production: Start backend server from packaged resources
+      const { spawn } = require('child_process');
+      const fs = require('fs');
       
-      this.serverProcess = spawn('node', [serverPath], {
-        stdio: 'pipe',
-        env: {
-          ...process.env,
-          NODE_ENV: 'production',
-          PORT: '3001',
-          ELECTRON_MODE: 'true'
+      // In packaged Electron apps, __dirname points to the asar bundle
+      // We need to find the backend server in the bundled app
+      let serverPath = path.join(__dirname, '..', '..', 'backend', 'server.js');
+      
+      // Try alternative paths if not found
+      if (!fs.existsSync(serverPath)) {
+        serverPath = path.join(process.resourcesPath, 'app', 'dist', 'backend', 'server.js');
+      }
+      if (!fs.existsSync(serverPath)) {
+        serverPath = path.join(process.resourcesPath, 'backend', 'server.js');
+      }
+      if (!fs.existsSync(serverPath)) {
+        // Last resort: try in app.asar
+        serverPath = path.join(__dirname, 'backend', 'server.js');
+      }
+      
+      if (fs.existsSync(serverPath)) {
+        console.log('[Main] Starting backend server:', serverPath);
+        this.serverProcess = spawn('node', [serverPath], {
+          env: { ...process.env, PORT: '3000' },
+          stdio: 'pipe'
+        });
+        
+        if (this.serverProcess && this.serverProcess.stdout) {
+          this.serverProcess.stdout.on('data', (data) => {
+            console.log(`[Backend] ${data}`);
+          });
         }
-      });
-
-      this.serverProcess.stdout?.on('data', (data) => {
-        logger.info('Backend server output', 'main-process', { output: data.toString() });
-      });
-
-      this.serverProcess.stderr?.on('data', (data) => {
-        logger.error('Backend server error', new Error(data.toString()), 'main-process');
-      });
-
-      this.serverProcess.on('close', (code) => {
-        logger.warn('Backend server closed', 'main-process', { exitCode: code });
-      });
-
-      logger.info('Backend server started', 'main-process');
-
-    } catch (error) {
-      logger.error('Failed to start backend server', error as Error, 'main-process');
+        
+        if (this.serverProcess && this.serverProcess.stderr) {
+          this.serverProcess.stderr.on('data', (data) => {
+            console.error(`[Backend Error] ${data}`);
+          });
+        }
+        
+        if (this.serverProcess) {
+          this.serverProcess.on('close', (code) => {
+            console.log(`[Backend] Process exited with code ${code}`);
+          });
+        }
+        
+        // Wait for server to start
+        await new Promise(resolve => setTimeout(resolve, 3000));
+      } else {
+        console.warn('[Main] Backend server not found. Tried paths:');
+        console.warn('  ', path.join(__dirname, '..', '..', 'backend', 'server.js'));
+        console.warn('  ', path.join(process.resourcesPath, 'app', 'dist', 'backend', 'server.js'));
+        console.warn('  ', path.join(process.resourcesPath, 'backend', 'server.js'));
+        console.warn('  ', path.join(__dirname, 'backend', 'server.js'));
+        console.warn('[Main] App will try to connect to external backend at localhost:3000');
+      }
+    } else {
+      // Development: Backend started externally
+      logger.info('Backend server should be started externally (npm run backend)', 'main-process');
     }
+    return;
   }
 
   private registerIpcHandlers(): void {
@@ -246,7 +312,7 @@ class LunaMainProcess {
     });
 
     // File system handlers
-    ipcMain.handle('dialog:open-file', async (event, options = {}) => {
+    ipcMain.handle('dialog:open-file', async (_event: IpcMainInvokeEvent, options: Record<string, unknown> = {}) => {
       if (!this.mainWindow) return { canceled: true };
 
       const result = await dialog.showOpenDialog(this.mainWindow, {
@@ -263,7 +329,7 @@ class LunaMainProcess {
       return result;
     });
 
-    ipcMain.handle('dialog:save-file', async (event, options = {}) => {
+    ipcMain.handle('dialog:save-file', async (_event: IpcMainInvokeEvent, options: Record<string, unknown> = {}) => {
       if (!this.mainWindow) return { canceled: true };
 
       const result = await dialog.showSaveDialog(this.mainWindow, {
@@ -289,7 +355,7 @@ class LunaMainProcess {
       }
     });
 
-    ipcMain.handle('voice:start-recording', async (event, options = {}) => {
+    ipcMain.handle('voice:start-recording', async (_event: IpcMainInvokeEvent, options: Record<string, unknown> = {}) => {
       try {
         // Initialize voice recording
         logger.info('Voice recording started', 'main-process', options);
@@ -322,7 +388,7 @@ class LunaMainProcess {
       };
     });
 
-    ipcMain.handle('system:open-external', async (event, url: string) => {
+    ipcMain.handle('system:open-external', async (_event: IpcMainInvokeEvent, url: string) => {
       try {
         await shell.openExternal(url);
         return { success: true };
@@ -347,7 +413,7 @@ class LunaMainProcess {
     });
 
     // Notification handlers
-    ipcMain.handle('notification:show', (event, options) => {
+    ipcMain.handle('notification:show', (_event: IpcMainInvokeEvent, options: { title?: string; body?: string; [key: string]: any }) => {
       // Use Electron's native notification system
       const { Notification } = require('electron');
       if (Notification.isSupported()) {
@@ -359,6 +425,47 @@ class LunaMainProcess {
         });
         notification.show();
       }
+    });
+
+    // STT handlers - bridge to renderer STT processing
+    ipcMain.handle('stt:start', async () => {
+      // STT is handled in renderer, just return success
+      return { success: true };
+    });
+
+    ipcMain.handle('stt:stop', async () => {
+      // STT is handled in renderer, just return success
+      return { success: true };
+    });
+
+    ipcMain.handle('stt:get-status', async () => {
+      // Return basic STT status
+      return {
+        isListening: false,
+        currentProvider: 'webSpeech',
+        providers: ['webSpeech', 'whisper'],
+        supported: true
+      };
+    });
+
+    ipcMain.handle('stt:switch-to-cloud', async () => {
+      // Cloud STT switching handled in renderer
+      return { success: true };
+    });
+
+    ipcMain.handle('stt:switch-to-whisper', async () => {
+      // Whisper STT switching handled in renderer
+      return { success: true };
+    });
+
+    ipcMain.handle('stt:health-check', async () => {
+      // Basic health check for STT services
+      return { 
+        status: 'ok',
+        webSpeech: true,
+        whisper: true,
+        timestamp: new Date().toISOString()
+      };
     });
 
     logger.info('IPC handlers registered', 'main-process');
@@ -613,7 +720,8 @@ class LunaMainProcess {
 
   private cleanup(): void {
     if (this.serverProcess) {
-      this.serverProcess.kill();
+      console.log('[Main] Terminating backend server...');
+      this.serverProcess.kill('SIGTERM');
       this.serverProcess = null;
       logger.info('Backend server process terminated', 'main-process');
     }
@@ -622,8 +730,11 @@ class LunaMainProcess {
   }
 }
 
-// Initialize the main process
-new LunaMainProcess();
+// Create the main process instance
+// The constructor will handle app.whenReady()
+console.log('[Main] Creating LunaMainProcess instance...');
+const lunaApp = new LunaMainProcess();
+console.log('[Main] LunaMainProcess instance created successfully');
 
 // Handle uncaught exceptions
 process.on('uncaughtException', (error) => {

@@ -76,7 +76,10 @@ class CopyRendererFilesPlugin {
   }
 }
 
-// Main process configuration
+// Main process configuration - REMOVED: Now using tsc directly via tsconfig.main.json
+// The main and preload scripts are compiled with TypeScript compiler to avoid bundling issues
+// See tsconfig.main.json and tsconfig.preload.json for compilation settings
+/*
 const mainConfig = {
   mode: process.env.NODE_ENV || 'development',
   target: 'electron-main',
@@ -85,33 +88,31 @@ const mainConfig = {
     preload: './app/main/preload.ts'
   },
   output: {
-    path: path.resolve(__dirname, 'dist/app/main'),
-    filename: '[name].js',
+    path: path.resolve(__dirname, 'dist/app'),
+    filename: (pathData) => {
+      return pathData.chunk.name === 'preload' ? 'preload/preload.js' : 'main/[name].js';
+    },
     libraryTarget: 'commonjs2'
   },
-  externals: {
-    'electron': 'commonjs2 electron',
-    'better-sqlite3': 'commonjs2 better-sqlite3',
-    'fs': 'commonjs2 fs',
-    'path': 'commonjs2 path',
-    'crypto': 'commonjs2 crypto',
-    'os': 'commonjs2 os',
-    'child_process': 'commonjs2 child_process',
-    'buffer': 'commonjs2 buffer',
-    'stream': 'commonjs2 stream',
-    'util': 'commonjs2 util',
-    'events': 'commonjs2 events',
-    'net': 'commonjs2 net',
-    'http': 'commonjs2 http',
-    'https': 'commonjs2 https',
-    'url': 'commonjs2 url',
-    'querystring': 'commonjs2 querystring',
-    'zlib': 'commonjs2 zlib'
+  externals: function(context, request, callback) {
+    // Keep electron external
+    if (request === 'electron') {
+      return callback(null, 'commonjs2 ' + request);
+    }
+    
+    // Keep other native modules external
+    if (['better-sqlite3', 'fs', 'path', 'crypto', 'os', 'child_process', 'buffer', 'stream', 'util', 'events', 'net', 'http', 'https', 'url', 'querystring', 'zlib'].includes(request)) {
+      return callback(null, 'commonjs2 ' + request);
+    }
+    
+    // Bundle everything else
+    callback();
   },
   resolve: {
     extensions: ['.ts', '.tsx', '.js', '.jsx'],
     alias: {
-      '@': path.resolve(__dirname)
+      '@': path.resolve(__dirname),
+      '@agent': path.resolve(__dirname, 'agent')
     }
   },
   module: {
@@ -145,6 +146,7 @@ const mainConfig = {
   ],
   devtool: process.env.NODE_ENV === 'development' ? 'source-map' : false
 };
+*/
 
 // Backend server configuration
 const backendConfig = {
@@ -175,7 +177,8 @@ const backendConfig = {
   resolve: {
     extensions: ['.ts', '.tsx', '.js', '.jsx'],
     alias: {
-      '@': path.resolve(__dirname)
+      '@': path.resolve(__dirname),
+      '@agent': path.resolve(__dirname, 'agent')
     }
   },
   module: {
@@ -202,22 +205,48 @@ const backendConfig = {
   optimization: {
     minimize: false
   },
+  plugins: [
+    new webpack.DefinePlugin({
+      'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development')
+    }),
+    // Ignore module-alias in production builds since webpack handles path resolution
+    ...(process.env.NODE_ENV === 'production' ? [
+      new webpack.IgnorePlugin({
+        resourceRegExp: /^module-alias$/
+      })
+    ] : [])
+  ],
   devtool: process.env.NODE_ENV === 'development' ? 'source-map' : false
 };
 
 // Renderer process configuration
 const rendererConfig = {
   mode: process.env.NODE_ENV || 'development',
-  target: 'electron-renderer',
+  target: 'web',
   entry: './app/renderer/renderer.tsx',
   output: {
     path: path.resolve(__dirname, 'dist/app/renderer'),
-    filename: 'renderer.js'
+    filename: 'renderer.js',
+    publicPath: './',
+    environment: {
+      module: true
+    },
+    library: {
+      type: 'module'
+    }
+  },
+  optimization: {
+    splitChunks: false,
+    runtimeChunk: false
+  },
+  experiments: {
+    outputModule: true
   },
   resolve: {
     extensions: ['.ts', '.tsx', '.js', '.jsx'],
     alias: {
-      '@': path.resolve(__dirname)
+      '@': path.resolve(__dirname),
+      '@agent': path.resolve(__dirname, 'agent')
     }
   },
   module: {
@@ -228,7 +257,7 @@ const rendererConfig = {
           {
             loader: 'ts-loader',
             options: {
-              configFile: 'tsconfig.json',
+              configFile: 'tsconfig.renderer.json',
               transpileOnly: true
             }
           }
@@ -241,9 +270,8 @@ const rendererConfig = {
       }
     ]
   },
-  externals: {
-    'electron': 'commonjs2 electron'
-  },
+  // No externals needed for sandboxed renderer
+  externals: {},
   plugins: [
     new CopyRendererFilesPlugin(),
     new webpack.DefinePlugin({
@@ -253,5 +281,5 @@ const rendererConfig = {
   devtool: process.env.NODE_ENV === 'development' ? 'source-map' : false
 };
 
-// Export all three configurations
-module.exports = [mainConfig, backendConfig, rendererConfig];
+// Export only backend and renderer configurations (main/preload now use tsc directly)
+module.exports = [backendConfig, rendererConfig];

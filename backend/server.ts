@@ -1,3 +1,10 @@
+// Load module aliases for runtime path resolution
+import 'module-alias/register';
+
+// Load environment variables first, before any other imports
+import * as dotenv from 'dotenv';
+dotenv.config();
+
 // Load File polyfill before any other imports
 if (typeof globalThis.File === 'undefined') {
   const { Blob } = require('buffer');
@@ -6,7 +13,7 @@ if (typeof globalThis.File === 'undefined') {
     public name: string;
     public lastModified: number;
     
-    constructor(chunks: any[], filename: string, options: any = {}) {
+    constructor(chunks: BlobPart[], filename: string, options: FilePropertyBag = {}) {
       super(chunks, options);
       this.name = filename;
       this.lastModified = options.lastModified || Date.now();
@@ -22,15 +29,19 @@ import type { Response as ExpressResponse } from 'express';
 import rateLimit from 'express-rate-limit';
 import helmet from 'helmet';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
+import { readSessionId } from './helpers/session';
 import compression from 'compression';
-import { ModelRouter } from '../agent/orchestrator/modelRouter';
-import { PIIFilter } from '../agent/validators/piiFilter';
+import authRoutes from './routes/auth';
+import { ModelRouter } from '@agent/orchestrator/modelRouter';
+import { PIIFilter } from '@agent/validators/piiFilter';
 import { ChatRequest, ChatResponse, ModelConfig } from '../types';
 import { createAgentRouter } from './routes/agent';
 import voiceRouter from './routes/voice';
-import { getDatabaseService } from '../app/renderer/services/DatabaseService';
-import { SecurityService } from '../app/renderer/services/SecurityService';
-import * as dotenv from 'dotenv';
+import memoryRoutes from './routes/memory';
+import toolsRoutes from './routes/tools';
+import { getDatabaseService } from './DatabaseService';
+import { SecurityService } from './utils/SecurityService';
 import { execSync } from 'child_process';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
@@ -51,8 +62,7 @@ try {
   console.warn('Anthropic SDK not installed. Install with: npm install @anthropic-ai/sdk');
 }
 
-// Load environment variables
-dotenv.config();
+// Load environment variables - already loaded at the top of the file
 
 // For Windows: Force load system environment variables if not already loaded
 if (!process.env.OPENAI_API_KEY || !process.env.ANTHROPIC_API_KEY) {
@@ -93,8 +103,8 @@ class SecureExpressServer {
   private app: express.Application;
   private securityService: SecurityService;
   private databaseService: any;
-  private modelRouter: ModelRouter;
-  private piiFilter: PIIFilter;
+  private modelRouter!: ModelRouter;
+  private piiFilter!: PIIFilter;
   private openai: any;
   private anthropic: any;
   private port: number;
@@ -102,7 +112,7 @@ class SecureExpressServer {
 
   constructor() {
     this.app = express();
-    this.port = parseInt(process.env.PORT || '3000', 10);
+    this.port = parseInt(process.env.PORT || '3000', 10); // Ensure PORT is respected
     this.securityService = new SecurityService();
     this.databaseService = getDatabaseService();
     
@@ -161,7 +171,7 @@ class SecureExpressServer {
     this.setupCoreMiddleware();
     this.setupAuthenticationMiddleware();
     this.setupValidationMiddleware();
-    this.setupRoutes();
+    await this.setupRoutes();
     this.setupErrorHandling();
 
     console.log('[SecureServer] Server initialization complete');
@@ -189,7 +199,7 @@ class SecureExpressServer {
       crossOriginEmbedderPolicy: false, // Disable for compatibility
     }));
 
-    // CORS configuration
+    // CORS configuration - ENSURE this matches your requirements
     const corsOptions = {
       origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
         // Allow requests with no origin (mobile apps, Postman, etc.)
@@ -204,7 +214,7 @@ class SecureExpressServer {
       credentials: true,
       optionsSuccessStatus: 200,
       methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-      allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization', 'X-CSRF-Token', 'X-Session-ID']
+      allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization', 'X-CSRF-Token', 'x-session-id']
     };
 
     this.app.use(cors(corsOptions));
@@ -231,12 +241,10 @@ class SecureExpressServer {
         legacyHeaders: false,
         handler: (req: Request, res: Response) => {
           const clientIP = this.getClientIP(req);
-          this.securityService.logAuditEvent({
-            eventType: 'rate_limit_exceeded',
-            ipAddress: clientIP,
-            details: `Rate limit exceeded: ${max} requests per ${windowMs}ms`,
-            severity: 'medium'
-          });
+          this.securityService.logAuditEvent(
+            'rate_limit_exceeded',
+            { ipAddress: clientIP, details: `Rate limit exceeded: ${max} requests per ${windowMs}ms` }
+          );
           
           res.status(429).json({
             error: message,
@@ -257,7 +265,10 @@ class SecureExpressServer {
   }
 
   private setupCoreMiddleware(): void {
-    // Body parsing with size limits
+    // Cookie parsing - MUST be before routes - ENSURE this line exists
+    this.app.use(cookieParser(process.env.COOKIE_SECRET || 'dev-secret'));
+    
+    // Body parsing with size limits - ENSURE this line exists
     this.app.use(express.json({ 
       limit: '10mb',
       verify: (req: any, res, buf) => {
@@ -271,7 +282,7 @@ class SecureExpressServer {
     }));
 
     // Request logging and IP tracking
-    this.app.use((req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    this.app.use((req: AuthenticatedRequest, res: Response, next: NextFunction): any => {
       req.clientIP = this.getClientIP(req);
       
       // Log all requests
@@ -296,17 +307,17 @@ class SecureExpressServer {
     // Session-based authentication middleware
     const authenticateSession = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
       try {
-        const sessionId = req.headers['x-session-id'] as string || req.cookies?.sessionId;
+        const sessionId = readSessionId(req);
         
         if (!sessionId) {
           // Create anonymous session for public endpoints
-          const newSessionId = this.securityService.createSession();
+          const newSessionId = this.securityService.createSession(req.headers, req.cookies);
           req.sessionId = newSessionId;
-          res.cookie('sessionId', newSessionId, {
+          res.cookie('sid', newSessionId, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict',
-            maxAge: 3600000 // 1 hour
+            sameSite: 'lax',
+            maxAge: 30 * 24 * 3600 * 1000 // 30 days
           });
           return next();
         }
@@ -341,7 +352,7 @@ class SecureExpressServer {
     };
 
     // JWT token authentication (for API keys)
-    const authenticateToken = (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    const authenticateToken = (req: AuthenticatedRequest, res: Response, next: NextFunction): any => {
       const authHeader = req.headers['authorization'];
       const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
 
@@ -349,7 +360,7 @@ class SecureExpressServer {
         return authenticateSession(req, res, next);
       }
 
-      jwt.verify(token, JWT_SECRET, (err: any, decoded: any) => {
+      jwt.verify(token, JWT_SECRET, (err: any, decoded: any): any => {
         if (err) {
           return res.status(403).json({ error: 'Invalid token' });
         }
@@ -382,9 +393,9 @@ class SecureExpressServer {
       // Validate JSON input
       if (req.body && typeof req.body === 'object') {
         const jsonString = JSON.stringify(req.body);
-        const validation = this.securityService.validateInput(jsonString, 'api');
+        const validation = this.securityService.validateInput(jsonString);
         
-        if (!validation.isValid) {
+        if (!validation.valid) {
           const errors = validation.issues.filter(issue => issue.severity === 'error');
           if (errors.length > 0) {
             return res.status(400).json({
@@ -398,9 +409,9 @@ class SecureExpressServer {
       // Validate query parameters
       if (req.query) {
         const queryString = JSON.stringify(req.query);
-        const validation = this.securityService.validateInput(queryString, 'query');
+        const validation = this.securityService.validateInput(queryString);
         
-        if (!validation.isValid) {
+        if (!validation.valid) {
           const errors = validation.issues.filter(issue => issue.severity === 'error');
           if (errors.length > 0) {
             return res.status(400).json({
@@ -415,12 +426,12 @@ class SecureExpressServer {
     };
 
     // CSRF protection for state-changing operations
-    const csrfProtection = (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    const csrfProtection = (req: AuthenticatedRequest, res: Response, next: NextFunction): any => {
       if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method)) {
         const csrfToken = req.headers['x-csrf-token'] as string;
         const sessionId = req.sessionId;
 
-        if (!sessionId || !this.securityService.validateCSRFToken(csrfToken, sessionId)) {
+        if (!sessionId || !this.securityService.validateCSRFToken(csrfToken)) {
           return res.status(403).json({ error: 'CSRF token validation failed' });
         }
       }
@@ -433,8 +444,8 @@ class SecureExpressServer {
     // this.app.use('/api', csrfProtection); // Enable when CSRF tokens are implemented in frontend
   }
 
-  private setupRoutes(): void {
-    // Health check endpoint (no authentication required)
+  private async setupRoutes(): Promise<void> {
+    // Health check endpoint (no authentication required) - ENSURE this line exists
     this.app.get('/health', (req: Request, res: Response) => {
       res.json({
         status: 'OK',
@@ -454,28 +465,14 @@ class SecureExpressServer {
       });
     });
 
-    // CSRF token endpoint
-    this.app.post('/api/auth/csrf-token', async (req: AuthenticatedRequest, res: Response) => {
-      if (!req.sessionId) {
-        return res.status(401).json({ error: 'No session' });
-      }
-
-      const csrfToken = this.securityService.generateCSRFToken();
-      
-      // Store CSRF token in session
-      await this.databaseService.run(
-        'UPDATE sessions SET data = json_set(data, "$.csrfToken", ?) WHERE id = ?',
-        [csrfToken, req.sessionId]
-      );
-
-      res.json({ csrfToken });
-    });
+    // ENSURE auth routes are mounted - this line exists
+    this.app.use('/api/auth', authRoutes);
 
     // Enhanced SSE Streaming Chat Route with security
-    this.app.post('/api/agent/chat/stream', async (req: AuthenticatedRequest, res: Response) => {
+    this.app.post('/api/agent/chat/stream', async (req: AuthenticatedRequest, res: Response): Promise<any> => {
       // Rate limiting check
       const clientIP = req.clientIP!;
-      if (!this.securityService.checkRateLimit('chat_stream', clientIP)) {
+      if (!this.securityService.checkRateLimit('chat_stream')) {
         return res.status(429).json({ error: 'Rate limit exceeded for streaming chat' });
       }
 
@@ -614,8 +611,11 @@ class SecureExpressServer {
       }
     });
 
-    // Agent routes
-    this.initializeAgentRoutes();
+    // Mount auth routes directly
+    console.log('[SecureServer] Auth routes mounted directly');
+
+    // Agent routes - await the async initialization
+    await this.initializeAgentRoutes();
   }
 
   private setupErrorHandling(): void {
@@ -718,9 +718,34 @@ class SecureExpressServer {
 
   private async initializeAgentRoutes(): Promise<void> {
     try {
+      // Import routes - auth is now handled by routes/index.ts
+      const routes = (await import('./routes')).default;
+      
+      console.log('[SecureServer] Creating agent router...');
       const agentRouter = await createAgentRouter(this.modelRouter);
-      this.app.use('/api', agentRouter);
+      console.log('[SecureServer] Agent router created successfully');
+      
+      // Mount specific routes first
+      console.log('[SecureServer] Mounting voice routes at /api/voice');
       this.app.use('/api/voice', voiceRouter);
+      console.log('[SecureServer] Voice routes mounted successfully');
+      
+      // Mount memory and tools routes
+      console.log('[SecureServer] Mounting memory routes at /api/memory');
+      this.app.use('/api/memory', memoryRoutes);
+      console.log('[SecureServer] Memory routes mounted successfully');
+      
+      console.log('[SecureServer] Mounting tools routes at /api/tools');
+      this.app.use('/api/tools', toolsRoutes);
+      console.log('[SecureServer] Tools routes mounted successfully');
+      
+      // Then mount auth routes
+      this.app.use('/api', routes);  // This mounts /api/auth from routes/index.ts
+      
+      // Finally mount the general agent router
+      console.log('[SecureServer] Mounting agent router at /api/agent');
+      this.app.use('/api/agent', agentRouter);
+      console.log('[SecureServer] Agent router mounted successfully');
 
       // Metrics endpoint with authentication
       this.app.get('/api/metrics', (req: AuthenticatedRequest, res: Response) => {
@@ -750,6 +775,8 @@ class SecureExpressServer {
         }
       });
 
+      
+
       console.log('[SecureServer] Agent routes initialized');
     } catch (error) {
       console.error('[SecureServer] Failed to initialize agent routes:', error);
@@ -768,7 +795,8 @@ class SecureExpressServer {
         this.server = this.app.listen(currentPort)
           .on('listening', () => {
             this.port = currentPort;
-            console.log(`🚀 Luna Agent secure server running on port ${this.port}`);
+            // ENSURE this line exists
+            console.log(`[backend] listening on http://localhost:${this.port}`);
             console.log(`📊 Health check: http://localhost:${this.port}/health`);
             console.log(`🔒 Security metrics: http://localhost:${this.port}/api/security/status`);
             console.log(`📈 System metrics: http://localhost:${this.port}/api/metrics`);

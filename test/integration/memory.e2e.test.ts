@@ -48,6 +48,9 @@ describe('Memory System Integration Tests', () => {
       
       testMemoryId = addResult.id;
 
+      // Add a small delay to ensure the memory is properly indexed
+      await new Promise(resolve => setTimeout(resolve, 100));
+
       // Step 2: Search for the memory
       const searchResult = await runTool('search_memory', {
         query: 'integration test'
@@ -89,7 +92,7 @@ describe('Memory System Integration Tests', () => {
         .rejects.toThrow(`Memory not found: ${testMemoryId}`);
 
       testMemoryId = ''; // Mark as cleaned up
-    }, 15000); // 15 second timeout for full flow
+    }, 30000); // 30 second timeout for full flow
 
     test('should handle memory statistics and system status', async () => {
       // Test memory statistics

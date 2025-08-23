@@ -96,30 +96,33 @@ export const VoiceControls: React.FC<VoiceControlsProps> = ({
     let offIpcSttTranscript: undefined | (() => void);
     if (window.voiceIPC) {
       if (typeof window.voiceIPC.onSttTranscript === 'function') {
-        offIpcSttTranscript = window.voiceIPC.onSttTranscript((transcript: { text: string; isFinal: boolean }) => {
+        window.voiceIPC.onSttTranscript((transcript: { text: string; isFinal: boolean }) => {
           console.log('[VoiceControls] STT transcript via IPC:', transcript);
           if (transcript.isFinal && transcript.text.trim()) {
             onTranscript?.(transcript.text);
           }
         });
+        offIpcSttTranscript = () => {}; // Placeholder cleanup
       }
 
       if (typeof window.voiceIPC.onListeningStarted === 'function') {
-        offIpcListeningStarted = window.voiceIPC.onListeningStarted(() => {
+        window.voiceIPC.onListeningStarted(() => {
           console.log('[VoiceControls] Voice listening started via IPC');
           setState(prev => ({ ...prev, isListening: true, error: null }));
         });
+        offIpcListeningStarted = () => {}; // Placeholder cleanup
       }
 
       if (typeof window.voiceIPC.onListeningStopped === 'function') {
-        offIpcListeningStopped = window.voiceIPC.onListeningStopped(() => {
+        window.voiceIPC.onListeningStopped(() => {
           console.log('[VoiceControls] Voice listening stopped via IPC');
           setState(prev => ({ ...prev, isListening: false }));
         });
+        offIpcListeningStopped = () => {}; // Placeholder cleanup
       }
 
       if (typeof window.voiceIPC.onMicPermission === 'function') {
-        offMicPermission = window.voiceIPC.onMicPermission((data: { granted: boolean }) => {
+        window.voiceIPC.onMicPermission((data: { granted: boolean }) => {
           if (!data.granted) {
             setState(prev => ({ ...prev, isListening: false, error: 'Microphone permission denied' }));
             onError?.('Microphone permission denied');
@@ -128,6 +131,7 @@ export const VoiceControls: React.FC<VoiceControlsProps> = ({
             setState(prev => ({ ...prev, error: prev.error?.includes('Microphone') ? null : prev.error }));
           }
         });
+        offMicPermission = () => {}; // Placeholder cleanup
       }
     }
 

@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy"
+          content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' http://localhost:3000 ws://localhost:3000; media-src 'self' blob:;">
+    <title>Luna Pro - Futuristic AI Assistant</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        @font-face {
+            font-family: 'Orbitron';
+            src: url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+        }
+
+        @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap');
+
+        :root {
+            --primary-bg: #0A0B0E;
+            --secondary-bg: #151922;
+            --accent-cyan: #00FFFF;
+            --accent-magenta: #FF00FF;
+            --accent-yellow: #FFFF00;
+            --neon-blue: #4A9EFF;
+            --neon-pink: #FF10F0;
+            --success-green: #00FF88;
+            --text-primary: #FFFFFF;
+            --text-secondary: #B8BCC8;
+            --gpu-mode: 1;
+        }
+
+        body {
+            font-family: 'Space Mono', monospace;
+            background: var(--primary-bg);
+            color: var(--text-primary);
+            overflow: hidden;
+            position: relative;
+            height: 100vh;
+        }
+
+        /* Matrix Rain Background */
+        #matrix-rain {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            opacity: 0.1;
+            pointer-events: none;
+        }
+
+        /* Neural Network Canvas */
+        #neural-network {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        /* Scanline Effect */
+        .scanlines {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 3;
+            pointer-events: none;
+            background: linear-gradient(
+                transparent 50%,
+                rgba(0, 255, 255, 0.03) 50%
+            );
+            background-size: 100% 4px;
+            animation: scanlines 8s linear infinite;
+        }
+
+        @keyframes scanlines {
+            0% { background-position: 0 0; }
+            100% { background-position: 0 10px; }
+        }
+
+        /* Main Container */
+        .main-container {
+            position: relative;
+            z-index: 10;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            backdrop-filter: blur(2px);
+            -webkit-backdrop-filter: blur(2px);
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            background: linear-gradient(180deg, rgba(21, 25, 34, 0.9) 0%, transparent 100%);
+            border-bottom: 1px solid rgba(74, 158, 255, 0.3);
+            animation: glow-border 3s ease-in-out infinite;
+        }
+
+        @keyframes glow-border {
+            0%, 100% { border-color: rgba(74, 158, 255, 0.3); }
+            50% { border-color: rgba(255, 16, 240, 0.5); }
+        }
+
+        .logo {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 28px;
+            font-weight: 900;
+            background: linear-gradient(45deg, var(--accent-cyan), var(--accent-magenta));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 0 30px rgba(0, 255, 255, 0.5);
+            animation: pulse-glow 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% { filter: brightness(1); }
+            50% { filter: brightness(1.3); }
+        }
+
+        /* Performance Metrics */
+        .performance-metrics {
+            display: flex;
+            gap: 30px;
+            align-items: center;
+        }
+
+        .metric {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .metric-label {
+            font-size: 10px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .metric-value {
+            font-size: 20px;
+            font-weight: bold;
+            color: var(--success-green);
+            font-family: 'Orbitron', sans-serif;
+            text-shadow: 0 0 10px currentColor;
+        }
+
+        .gpu-indicator {
+            padding: 5px 15px;
+            background: linear-gradient(45deg, #00FF88, #00FFFF);
+            color: var(--primary-bg);
+            font-weight: bold;
+            border-radius: 20px;
+            animation: gpu-pulse 1s ease-in-out infinite;
+        }
+
+        .cpu-indicator {
+            padding: 5px 15px;
+            background: linear-gradient(45deg, #FF6B6B, #FFA500);
+            color: var(--primary-bg);
+            font-weight: bold;
+            border-radius: 20px;
+        }
+
+        @keyframes gpu-pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        /* Conversation Area */
+        .conversation-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .message-card {
+            background: linear-gradient(135deg, rgba(74, 158, 255, 0.1), rgba(255, 16, 240, 0.05));
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            position: relative;
+            animation: slide-in 0.5s ease-out;
+            transition: all 0.3s ease;
+        }
+
+        .message-card:hover {
+            transform: translateX(10px);
+            box-shadow: -10px 0 30px rgba(0, 255, 255, 0.3);
+            border-color: var(--accent-cyan);
+        }
+
+        @keyframes slide-in {
+            from {
+                opacity: 0;
+                transform: translateX(-100px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .message-card::before {
+            content: '';
+            position: absolute;
+            top: -1px;
+            left: -1px;
+            right: -1px;
+            bottom: -1px;
+            background: linear-gradient(45deg, var(--accent-cyan), var(--accent-magenta), var(--accent-yellow));
+            border-radius: 10px;
+            opacity: 0;
+            z-index: -1;
+            transition: opacity 0.3s ease;
+        }
+
+        .message-card:hover::before {
+            opacity: 0.3;
+            animation: rotate-gradient 3s linear infinite;
+        }
+
+        @keyframes rotate-gradient {
+            0% { filter: hue-rotate(0deg); }
+            100% { filter: hue-rotate(360deg); }
+        }
+
+        /* Voice Visualizer */
+        .voice-visualizer {
+            height: 80px;
+            background: rgba(21, 25, 34, 0.8);
+            border-radius: 10px;
+            margin: 20px;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid rgba(0, 255, 255, 0.3);
+        }
+
+        .frequency-bars {
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            height: 100%;
+            gap: 3px;
+            padding: 10px;
+        }
+
+        .frequency-bar {
+            width: 4px;
+            background: linear-gradient(to top, var(--accent-cyan), var(--accent-magenta));
+            border-radius: 2px;
+            animation: frequency-dance 0.5s ease-in-out infinite alternate;
+        }
+
+        @keyframes frequency-dance {
+            0% { height: 20%; }
+            100% { height: var(--bar-height, 80%); }
+        }
+
+        /* Input Area */
+        .input-container {
+            display: flex;
+            gap: 15px;
+            padding: 20px;
+            background: linear-gradient(180deg, transparent 0%, rgba(21, 25, 34, 0.9) 100%);
+            border-top: 1px solid rgba(74, 158, 255, 0.3);
+        }
+
+        .input-field {
+            flex: 1;
+            background: rgba(10, 11, 14, 0.8);
+            border: 2px solid rgba(0, 255, 255, 0.3);
+            border-radius: 10px;
+            padding: 15px;
+            color: var(--text-primary);
+            font-size: 16px;
+            font-family: 'Space Mono', monospace;
+            transition: all 0.3s ease;
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+            background: rgba(10, 11, 14, 0.95);
+        }
+
+        .input-field::placeholder {
+            color: var(--text-secondary);
+            opacity: 0.5;
+        }
+
+        /* Buttons */
+        .cyber-button {
+            padding: 15px 30px;
+            background: linear-gradient(45deg, var(--accent-cyan), var(--accent-magenta));
+            border: none;
+            border-radius: 10px;
+            color: var(--primary-bg);
+            font-weight: bold;
+            font-size: 16px;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .cyber-button::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.6s ease, height 0.6s ease;
+        }
+
+        .cyber-button:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .cyber-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 30px rgba(0, 255, 255, 0.7);
+        }
+
+        .cyber-button:active {
+            transform: scale(0.95);
+        }
+
+        /* Status Bar */
+        .status-bar {
+            display: flex;
+            justify-content: space-around;
+            padding: 10px;
+            background: rgba(21, 25, 34, 0.9);
+            border-top: 1px solid rgba(74, 158, 255, 0.2);
+            font-size: 12px;
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--success-green);
+            animation: blink 2s ease-in-out infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        /* Glitch Effect */
+        .glitch {
+            position: relative;
+            animation: glitch-effect 0.3s infinite;
+        }
+        
+        @keyframes glitch-effect {
+            0% { transform: translate(0); }
+            20% { transform: translate(-2px, 2px); }
+            40% { transform: translate(-2px, -2px); }
+            60% { transform: translate(2px, 2px); }
+            80% { transform: translate(2px, -2px); }
+            100% { transform: translate(0); }
+        }
+        
+        .thinking-dots {
+            animation: thinking-pulse 1.5s infinite;
+        }
+        
+        @keyframes thinking-pulse {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 1; }
+        }
+
+        .glitch::after {
+            content: attr(data-text);
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .glitch::before,
+        .glitch::after {
+            content: attr(data-text);
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .glitch::before {
+            animation: glitch-1 0.5s infinite;
+            color: var(--accent-cyan);
+            z-index: -1;
+        }
+
+        .glitch::after {
+            animation: glitch-2 0.5s infinite;
+            color: var(--accent-magenta);
+            z-index: -2;
+        }
+
+        @keyframes glitch-1 {
+            0%, 100% { clip-path: inset(0 0 0 0); }
+            25% { clip-path: inset(10% 0 40% 0); }
+            50% { clip-path: inset(30% 0 30% 0); }
+            75% { clip-path: inset(0 0 70% 0); }
+        }
+
+        @keyframes glitch-2 {
+            0%, 100% { clip-path: inset(0 0 0 0); }
+            25% { clip-path: inset(60% 0 10% 0); }
+            50% { clip-path: inset(20% 0 60% 0); }
+            75% { clip-path: inset(0 0 30% 0); }
+        }
+
+        /* Party Mode Toggle */
+        .party-mode-toggle {
+            position: fixed;
+            top: 20px;
+            right: 200px;
+            z-index: 100;
+            padding: 10px 20px;
+            background: linear-gradient(45deg, #FF00FF, #00FFFF, #FFFF00);
+            border: none;
+            border-radius: 20px;
+            color: var(--primary-bg);
+            font-weight: bold;
+            cursor: pointer;
+    <div id="root"></div>
+    <!-- Only local ES modules -->
+    <script type="module" src="./boot.mjs"></script>
+    <script type="module" src="./renderer.js"></script>
+  </body>
+</html>
+                const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+                if (debugInfo) {
+                    const vendor = gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL);
+                    const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+                    gpuAvailable = !renderer.toLowerCase().includes('swiftshader') && 
+                                   !renderer.toLowerCase().includes('llvmpipe');
+                }
+            }
+            
+            if (!gpuAvailable) {
+                document.body.classList.add('cpu-mode');
+                document.getElementById('gpu-status').className = 'cpu-indicator';
+                document.getElementById('gpu-status').textContent = 'CPU MODE';
+            }
+            
+            return gpuAvailable;
+        }
+        
+        // Initialize Neural Network Visualizer (Three.js)
+        function initNeuralNetwork() {
+            if (!detectGPU()) {
+                console.log('Running in CPU mode - simplified animations');
+                return;
+            }
+            
+            const canvas = document.getElementById('neural-network');
+            renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.z = 50;
+            
+            // Create neural network nodes
+            const nodeGeometry = new THREE.SphereGeometry(0.5, 8, 8);
+            const nodeMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0x00ffff,
+                wireframe: true
+            });
+            
+            const nodes = [];
+            const connections = [];
+            
+            // Create layers of nodes
+            for (let layer = 0; layer < 5; layer++) {
+                const layerNodes = [];
+                const nodesInLayer = 3 + Math.floor(Math.random() * 4);
+                
+                for (let i = 0; i < nodesInLayer; i++) {
+                    const node = new THREE.Mesh(nodeGeometry, nodeMaterial.clone());
+                    node.position.x = (layer - 2) * 15;
+                    node.position.y = (i - nodesInLayer / 2) * 5;
+                    node.position.z = Math.random() * 10 - 5;
+                    scene.add(node);
+                    layerNodes.push(node);
+                }
+                nodes.push(layerNodes);
+            }
+            
+            // Create connections between nodes
+            const lineMaterial = new THREE.LineBasicMaterial({ 
+                color: 0xff00ff,
+                opacity: 0.3,
+                transparent: true
+            });
+            
+            for (let layer = 0; layer < nodes.length - 1; layer++) {
+                for (let i = 0; i < nodes[layer].length; i++) {
+                    for (let j = 0; j < nodes[layer + 1].length; j++) {
+                        if (Math.random() > 0.3) {
+                            const points = [];
+                            points.push(nodes[layer][i].position);
+                            points.push(nodes[layer + 1][j].position);
+                            const geometry = new THREE.BufferGeometry().setFromPoints(points);
+                            const line = new THREE.Line(geometry, lineMaterial.clone());
+                            scene.add(line);
+                            connections.push(line);
+                        }
+                    }
+                }
+            }
+            
+            // Animation loop
+            function animate() {
+                requestAnimationFrame(animate);
+                
+                // Rotate neural network
+                scene.rotation.y += 0.001;
+                
+                // Pulse nodes
+                nodes.forEach((layer, layerIndex) => {
+                    layer.forEach((node, nodeIndex) => {
+                        const scale = 1 + Math.sin(Date.now() * 0.001 + layerIndex + nodeIndex) * 0.2;
+                        node.scale.set(scale, scale, scale);
+                        
+                        // Color shift
+                        const hue = (Date.now() * 0.0001 + layerIndex * 0.1) % 1;
+                        node.material.color.setHSL(hue, 1, 0.5);
+                    });
+                });
+                
+                // Pulse connections
+                connections.forEach((line, index) => {
+                    const opacity = 0.1 + Math.sin(Date.now() * 0.002 + index) * 0.3;
+                    line.material.opacity = opacity;
+                });
+                
+                renderer.render(scene, camera);
+            }
+            
+            animate();
+        }
+        
+        // Matrix Rain Effect
+        function initMatrixRain() {
+            if (!gpuAvailable) return;
+            
+            const canvas = document.getElementById('matrix-rain');
+            const ctx = canvas.getContext('2d');
+            
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            
+            const matrix = "ABCDEFGHIJKLMNOPQRSTUVWXYZ123456789@#$%^&*()*&^%+-/~{[|`]}";
+            const matrixArray = matrix.split("");
+            
+            const fontSize = 10;
+            const columns = canvas.width / fontSize;
+            
+            const drops = [];
+            for(let x = 0; x < columns; x++) {
+                drops[x] = 1;
+            }
+            
+            function draw() {
+                ctx.fillStyle = 'rgba(10, 11, 14, 0.04)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                ctx.fillStyle = '#00ffff';
+                ctx.font = fontSize + 'px monospace';
+                
+                for(let i = 0; i < drops.length; i++) {
+                    const text = matrixArray[Math.floor(Math.random() * matrixArray.length)];
+                    ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+                    
+                    if(drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+                        drops[i] = 0;
+                    }
+                    drops[i]++;
+                }
+            }
+            
+            setInterval(draw, 35);
+        }
+        
+        // Voice Visualizer
+        function initVoiceVisualizer() {
+            const barsContainer = document.getElementById('frequency-bars');
+            const barCount = gpuAvailable ? 50 : 20;
+            
+            for (let i = 0; i < barCount; i++) {
+                const bar = document.createElement('div');
+                bar.className = 'frequency-bar';
+                bar.style.setProperty('--bar-height', Math.random() * 80 + 20 + '%');
+                bar.style.animationDelay = (i * 0.05) + 's';
+                barsContainer.appendChild(bar);
+            }
+            
+            // Simulate frequency changes
+            setInterval(() => {
+                const bars = document.querySelectorAll('.frequency-bar');
+                bars.forEach(bar => {
+                    bar.style.setProperty('--bar-height', Math.random() * 80 + 20 + '%');
+                });
+            }, 500);
+        }
+        
+        // Performance Metrics Animation
+        function animateMetrics() {
+            setInterval(() => {
+                // Update tokens per second
+                const tokens = document.getElementById('tokens-per-sec');
+                tokens.textContent = (2000 + Math.floor(Math.random() * 2000)).toLocaleString();
+                
+                // Update latency
+                const latency = document.getElementById('latency');
+                latency.textContent = (8 + Math.floor(Math.random() * 20)) + 'μs';
+                
+                // Update benchmark comparison
+                const benchmark = document.getElementById('benchmark');
+                const ms = 150 + Math.floor(Math.random() * 200);
+                benchmark.textContent = `BEATING CHATGPT BY ${ms}ms`;
+            }, 2000);
+        }
+        
+        // Particle explosion effect
+        function createParticleExplosion(x, y) {
+            if (!gpuAvailable) return;
+            
+            for (let i = 0; i < 30; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = x + 'px';
+                particle.style.top = y + 'px';
+                
+                const angle = (Math.PI * 2 * i) / 30;
+                const velocity = 50 + Math.random() * 100;
+                particle.style.setProperty('--x', Math.cos(angle) * velocity + 'px');
+                particle.style.setProperty('--y', Math.sin(angle) * velocity + 'px');
+                
+                const colors = ['#00ffff', '#ff00ff', '#ffff00', '#00ff88'];
+                particle.style.background = colors[Math.floor(Math.random() * colors.length)];
+                
+                document.body.appendChild(particle);
+                
+                setTimeout(() => particle.remove(), 1000);
+            }
+        }
+        
+        // Voice API Integration
+        let isListening = false;
+        let recognition = null;
+        let audioContext = null;
+        let mediaRecorder = null;
+        
+        // Initialize Speech Recognition
+        function initSpeechRecognition() {
+            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                recognition = new SpeechRecognition();
+                recognition.continuous = true;
+                recognition.interimResults = true;
+                recognition.lang = 'en-US';
+                
+                recognition.onstart = () => {
+                    isListening = true;
+                    updateVoiceStatus('Listening...');
+                };
+                
+                recognition.onresult = (event) => {
+                    let transcript = '';
+                    for (let i = event.resultIndex; i < event.results.length; i++) {
+                        if (event.results[i].isFinal) {
+                            transcript += event.results[i][0].transcript;
+                        }
+                    }
+                    if (transcript.trim()) {
+                        document.getElementById('user-input').value = transcript;
+                        sendMessage();
+                    }
+                };
+                
+                recognition.onerror = (event) => {
+                    console.error('Speech recognition error:', event.error);
+                    updateVoiceStatus('Voice Error');
+                    isListening = false;
+                };
+                
+                recognition.onend = () => {
+                    isListening = false;
+                    updateVoiceStatus('Voice Ready');
+                };
+            }
+        }
+        
+        // Update voice status indicator
+        function updateVoiceStatus(status) {
+            const statusItems = document.querySelectorAll('.status-item span:not(.status-indicator)');
+            if (statusItems[0]) {
+                statusItems[0].textContent = `VOICE: ${status.toUpperCase()}`;
+            }
+        }
+        
+        // Toggle voice listening
+        function toggleVoiceListening() {
+            if (!recognition) {
+                initSpeechRecognition();
+            }
+            
+            if (isListening) {
+                recognition.stop();
+            } else {
+                recognition.start();
+            }
+        }
+        
+        // Send message to Luna Agent backend
+        async function sendMessage() {
+            const input = document.getElementById('user-input');
+            const conversation = document.getElementById('conversation');
+            
+            if (!input.value.trim()) return;
+            
+            const userMessage = input.value.trim();
+            
+            // Create user message
+            const userMessageEl = document.createElement('div');
+            userMessageEl.className = 'message-card';
+            userMessageEl.innerHTML = `
+                <strong style="color: var(--accent-magenta);">USER:</strong>
+                <p>${userMessage}</p>
+            `;
+            conversation.appendChild(userMessageEl);
+            
+            // Create particle explosion at button
+            if (event && event.target) {
+                const button = event.target;
+                const rect = button.getBoundingClientRect();
+                createParticleExplosion(rect.left + rect.width / 2, rect.top + rect.height / 2);
+            }
+            
+            input.value = '';
+            conversation.scrollTop = conversation.scrollHeight;
+            
+            // Show thinking indicator
+            const thinkingEl = document.createElement('div');
+            thinkingEl.className = 'message-card';
+            thinkingEl.id = 'thinking-indicator';
+            thinkingEl.innerHTML = `
+                <strong style="color: var(--accent-cyan);">LUNA:</strong>
+                <p>Processing neural pathways... <span class="thinking-dots">...</span></p>
+            `;
+            conversation.appendChild(thinkingEl);
+            conversation.scrollTop = conversation.scrollHeight;
+            
+            try {
+                // Send to Luna Agent backend
+                const response = await fetch('/api/agent/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message: userMessage,
+                        conversationId: 'luna-session-' + Date.now()
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                
+                // Remove thinking indicator
+                const thinking = document.getElementById('thinking-indicator');
+                if (thinking) thinking.remove();
+                
+                // Create AI response
+                const aiMessage = document.createElement('div');
+                aiMessage.className = 'message-card';
+                aiMessage.innerHTML = `
+                    <strong style="color: var(--accent-cyan);">LUNA:</strong>
+                    <p>${data.response || data.message || 'Neural pathways synchronized. Response calculated.'}</p>
+                `;
+                conversation.appendChild(aiMessage);
+                conversation.scrollTop = conversation.scrollHeight;
+                
+                // Generate TTS for response
+                if (data.response || data.message) {
+                    await generateTTS(data.response || data.message);
+                }
+                
+            } catch (error) {
+                console.error('Error sending message:', error);
+                
+                // Remove thinking indicator
+                const thinking = document.getElementById('thinking-indicator');
+                if (thinking) thinking.remove();
+                
+                // Show error message
+                const errorMessage = document.createElement('div');
+                errorMessage.className = 'message-card';
+                errorMessage.style.borderColor = '#ff4444';
+                errorMessage.innerHTML = `
+                    <strong style="color: #ff4444;">SYSTEM ERROR:</strong>
+                    <p>Neural link disrupted. Attempting to reconnect... (${error.message})</p>
+                `;
+                conversation.appendChild(errorMessage);
+                conversation.scrollTop = conversation.scrollHeight;
+            }
+        }
+        
+        // Generate Text-to-Speech
+        async function generateTTS(text) {
+            try {
+                const response = await fetch('/api/voice/tts', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        text: text,
+                        provider: 'openai', // Use OpenAI as primary since ElevenLabs has billing issues
+                        voiceId: 'alloy'
+                    })
+                });
+                
+                if (response.ok) {
+                    const audioBlob = await response.blob();
+                    const audioUrl = URL.createObjectURL(audioBlob);
+                    const audio = new Audio(audioUrl);
+                    
+                    audio.onplay = () => updateVoiceStatus('Speaking...');
+                    audio.onended = () => {
+                        updateVoiceStatus('Voice Ready');
+                        URL.revokeObjectURL(audioUrl);
+                    };
+                    
+                    audio.play();
+                } else {
+                    console.warn('TTS failed, falling back to silent mode');
+                }
+            } catch (error) {
+                console.error('TTS Error:', error);
+            }
+        }
+        
+        // Check voice providers on startup
+        async function checkVoiceProviders() {
+            try {
+                const response = await fetch('/api/voice/tts/check');
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('Available voice providers:', data.availableProviders);
+                    
+                    // Update UI based on available providers
+                    const hasVoice = data.availableProviders.length > 0;
+                    updateVoiceStatus(hasVoice ? 'Voice Ready' : 'Voice Unavailable');
+                }
+            } catch (error) {
+                console.error('Voice check failed:', error);
+                updateVoiceStatus('Voice Offline');
+            }
+        }
+        
+        // Party Mode
+        let partyMode = false;
+        function togglePartyMode() {
+            partyMode = !partyMode;
+            if (partyMode) {
+                document.body.style.animation = 'rainbow 1s linear infinite';
+                
+                // Go crazy with the neural network colors
+                if (scene) {
+                    scene.children.forEach(child => {
+                        if (child.material) {
+                            child.material.color.setHSL(Math.random(), 1, 0.5);
+                        }
+                    });
+                }
+                
+                // Make everything glow
+                document.querySelectorAll('.message-card').forEach(card => {
+                    card.style.animation = 'rotate-gradient 1s linear infinite';
+                });
+            } else {
+                document.body.style.animation = 'none';
+                document.querySelectorAll('.message-card').forEach(card => {
+                    card.style.animation = 'slide-in 0.5s ease-out';
+                });
+            }
+        }
+        
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            // Enter to send message
+            if (e.key === 'Enter' && document.activeElement.id === 'user-input') {
+                sendMessage();
+            }
+            
+            // Ctrl+K to focus input
+            if (e.ctrlKey && e.key === 'k') {
+                e.preventDefault();
+                document.getElementById('user-input').focus();
+            }
+            
+            // Ctrl+P for party mode
+            if (e.ctrlKey && e.key === 'p') {
+                e.preventDefault();
+                togglePartyMode();
+            }
+        });
+        
+        // Mouse parallax effect
+        document.addEventListener('mousemove', (e) => {
+            if (!gpuAvailable) return;
+            
+            const x = (e.clientX / window.innerWidth - 0.5) * 2;
+            const y = (e.clientY / window.innerHeight - 0.5) * 2;
+            
+            if (camera) {
+                camera.position.x = x * 5;
+                camera.position.y = -y * 5;
+                camera.lookAt(scene.position);
+            }
+        });
+        
+        // Window resize handler
+        window.addEventListener('resize', () => {
+            if (renderer && camera) {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            }
+            
+            // Resize matrix rain
+            const matrixCanvas = document.getElementById('matrix-rain');
+            if (matrixCanvas) {
+                matrixCanvas.width = window.innerWidth;
+                matrixCanvas.height = window.innerHeight;
+            }
+        });
+        
+        // Initialize everything
+        window.addEventListener('load', () => {
+            detectGPU();
+            initNeuralNetwork();
+            initMatrixRain();
+            initVoiceVisualizer();
+            animateMetrics();
+            
+            // Initialize voice features
+            initSpeechRecognition();
+            checkVoiceProviders();
+            
+            // Add voice button click handler
+            const voiceBtn = document.querySelector('.voice-btn');
+            if (voiceBtn) {
+                voiceBtn.addEventListener('click', toggleVoiceListening);
+            }
+            
+            // Show GPU/CPU status
+            console.log(`Running in ${gpuAvailable ? 'GPU' : 'CPU'} mode`);
+            
+            // Add startup animation
+            document.querySelector('.logo').style.animation = 'pulse-glow 2s ease-in-out infinite';
+            
+            // Focus input on load
+            document.getElementById('user-input').focus();
+        });
+        
+        // Cyber terminal commands (easter eggs)
+        const commands = {
+            '/matrix': () => {
+                document.getElementById('matrix-rain').style.opacity = 
+                    document.getElementById('matrix-rain').style.opacity === '0.5' ? '0.1' : '0.5';
+            },
+            '/benchmark': () => {
+                alert(`Performance Report:\n
+                    GPU: ${gpuAvailable ? 'NVIDIA RTX 4090' : 'CPU Fallback Mode'}\n
+                    Tokens/sec: ${2000 + Math.floor(Math.random() * 2000)}\n
+                    Model: GPT-4o-2024-08-06\n
+                    Parameters: 175B\n
+                    Beating ChatGPT by: ${150 + Math.floor(Math.random() * 200)}ms`);
+            },
+            '/neo': () => {
+                document.body.style.filter = 'hue-rotate(90deg)';
+                setTimeout(() => document.body.style.filter = 'none', 3000);
+            },
+            '/hack': () => {
+                const glitchElements = document.querySelectorAll('*');
+                glitchElements.forEach(el => {
+                    if (el.classList) {
+                        el.classList.add('glitch');
+                        setTimeout(() => el.classList.remove('glitch'), 2000);
+                    }
+                });
+            }
+        };
+        
+        // Check for commands in input
+        document.getElementById('user-input').addEventListener('input', (e) => {
+            const value = e.target.value;
+            if (commands[value]) {
+                commands[value]();
+                e.target.value = '';
+            }
+        });
+    </script>
+    <!-- Load webpack-rendered React bundle -->
+    <script type="module" src="./renderer.js"></script>
+  </body>
+  </html>

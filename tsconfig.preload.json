@@ -1,0 +1,23 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "dist/app/main",
+    "rootDir": "app/main",
+    "module": "commonjs",
+    "target": "ES2020",
+    "esModuleInterop": false,
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "sourceMap": true,
+    "types": ["node", "electron"],
+    "skipLibCheck": true
+  },
+  "include": [
+    "app/main/preload.ts"
+  ],
+  "exclude": [
+    "app/renderer/**/*",
+    "backend/**/*",
+    "node_modules"
+  ]
+}

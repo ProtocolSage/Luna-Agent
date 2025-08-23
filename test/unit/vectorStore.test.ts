@@ -223,7 +223,7 @@ describe('VectorStore', () => {
       
       const deleted = await vectorStore.deleteDocument('to-delete');
       expect(deleted).toBe(true);
-      expect(await vectorStore.getDocument('to-delete')).toBeUndefined();
+      expect(await vectorStore.getDocument('to-delete')).toBeNull();
     });
 
     it('should clear all documents', async () => {

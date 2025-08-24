@@ -41,3 +41,5 @@ release/
 *.log
 *.tmp
 *.exe
+
+models/**/*.bin

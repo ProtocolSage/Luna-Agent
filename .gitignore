@@ -28,3 +28,16 @@ Thumbs.db
 .vscode/
 .idea/
 .env
+
+# builds & temp
+.dist-electron/
+win-unpacked/
+.tmp.driveupload/
+dist/
+out/
+release/
+*.asar
+*.map
+*.log
+*.tmp
+*.exe

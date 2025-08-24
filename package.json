@@ -1,6 +1,6 @@
 {
   "name": "luna-agent-production",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Production-Ready AI Assistant with Voice Interface",
   "main": "dist/bootstrap.cjs",
   "homepage": "./",

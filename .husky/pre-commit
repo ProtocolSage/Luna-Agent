@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+. "$(dirname "$0")/_/husky.sh"
+
+# Cross-platform size guard (Node)
+node scripts/precommit-maxsize.mjs || exit 1
+
+# Required checks
+npm run -s type-check || exit 1
+
+# Optional: enable if configured
+# npx lint-staged || exit 1

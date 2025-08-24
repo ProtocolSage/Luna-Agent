@@ -23,7 +23,11 @@
     "start": "npm run dev:full",
     "dev": "node scripts/launch-electron.cjs",
     "dev:full": "concurrently -k -n BACKEND,ELECTRON -c blue,magenta \"node dist/backend/server.js\" \"node scripts/launch-electron.cjs\"",
-    "dist": "npm run build && electron-builder --win --x64"
+    "dist": "npm run build && electron-builder --win --x64",
+    "type-check": "tsc -p tsconfig.json --noEmit",
+    "test:ci": "jest --ci --runInBand",
+    "prepare": "husky install",
+    "postinstall": "node scripts/postinstall.js"
   },
   "build": {
     "appId": "com.yourco.luna",

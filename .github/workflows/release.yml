@@ -1,0 +1,28 @@
+name: Release (Windows)
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-win:
+    runs-on: windows-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} # built-in token
+      SKIP_MODEL_FETCH: "1" # skip model download in CI
+      NODE_OPTIONS: "--max-old-space-size=4096"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      # If your build truly needs the model at build time, uncomment:
+      # - shell: pwsh
+      #   run: ./scripts/fetch-whisper.ps1
+      - run: npx electron-builder --win --publish always

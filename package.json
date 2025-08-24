@@ -58,7 +58,14 @@
       "allowElevation": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true
-    }
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "ProtocolSage",
+        "repo": "Luna-Agent"
+      }
+    ]
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.7.0",
@@ -184,7 +191,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/luna-agent/luna-agent-production.git"
+    "url": "https://github.com/ProtocolSage/Luna-Agent.git"
   },
   "bugs": {
     "url": "https://github.com/luna-agent/luna-agent-production/issues"

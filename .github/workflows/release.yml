@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - "v*.*.*"
+  workflow_dispatch: {}
 
 permissions:
   contents: write
@@ -25,4 +26,7 @@ jobs:
       # If your build truly needs the model at build time, uncomment:
       # - shell: pwsh
       #   run: ./scripts/fetch-whisper.ps1
-      - run: npx electron-builder --win --publish always
+      - name: Build main process
+        run: npm run build
+      - name: Package & publish
+        run: npx electron-builder --win --publish always

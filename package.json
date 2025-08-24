@@ -17,7 +17,7 @@
     "build:backend": "tsc -p tsconfig.backend.json",
     "build:renderer": "node scripts/build-renderer.js",
     "copy:assets": "node scripts/copy-assets.js",
-    "build": "rimraf dist && npm run build:main && npm run build:preload && npm run build:backend && npm run build:renderer && npm run copy:assets",
+    "build": "node scripts/build-main.mjs",
     "backend": "node dist/backend/server.js",
     "electron": "node scripts/launch-electron.cjs",
     "start": "npm run dev:full",

@@ -43,3 +43,5 @@ release/
 *.exe
 
 models/**/*.bin
+
+models/**/*.bin

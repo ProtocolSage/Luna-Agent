@@ -1,6 +1,9 @@
 import EventEmitter from 'events';
 import { SecurityService } from './SecurityService';
 import { API_BASE, apiFetch } from './config';
+import { API } from '../config/endpoints';
+
+// Browser speech APIs (using type assertion where needed)
 
 // Voice Service Events Interface
 export interface VoiceServiceEvents {
@@ -242,6 +245,59 @@ export class VoiceService extends EventEmitter {
     } catch (error) {
       console.error('[VoiceService] Initialization failed:', error);
       this.emit('error', `Voice service initialization failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Transcribe audio blob to text using voice service
+   */
+  public async transcribe(audio: Blob): Promise<string> {
+    const formData = new FormData();
+    formData.append('file', audio, 'audio.webm');
+    
+    try {
+      const response = await apiFetch(API.STT_TRANSCRIBE, {
+        method: 'POST',
+        body: formData
+      });
+      
+      if (!response.ok) {
+        throw new Error(`STT failed: ${response.status}`);
+      }
+      
+      const data = await response.json().catch(() => ({} as any));
+      const transcript = (
+        data.text ??
+        data.transcription ??
+        (data.result ? data.result.text : undefined) ??
+        ''
+      ).toString();
+      return transcript;
+    } catch (error) {
+      console.error('[VoiceService] Transcribe error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Synthesize text to audio blob using voice service
+   */
+  public async synthesize(text: string): Promise<Blob> {
+    try {
+      const response = await apiFetch(API.TTS_SYNTHESIZE, {
+        method: 'POST',
+        body: { text }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`TTS failed: ${response.status}`);
+      }
+      
+      const buffer = await response.arrayBuffer();
+      return new Blob([buffer], { type: 'audio/wav' });
+    } catch (error) {
+      console.error('[VoiceService] Synthesize error:', error);
       throw error;
     }
   }
@@ -1172,7 +1228,7 @@ class WebSpeechSTTProvider implements STTProvider {
     if (!this.recognition) throw new Error('Recognition not initialized');
     
     this.recognition.continuous = true;
-    this.recognition.onresult = (event) => {
+    this.recognition.onresult = (event: any) => {
       const result = event.results[event.results.length - 1];
       if (result.isFinal) {
         onResult(result[0].transcript);
@@ -1197,7 +1253,7 @@ class WebSpeechSTTProvider implements STTProvider {
 }
 
 class WhisperSTTProvider implements STTProvider {
-  private apiEndpoint = `${API_BASE}/api/voice/transcribe`;
+  private apiEndpoint = `${API_BASE}${API.STT_TRANSCRIBE}`;
   
   isSupported(): boolean {
     return true; // Assume backend support
@@ -1218,7 +1274,7 @@ class WhisperSTTProvider implements STTProvider {
   async transcribe(audioData: ArrayBuffer): Promise<string> {
     const formData = new FormData();
     const audioBlob = new Blob([audioData], { type: 'audio/webm' });
-    formData.append('audio', audioBlob, 'recording.webm');
+    formData.append('file', audioBlob, 'recording.webm');
     
     const response = await fetch(this.apiEndpoint, {
       method: 'POST',
@@ -1309,7 +1365,7 @@ class WebSpeechTTSProvider implements TTSProvider {
 
 class ElevenLabsTTSProvider implements TTSProvider {
   private apiKey: string | null = null;
-  private apiEndpoint = `${API_BASE}/api/voice/tts`;
+  private apiEndpoint = `${API_BASE}${API.TTS_SYNTHESIZE}`;
   
   isSupported(): boolean {
     return true; // Check will be done in initialize
@@ -1318,7 +1374,7 @@ class ElevenLabsTTSProvider implements TTSProvider {
   async initialize(): Promise<void> {
     // Check if ElevenLabs is configured with proper 404 handling
     try {
-      const res = await fetch(`${API_BASE}/api/voice/tts/check`).catch(() => null);
+      const res = await fetch(`${API_BASE}${API.TTS_CHECK}`).catch(() => null);
       if (res?.ok) {
         // ElevenLabs is available
         console.log('ElevenLabs TTS provider available');
@@ -1453,4 +1509,3 @@ export async function destroyVoiceService(): Promise<void> {
     voiceServiceInstance = null;
   }
 }
-

@@ -1,6 +1,9 @@
 // app/renderer/services/api/voiceClient.ts
 // Robust TTS/STT client for the renderer. Works with strict CSP and your fetch shim.
 
+import { apiFetch } from '../config';
+import { API } from '../../config/endpoints';
+
 export type TTSProvider = 'elevenlabs' | 'openai' | undefined;
 
 export interface TTSOptions {
@@ -16,16 +19,15 @@ export interface TTSOptions {
 export async function tts(text: string, opt: TTSOptions = {}): Promise<Blob> {
   if (!text || !text.trim()) throw new Error('tts: text required');
 
-  const r = await fetch('/api/voice/tts', {
+  const r = await apiFetch(API.TTS_SYNTHESIZE, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
+    body: {
       text,
       provider: opt.provider,         // undefined => backend tries ElevenLabs then OpenAI
       voiceId: opt.voiceId,
       stability: opt.stability,
       similarityBoost: opt.similarityBoost
-    })
+    }
   });
 
   if (!r.ok) {
@@ -45,7 +47,7 @@ export async function transcribe(audio: Blob): Promise<string> {
   const fd = new FormData();
   fd.append('file', audio, 'audio.webm'); // the route expects "file"
 
-  const r = await fetch('/api/voice/transcribe', { method: 'POST', body: fd });
+  const r = await apiFetch(API.STT_TRANSCRIBE, { method: 'POST', body: fd });
   if (!r.ok) {
     const msg = await safeError(r);
     throw new Error(`Transcribe ${r.status}: ${msg}`);

@@ -8,10 +8,10 @@ const router = express.Router();
 const elevenLabsService = new ElevenLabsService();
 const upload = multer({ limits: { fileSize: 25 * 1024 * 1024 } });
 
-// Initialize OpenAI client
-const openai = process.env.OPENAI_API_KEY ? new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-}) : null;
+// Initialize OpenAI client - removed global initialization as it causes issues with env loading
+// const openai = process.env.OPENAI_API_KEY ? new OpenAI({
+//   apiKey: process.env.OPENAI_API_KEY,
+// }) : null;
 
 router.get('/tts/check', (req: Request, res: Response) => {
   const hasElevenLabs = !!process.env.ELEVEN_API_KEY;
@@ -55,9 +55,10 @@ router.post('/tts', async (req: Request, res: Response) => {
     }
 
     // Try OpenAI TTS as fallback or if explicitly requested
-    if (openai && (provider === 'openai' || !provider)) {
+    if (process.env.OPENAI_API_KEY && (provider === 'openai' || !provider)) {
       try {
-        const response = await openai.audio.speech.create({
+        const openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+        const response = await openaiClient.audio.speech.create({
           model: 'tts-1',
           voice: voiceId || 'alloy', // OpenAI voices: alloy, echo, fable, onyx, nova, shimmer
           input: text,
@@ -90,7 +91,8 @@ router.post('/tts', async (req: Request, res: Response) => {
   }
 });
 
-router.post('/transcribe', upload.single('file'), async (req, res): Promise<void> => {
+// Temporary alias handler for legacy clients posting to /stt directly
+router.post('/stt', upload.single('file'), async (req: Request, res: Response): Promise<void> => {
   try {
     if (!process.env.OPENAI_API_KEY) {
       res.status(500).json({ error: 'OPENAI_API_KEY not configured' });
@@ -102,7 +104,32 @@ router.post('/transcribe', upload.single('file'), async (req, res): Promise<void
     }
 
     const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-    // Use OpenAI's toFile helper for better Node.js compatibility
+    const file = await toFile(req.file.buffer, req.file.originalname || 'audio.webm', {
+      type: req.file.mimetype || 'audio/webm'
+    });
+
+    const result = await client.audio.transcriptions.create({ model: 'whisper-1', file, language: 'en' });
+    res.json({ transcription: result.text ?? '' });
+  } catch (e: any) {
+    console.error('[voice/stt]', e);
+    res.status(500).json({ error: 'transcription-failed', details: String(e?.message || e) });
+  }
+});
+
+const handleTranscribe = async (req: Request, res: Response): Promise<void> => {
+  try {
+    console.log('[voice/transcribe] OPENAI_API_KEY:', process.env.OPENAI_API_KEY ?
+      `${process.env.OPENAI_API_KEY.substring(0, 10)}...` : 'NOT SET');
+    if (!process.env.OPENAI_API_KEY) {
+      res.status(500).json({ error: 'OPENAI_API_KEY not configured' });
+      return;
+    }
+    if (!req.file) {
+      res.status(400).json({ error: 'audio file missing: field "file"' });
+      return;
+    }
+
+    const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const file = await toFile(req.file.buffer, req.file.originalname || 'audio.webm', {
       type: req.file.mimetype || 'audio/webm'
     });
@@ -113,6 +140,9 @@ router.post('/transcribe', upload.single('file'), async (req, res): Promise<void
     console.error('[voice/transcribe]', e);
     res.status(500).json({ error: 'transcription-failed', details: String(e?.message || e) });
   }
-});
+};
+
+router.post('/transcribe', upload.single('file'), handleTranscribe);
+router.post('/stt', upload.single('file'), handleTranscribe);
 
 export default router;

@@ -109,7 +109,8 @@ router.post('/stt', upload.single('file'), async (req: Request, res: Response): 
     });
 
     const result = await client.audio.transcriptions.create({ model: 'whisper-1', file, language: 'en' });
-    res.json({ transcription: result.text ?? '' });
+    // Return both keys temporarily for compatibility (renderer tolerates either)
+    res.json({ text: result.text ?? '', transcription: result.text ?? '' });
   } catch (e: any) {
     console.error('[voice/stt]', e);
     res.status(500).json({ error: 'transcription-failed', details: String(e?.message || e) });
@@ -135,7 +136,19 @@ const handleTranscribe = async (req: Request, res: Response): Promise<void> => {
     });
 
     const result = await client.audio.transcriptions.create({ model: 'whisper-1', file, language: 'en' });
-    res.json({ transcription: result.text ?? '' });
+    const finalText = (result.text ?? '').toString();
+
+    // Standardized response shape with a temporary legacy toggle for this release
+    const legacy = (req.query as any)?.legacy === '1';
+    res.set('Deprecation', 'true');
+    res.set('Link', '</docs/voice#response>; rel="describedby"');
+
+    const payload = legacy
+      ? { text: finalText, transcription: finalText, result: { text: finalText } }
+      : { text: finalText };
+
+    res.json(payload);
+    return;
   } catch (e: any) {
     console.error('[voice/transcribe]', e);
     res.status(500).json({ error: 'transcription-failed', details: String(e?.message || e) });

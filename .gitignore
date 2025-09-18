@@ -45,3 +45,37 @@ release/
 models/**/*.bin
 
 models/**/*.bin
+# Node
+node_modules/
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Build outputs & caches
+dist/
+build/
+coverage/
+.nyc_output/
+.parcel-cache/
+.esbuild/
+.vite/
+.cache/
+.webpack-cache/
+*.pack
+
+# Local databases & state
+memory/*.db*
+memory/*-wal
+memory/*-shm
+
+# Audio artifacts (keep fixtures only)
+*.wav
+!fixtures/*.wav
+
+# OS/editor junk
+.DS_Store
+Thumbs.db
+
+# Logs & reports (keep markdown reports)
+*.log
+*.tmp

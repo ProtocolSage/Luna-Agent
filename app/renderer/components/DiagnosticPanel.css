@@ -361,7 +361,7 @@
   font-size: 11px;
 }
 
-.metrics-table tbody tr:nth-child(every) {
+.metrics-table tbody tr:nth-child(even) {
   background: rgba(16, 21, 32, 0.35);
 }
 

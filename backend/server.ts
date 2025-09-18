@@ -20,8 +20,8 @@ if (badKey) {
 }
 
 // Debug: Log loaded OpenAI API key
-console.log('[ENV] OPENAI_API_KEY loaded:', process.env.OPENAI_API_KEY ? 
-  `${process.env.OPENAI_API_KEY.substring(0, 10)}...` : 'NOT SET');
+const shown = (process.env.OPENAI_API_KEY || "").slice(0,7) + "…";
+console.log("[ENV] OPENAI_API_KEY loaded:", shown);
 
 // Optionally load .env.local if present (overrides default .env)
 if (fs.existsSync('.env.local')) {

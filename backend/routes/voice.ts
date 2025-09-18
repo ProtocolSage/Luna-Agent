@@ -159,8 +159,8 @@ router.post('/tts', async (req: Request, res: Response) => {
 
 export const handleTranscribe = async (req: Request, res: Response, _next?: NextFunction): Promise<void> => {
   try {
-    console.log('[voice/transcribe] OPENAI_API_KEY:', process.env.OPENAI_API_KEY ?
-      `${process.env.OPENAI_API_KEY.substring(0, 10)}...` : 'NOT SET');
+    const shown = (process.env.OPENAI_API_KEY || "").slice(0,7) + "…";
+    console.log("[voice/transcribe] OPENAI_API_KEY:", shown);
 
     if (!process.env.OPENAI_API_KEY) {
       const requestId = getRequestId(req, res);

@@ -254,13 +254,17 @@ export class VoiceService extends EventEmitter {
    * Transcribe audio blob to text using voice service
    */
   public async transcribe(audio: Blob): Promise<string> {
-    const formData = new FormData();
-    formData.append('file', audio, 'audio.webm');
+    const form = new FormData();
+    const name =
+      audio.type?.includes("webm") ? "clip.webm" :
+      audio.type?.includes("wav")  ? "clip.wav"  :
+      "clip.webm";
+    form.append("file", audio, name);
     
     try {
       const response = await apiFetch(API.STT_TRANSCRIBE, {
         method: 'POST',
-        body: formData
+        body: form
       });
       
       if (!response.ok) {

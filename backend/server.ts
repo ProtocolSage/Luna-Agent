@@ -2,12 +2,27 @@
 import 'module-alias/register';
 
 // Load environment variables first, before any other imports
-import * as dotenv from 'dotenv';
+import dotenv from "dotenv";
 import fs from 'fs';
-dotenv.config();
+
+const DEV = process.env.NODE_ENV !== "production";
+// In dev, let .env override OS envs; in prod, never override
+dotenv.config({ override: DEV });
+
+// Fail fast on placeholder/missing key (before starting server)
+const badKey =
+  !process.env.OPENAI_API_KEY ||
+  /(^your_api_key$|^sk-?live-?placeholder)/i.test(process.env.OPENAI_API_KEY);
+
+if (badKey) {
+  console.error("[FATAL] OPENAI_API_KEY is missing or placeholder. Check .env or secrets.");
+  process.exit(1);
+}
+
 // Debug: Log loaded OpenAI API key
 console.log('[ENV] OPENAI_API_KEY loaded:', process.env.OPENAI_API_KEY ? 
   `${process.env.OPENAI_API_KEY.substring(0, 10)}...` : 'NOT SET');
+
 // Optionally load .env.local if present (overrides default .env)
 if (fs.existsSync('.env.local')) {
   dotenv.config({ path: '.env.local', override: true });

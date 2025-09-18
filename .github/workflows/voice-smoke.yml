@@ -1,85 +1,27 @@
 name: Voice Smoke
-
 on:
   push:
     branches: [ main ]
   pull_request:
-  workflow_dispatch:
 
 jobs:
   voice-smoke:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest]
+    runs-on: windows-latest
+    timeout-minutes: 10
     env:
-      NODE_VERSION: '20'
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-      API_BASE: http://127.0.0.1:3000
+      PORT: 3001
+      API_BASE: http://localhost:3001
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-
-      - name: Install dependencies
-        if: env.OPENAI_API_KEY != ''
-        run: npm ci
-
-      - name: Build backend assets
-        if: env.OPENAI_API_KEY != ''
-        run: npm run build:backend
-
-      - name: Start backend server
-        if: env.OPENAI_API_KEY != ''
-        shell: pwsh
+          node-version: 22
+      - run: npm ci
+      - run: npm run build
+      - name: start backend
         run: |
-          $job = Start-Job { node dist/backend/server.js }
-          Set-Content -Path server-job.txt -Value $job.Id
-          $maxAttempts = 30
-          for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
-            try {
-              Invoke-WebRequest -Uri "$env:API_BASE/health" -UseBasicParsing -TimeoutSec 2 | Out-Null
-              Write-Host "[voice-smoke] Backend ready after attempt $attempt."
-              break
-            } catch {
-              if ($attempt -eq $maxAttempts) {
-                throw "Backend did not become ready at $env:API_BASE/health"
-              }
-              Start-Sleep -Seconds 1
-            }
-          }
-
-      - name: Run voice probe
-        if: env.OPENAI_API_KEY != ''
-        shell: pwsh
-        run: npm run probe:voice
-
-      - name: Stop backend server
-        if: ${{ env.OPENAI_API_KEY != '' && always() }}
-        shell: pwsh
-        run: |
-          if (Test-Path server-job.txt) {
-            $jobId = Get-Content server-job.txt | Select-Object -First 1
-            if ($jobId) {
-              Stop-Job -Id $jobId -ErrorAction SilentlyContinue
-              Remove-Job -Id $jobId -ErrorAction SilentlyContinue
-            }
-          }
-
-      - name: Skip notice
-        if: env.OPENAI_API_KEY == ''
-        shell: pwsh
-        run: |
-          Write-Host '[voice-smoke] OPENAI_API_KEY not provided; skipping probe.'
-          try {
-            Invoke-WebRequest -Uri "$env:API_BASE/api/voice/tts/check" -UseBasicParsing -TimeoutSec 3 | Out-Null
-            Write-Host '[voice-smoke] /api/voice/tts/check responded.'
-          } catch {
-            Write-Host '[voice-smoke] /api/voice/tts/check unreachable (expected when backend not running).'
-          }
-          Write-Host '::notice::Voice smoke skipped (no OPENAI_API_KEY).'
+          Start-Process -NoNewWindow node "dist\backend\server.js"
+          Start-Sleep -Seconds 5
+      - name: probe voice
+        run: powershell -ExecutionPolicy Bypass -File .\voice-probe.ps1 -Base http://localhost:3001 -Audio .\fixtures\hello_luna.wav

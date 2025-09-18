@@ -8,7 +8,10 @@ import multer from 'multer';
 
 const router = express.Router();
 const elevenLabsService = process.env.ELEVEN_API_KEY ? new ElevenLabsService() : null;
-const upload = multer({ limits: { fileSize: 25 * 1024 * 1024 } });
+const upload = multer({ 
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 25 * 1024 * 1024 } 
+});
 
 const allowedAudioExtensions = new Set([
   'flac',
@@ -187,24 +190,21 @@ export const handleTranscribe = async (req: Request, res: Response, _next?: Next
     }
 
     const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-    const file = await toFile(req.file.buffer, req.file.originalname || 'audio.webm', {
-      type: req.file.mimetype || 'audio/webm'
+    const ext =
+      req.file.mimetype?.includes("webm") ? "webm" :
+      req.file.mimetype?.includes("wav")  ? "wav"  :
+      (req.file.originalname?.split(".").pop() || "webm");
+
+    const filename = req.file.originalname || `upload.${ext}`;
+    const openaiFile = await toFile(req.file.buffer, filename);
+
+    const out = await client.audio.transcriptions.create({
+      file: openaiFile,
+      model: "whisper-1" // or your chosen STT model
     });
 
-    const result = await client.audio.transcriptions.create({ model: 'whisper-1', file, language: 'en' });
-    const finalText = (result.text ?? '').toString();
-
-    const legacy = (req.query as any)?.legacy === '1';
-    res.set('Deprecation', 'true');
-    res.set('Link', '</docs/voice#response>; rel="describedby"');
-
-    const payload: { text: string; transcription?: string; result?: { text: string } } = { text: finalText };
-    if (legacy) {
-      payload.transcription = finalText;
-      payload.result = { text: finalText };
-    }
-
-    res.json(payload);
+    res.json({ text: out.text });
+    return;
   } catch (error: any) {
     const requestId = getRequestId(req, res);
     const { status, code, message } = normaliseProviderError(error);

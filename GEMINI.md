@@ -1,91 +1,455 @@
-# Luna Agent Coding Standards & Architecture
+## user
 
-Canonical standards for building the Luna voice agent, a Windows-first desktop assistant. This document reflects the actual implementation and all new work must conform to these specifics.
+I'm working on the Luna Voice Agent project located at C:\dev\luna-agent-v1.0-production-complete-2. This is a Windows-first desktop voice assistant built with Electron, React, and Node.js. 
 
-## 1. Tech Stack & Target OS
+I need help analyzing the current state of the project and creating a comprehensive restoration plan. The application is currently non-functional due to critical infrastructure failures in the Electron main process.
 
-*   **Target OS**: Windows 11 (primary), macOS (tier-2).
-*   **Application Framework**: Electron `^28.3.2`
-*   **Frontend**: React `^18.2.0` with TypeScript (strict).
-*   **Backend**: Node.js `^18.0.0` with Express `^4.18.2`.
-*   **Database**: `better-sqlite3` for local data storage.
-*   **AI Providers**: OpenAI and Anthropic SDKs for language models.
-*   **Packaging**: `electron-builder` for creating NSIS installers on Windows.
-*   **Configuration**: Managed via `.env` files and `dotenv` package.
+Can you help me understand the current architecture and what needs to be fixed?
 
-## 2. Voice Assistant Architecture
+## model
 
-The system is divided into three main parts: the Electron main process, the frontend (renderer process), and a local backend server.
+I'll analyze the Luna Voice Agent project and help you understand its architecture and create a restoration plan.
 
-*   **Frontend (app/renderer)**: Handles all UI, including wake word detection.
-*   **Backend (backend)**: An Express server that manages AI logic, tool execution, and voice services.
-*   **Agent Core (agent)**: Contains the core logic for the agent, including the pipeline, orchestrator, and memory services.
+Based on my analysis of the project structure, here's what I found:
 
-### Voice Pipeline
+### Current Architecture Overview
 
-1.  **Wake Word Detection**: The frontend uses `@picovoice/porcupine-web` to listen for the "Hey Luna" wake word. This is implemented in `app/renderer/components/WakeWordListener.tsx`.
-2.  **Speech-to-Text (STT)**: When the wake word is detected, the frontend captures audio and sends it to the backend for transcription. The backend uses a cloud-based STT service.
-3.  **Agent Orchestration**: The transcribed text is sent to the `ReasoningEngine` (`agent/orchestrator/reasoningEngine.ts`), which decides whether to respond directly or use a tool.
-4.  **Tool Execution**: If a tool is needed, the `ToolExecutive` (`agent/tools/executive.ts`) is invoked.
-5.  **Text-to-Speech (TTS)**: The agent's response text is sent to the `VoiceService` (`agent/services/voiceService.ts`), which uses the `ElevenLabsService` (`backend/services/elevenLabsService.ts`) to generate and stream audio back to the user.
+The Luna Voice Agent is structured as a modern Electron application with:
 
-## 3. Code Quality & Style
+1. **Frontend (Electron + React)**
+   - Located in `app/renderer/`
+   - React 18.2.0 with TypeScript
+   - Voice interaction UI components
+   - Wake word detection using Porcupine
 
-*   **Typing**: TypeScript `strict` mode is enforced across the entire codebase.
-*   **Linting & Formatting**: ESLint and Prettier are used for all TypeScript files. Configuration is in `eslint.config.js` and `.prettierrc`.
-*   **Error Handling**: Errors are explicitly handled and logged. The backend includes a global error handler in `backend/server.ts`.
+2. **Backend (Express.js Server)**
+   - Located in `backend/`
+   - Express 4.18.2 API server
+   - Handles AI orchestration, voice services, and database operations
+   - Runs on port 3001 by default
 
-## 4. Repository Structure
+3. **Agent Core**
+   - Located in `agent/`
+   - Contains orchestration logic, memory management, and tool execution
+   - Pipeline for processing voice commands
 
+4. **Voice Pipeline**
+   - Wake Word: "Hey Luna" using Picovoice Porcupine
+   - STT: Multiple providers supported (Web Speech API implemented)
+   - TTS: ElevenLabs with Windows SAPI fallback
+   - Natural conversation flow management
+
+### Critical Issues Identified
+
+1. **Electron Main Process Failure**
+   ```
+   TypeError: Cannot read properties of undefined (reading 'whenReady')
+   ```
+   This indicates the app object isn't properly initialized in the main process.
+
+2. **Database Issues**
+   - better-sqlite3 dependency present but falling back to in-memory database
+   - Potential installation or compatibility issues on Windows
+
+3. **Build Configuration Problems**
+   - Webpack showing compilation warnings
+   - Missing or misconfigured entry points
+
+4. **Incomplete Integrations**
+   - Voice pipeline components exist but aren't fully connected
+   - Wake word detection implemented but not integrated
+   - API routes defined but some features stubbed
+
+### Restoration Plan Priority
+
+**Phase 1: Critical Infrastructure** (Must fix first)
+- Fix Electron main process initialization
+- Resolve webpack configuration issues  
+- Implement proper SQLite database with fallbacks
+- Secure configuration management
+
+**Phase 2: Voice Pipeline**
+- Connect wake word detection to voice capture
+- Implement multi-provider STT system
+- Complete TTS integration with caching
+- Natural conversation flow manager
+
+**Phase 3: AI Integration**
+- Complete model router implementation
+- Memory and learning system
+- Tool execution framework
+
+Would you like me to start with fixing the critical Electron main process issue?
+
+## user
+
+Yes, please fix the Electron main process issue first. Show me exactly what needs to be changed in the main process files to get the application starting properly.
+
+## model
+
+I'll fix the Electron main process issue. Let me first examine the current main process file to identify the problem:
+
+Looking at the error `TypeError: Cannot read properties of undefined (reading 'whenReady')`, this typically happens when:
+1. The Electron app module isn't properly imported
+2. The file is being executed before Electron is ready
+3. Webpack bundling issues are preventing proper module resolution
+
+Here's the corrected main process implementation:
+
+### FILE: app/main/index.ts
+```typescript
+import { app, BrowserWindow, Tray, Menu, shell, ipcMain, session } from 'electron';
+import * as path from 'path';
+import * as url from 'url';
+import * as fs from 'fs';
+import { spawn, ChildProcess } from 'child_process';
+import isDev from 'electron-is-dev';
+
+// Ensure Electron doesn't quit when all windows are closed
+app.setQuitOnAllWindowsClosed(false);
+
+// Global references to prevent garbage collection
+let mainWindow: BrowserWindow | null = null;
+let tray: Tray | null = null;
+let backendProcess: ChildProcess | null = null;
+let isQuitting = false;
+
+// Configuration
+const BACKEND_PORT = process.env.BACKEND_PORT || 3001;
+const BACKEND_URL = `http://localhost:${BACKEND_PORT}`;
+
+// Production logging
+const userDataPath = app.getPath('userData');
+const logPath = path.join(userDataPath, 'luna.log');
+
+// Ensure userData directory exists
+if (!fs.existsSync(userDataPath)) {
+  fs.mkdirSync(userDataPath, { recursive: true });
+}
+
+const logStream = fs.createWriteStream(logPath, { flags: 'a' });
+
+function log(level: string, message: string, ...args: any[]) {
+  const timestamp = new Date().toISOString();
+  const logEntry = `[${timestamp}] [${level}] ${message} ${args.length ? JSON.stringify(args) : ''}`;
+  console.log(logEntry);
+  logStream.write(logEntry + '\n');
+}
+
+// Single instance lock
+const gotTheLock = app.requestSingleInstanceLock();
+
+if (!gotTheLock) {
+  log('WARN', 'Another instance is already running, quitting...');
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    // Someone tried to run a second instance, focus our window instead
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+    }
+  });
+}
+
+// Backend server management
+async function startBackendServer(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    log('INFO', 'Starting backend server...');
+    
+    const backendScript = isDev 
+      ? path.join(__dirname, '../../backend/server.js')
+      : path.join(process.resourcesPath, 'app/dist/backend/server.js');
+    
+    log('INFO', `Backend script path: ${backendScript}`);
+    
+    if (!fs.existsSync(backendScript)) {
+      const error = `Backend server not found at: ${backendScript}`;
+      log('ERROR', error);
+      reject(new Error(error));
+      return;
+    }
+
+    const env = {
+      ...process.env,
+      PORT: BACKEND_PORT.toString(),
+      NODE_ENV: process.env.NODE_ENV || 'production',
+      ELECTRON_RUN_AS_NODE: '1'
+    };
+
+    backendProcess = spawn(process.execPath, [backendScript], {
+      env,
+      stdio: ['ignore', 'pipe', 'pipe'],
+      windowsHide: true
+    });
+
+    backendProcess.stdout?.on('data', (data) => {
+      const message = data.toString().trim();
+      log('BACKEND', message);
+      
+      // Check if backend is ready
+      if (message.includes('Server running') || message.includes('listening on port')) {
+        log('INFO', 'Backend server is ready');
+        resolve();
+      }
+    });
+
+    backendProcess.stderr?.on('data', (data) => {
+      log('BACKEND-ERROR', data.toString().trim());
+    });
+
+    backendProcess.on('error', (error) => {
+      log('ERROR', 'Backend process error:', error.message);
+      reject(error);
+    });
+
+    backendProcess.on('exit', (code, signal) => {
+      log('WARN', `Backend process exited with code ${code} and signal ${signal}`);
+      if (!isQuitting) {
+        log('INFO', 'Restarting backend server in 5 seconds...');
+        setTimeout(() => startBackendServer().catch(console.error), 5000);
+      }
+    });
+
+    // Timeout if backend doesn't start
+    setTimeout(() => {
+      reject(new Error('Backend server startup timeout'));
+    }, 30000);
+  });
+}
+
+// Create the main window
+function createMainWindow() {
+  log('INFO', 'Creating main window...');
+  
+  mainWindow = new BrowserWindow({
+    width: 1200,
+    height: 800,
+    minWidth: 800,
+    minHeight: 600,
+    title: 'Luna Voice Agent',
+    icon: path.join(__dirname, '../../assets/icon.ico'),
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: path.join(__dirname, 'preload.js'),
+      webSecurity: !isDev
+    },
+    show: false,
+    frame: true,
+    backgroundColor: '#1a1a1a'
+  });
+
+  // Set CSP headers for security
+  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        'Content-Security-Policy': [`
+          default-src 'self';
+          script-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:*;
+          style-src 'self' 'unsafe-inline';
+          font-src 'self' data:;
+          img-src 'self' data: https:;
+          connect-src 'self' http://localhost:* ws://localhost:* https://api.openai.com https://api.elevenlabs.io;
+          media-src 'self' blob: data:;
+        `.replace(/\s+/g, ' ').trim()]
+      }
+    });
+  });
+
+  // Load the app
+  const startUrl = isDev 
+    ? 'http://localhost:3000' // Vite dev server
+    : `${BACKEND_URL}`;
+    
+  mainWindow.loadURL(startUrl);
+  
+  if (isDev) {
+    mainWindow.webContents.openDevTools();
+  }
+
+  mainWindow.once('ready-to-show', () => {
+    log('INFO', 'Main window ready to show');
+    mainWindow?.show();
+  });
+
+  mainWindow.on('close', (event) => {
+    if (!isQuitting && process.platform === 'darwin') {
+      event.preventDefault();
+      mainWindow?.hide();
+    }
+  });
+
+  mainWindow.on('closed', () => {
+    mainWindow = null;
+  });
+
+  // Handle external links
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    shell.openExternal(url);
+    return { action: 'deny' };
+  });
+}
+
+// Create system tray
+function createTray() {
+  log('INFO', 'Creating system tray...');
+  
+  const trayIconPath = path.join(__dirname, '../../assets/tray.png');
+  
+  if (!fs.existsSync(trayIconPath)) {
+    log('WARN', 'Tray icon not found, skipping tray creation');
+    return;
+  }
+
+  tray = new Tray(trayIconPath);
+  
+  const contextMenu = Menu.buildFromTemplate([
+    {
+      label: 'Show Luna',
+      click: () => {
+        mainWindow?.show();
+        mainWindow?.focus();
+      }
+    },
+    { type: 'separator' },
+    {
+      label: 'Quit',
+      click: () => {
+        isQuitting = true;
+        app.quit();
+      }
+    }
+  ]);
+
+  tray.setToolTip('Luna Voice Agent');
+  tray.setContextMenu(contextMenu);
+  
+  tray.on('double-click', () => {
+    mainWindow?.show();
+    mainWindow?.focus();
+  });
+}
+
+// IPC Handlers
+ipcMain.handle('app:getVersion', () => app.getVersion());
+ipcMain.handle('app:getPlatform', () => process.platform);
+ipcMain.handle('app:getBackendUrl', () => BACKEND_URL);
+
+// App event handlers
+app.whenReady().then(async () => {
+  log('INFO', 'Electron app ready');
+  
+  try {
+    // Start backend first
+    await startBackendServer();
+    
+    // Create UI
+    createMainWindow();
+    createTray();
+    
+    log('INFO', 'Luna Voice Agent started successfully');
+  } catch (error: any) {
+    log('ERROR', 'Failed to start application:', error.message);
+    app.quit();
+  }
+});
+
+app.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') {
+    app.quit();
+  }
+});
+
+app.on('activate', () => {
+  if (BrowserWindow.getAllWindows().length === 0) {
+    createMainWindow();
+  }
+});
+
+app.on('before-quit', () => {
+  isQuitting = true;
+  
+  // Stop backend process
+  if (backendProcess) {
+    log('INFO', 'Stopping backend server...');
+    backendProcess.kill('SIGTERM');
+  }
+  
+  // Close log stream
+  logStream.end();
+});
+
+// Error handling
+process.on('uncaughtException', (error) => {
+  log('ERROR', 'Uncaught exception:', error.message, error.stack);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  log('ERROR', 'Unhandled rejection at:', promise, 'reason:', reason);
+});
+
+export { app };
 ```
-/
-├── app/              # Electron frontend (Renderer & Main process code)
-│   ├── main/           # Electron main process
-│   └── renderer/       # React UI components
-├── backend/          # Express.js server
-│   ├── routes/         # API endpoints
-│   └── services/       # Business logic (e.g., ElevenLabs)
-├── agent/            # Core AI agent logic
-│   ├── memory/         # Vector store and memory management
-│   ├── orchestrator/   # Model routing and reasoning
-│   ├── pipeline/       # Tool execution pipeline
-│   └── voice/          # Voice-related utilities
-├── assets/           # Static assets (e.g., wake word model)
-├── dist/             # Compiled output from TypeScript
-├── scripts/          # Build and utility scripts
-├── .env.example      # Environment variable template
-└── package.json      # Project dependencies and scripts
+
+### FILE: app/main/preload.ts
+```typescript
+import { contextBridge, ipcRenderer } from 'electron';
+
+// Expose protected methods that allow the renderer process to use
+// the ipcRenderer without exposing the entire object
+contextBridge.exposeInMainWorld('electronAPI', {
+  getVersion: () => ipcRenderer.invoke('app:getVersion'),
+  getPlatform: () => ipcRenderer.invoke('app:getPlatform'),
+  getBackendUrl: () => ipcRenderer.invoke('app:getBackendUrl'),
+  
+  // Voice-related APIs
+  onVoiceStateChange: (callback: (state: string) => void) => {
+    ipcRenderer.on('voice:stateChange', (_event, state) => callback(state));
+  },
+  
+  // System APIs
+  minimizeWindow: () => ipcRenderer.send('window:minimize'),
+  maximizeWindow: () => ipcRenderer.send('window:maximize'),
+  closeWindow: () => ipcRenderer.send('window:close'),
+});
+
+// TypeScript declarations
+declare global {
+  interface Window {
+    electronAPI: {
+      getVersion: () => Promise<string>;
+      getPlatform: () => Promise<string>;
+      getBackendUrl: () => Promise<string>;
+      onVoiceStateChange: (callback: (state: string) => void) => void;
+      minimizeWindow: () => void;
+      maximizeWindow: () => void;
+      closeWindow: () => void;
+    };
+  }
+}
 ```
 
-## 5. Audio I/O & Providers
+The key fixes in this implementation:
 
-*   **Wake Word**: `@picovoice/porcupine-web` `^3.0.3` is used for wake word detection. The model is located at `assets/Hey-Luna_en_wasm_v3/Hey-Luna_en_wasm_v3_0_0.ppn`.
-*   **TTS**: `ElevenLabsService` provides text-to-speech functionality, streaming audio directly from the ElevenLabs API. It includes features like voice switching and interruption.
-*   **Audio Playback**: The backend uses the `speaker` package to play the received audio stream.
+1. **Proper module imports** - Ensuring all Electron modules are imported correctly
+2. **App readiness check** - Using `app.whenReady()` properly before creating windows
+3. **Backend process management** - Starting the backend server before creating the UI
+4. **Error handling** - Comprehensive error logging and recovery
+5. **Single instance lock** - Preventing multiple instances
+6. **CSP headers** - Security headers for the renderer
+7. **IPC communication** - Proper IPC setup between main and renderer
 
-## 6. Security & Privacy
+To implement this fix:
 
-*   **Backend Security**: The Express server uses `helmet` for security headers, `cors` for cross-origin resource sharing, and `express-rate-limit` to prevent abuse.
-*   **Authentication**: Session management is handled via cookies and JWTs, with security logic in `backend/utils/SecurityService.ts`.
-*   **PII Filtering**: A `PIIFilter` (`agent/validators/piiFilter.ts`) is used to scrub sensitive information before it is sent to AI models.
-*   **Secrets**: API keys and other secrets are managed through `.env` files and accessed via `process.env`.
+1. Replace the current main process file with the corrected version above
+2. Ensure the preload script is also updated
+3. Check that webpack is configured to build these files correctly
+4. Make sure the backend server file exists at the expected path
 
-## 7. Testing
+This should resolve the "whenReady" error and allow the Electron app to start properly.
 
-*   **Framework**: Jest is the primary testing framework, configured in `jest.config.cjs`.
-*   **E2E Testing**: Playwright is set up for end-to-end testing, configured in `playwright.config.ts`.
-*   **Unit & Integration Tests**: Tests are located in the `test/` directory, with subdirectories for unit and integration tests.
+## user
 
-## 8. Build & Deployment
-
-*   **Build Process**: The `build` script in `package.json` orchestrates the compilation of all TypeScript code and the bundling of the renderer.
-*   **Packaging**: `electron-builder` is used to create a distributable `.exe` installer for Windows.
-*   **CI/CD**: Workflows for CI/CD are defined in the `.github/workflows` directory.
-
-## 9. Agent Self-Validation
-
-*   ✅ **Types everywhere**: The project is fully typed with TypeScript in strict mode.
-*   ✅ **Dependencies declared**: All dependencies are listed in `package.json`.
-*   ✅ **Secrets handled securely**: Secrets are loaded from `.env` and not hardcoded.
-*   ✅ **Modular architecture**: The code is organized into distinct modules for the frontend, backend, and agent core.
-*   ✅ **Voice services are specific**: The agent uses ElevenLabs for TTS and Picovoice for wake word detection, with dedicated services for each.
+Now let's check the webpack configuration to ensure it's properly set up to build the main process and preload scripts. Can you show me what the webpack configuration should look like?

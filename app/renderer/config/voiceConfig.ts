@@ -97,8 +97,9 @@ export function getOptimalVoiceConfig(): EnhancedVoiceConfig {
   // Check user agent for mobile
   const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
   
-  // Check for gaming indicators (high refresh rate, gaming user agent, etc.)
-  const isGaming = screen.refreshRate > 120 || navigator.userAgent.includes('Gaming');
+  // Check for gaming indicators (gaming user agent, etc.)
+  // Note: refreshRate is not a standard Screen property
+  const isGaming = navigator.userAgent.includes('Gaming');
   
   // Auto-detect environment based on various factors
   if (isDevelopment) {

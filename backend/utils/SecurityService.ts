@@ -86,17 +86,34 @@ export class SecurityService {
   }
 
   validateOrigin(origin: string): boolean {
-    // Basic origin validation for CORS
-    const allowedOrigins = [
-      'http://localhost:3000',
-      'http://localhost:3001', 
-      'http://localhost:3002',
-      'http://127.0.0.1:3000',
-      'http://127.0.0.1:3001',
-      'http://127.0.0.1:3002'
-    ];
+    const isDevelopment = process.env.NODE_ENV !== 'production';
     
-    return allowedOrigins.includes(origin);
+    if (isDevelopment) {
+      // Development: allow localhost and 127.0.0.1 with dev server ports
+      const devOrigins = [
+        'http://localhost:3000',
+        'http://localhost:3001', 
+        'http://localhost:3002',
+        'http://localhost:5173', // Vite dev server
+        'http://127.0.0.1:3000',
+        'http://127.0.0.1:3001',
+        'http://127.0.0.1:3002',
+        'http://127.0.0.1:5173' // Vite dev server
+      ];
+      return devOrigins.includes(origin);
+    } else {
+      // Production: allow only production domains (remove localhost/5173)
+      const prodOrigins = [
+        'http://localhost:3000',
+        'http://localhost:3001', 
+        'http://localhost:3002',
+        'http://127.0.0.1:3000',
+        'http://127.0.0.1:3001',
+        'http://127.0.0.1:3002'
+        // Note: No 5173 in production
+      ];
+      return prodOrigins.includes(origin);
+    }
   }
 
   createSession(headers: any, cookies: any): string {

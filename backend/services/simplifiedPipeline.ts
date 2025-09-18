@@ -3,8 +3,8 @@
  * Compatible with our self-contained ToolExecutive
  */
 
-import { ToolExecutive, ToolStep, ToolResult } from './toolExecutive';
-import { ModelRouter } from '../../agent/orchestrator/modelRouter';
+import { ToolExecutive, ToolStep, ToolResult } from '@agent/tools/executive';
+import { ModelRouter } from '@agent/orchestrator/modelRouter';
 
 export interface PipelineContext {
   sessionId: string;
@@ -72,7 +72,7 @@ export class ToolPipeline {
       const results = await this.toolExecutive.executePlan(steps, traceId);
       
       return {
-        success: results.every(r => r.success),
+        success: results.every((r: ToolResult) => r.success),
         steps: results,
         metadata: {
           traceId,
@@ -120,7 +120,7 @@ export class PipelineService {
       const results = await this.toolExecutive.executePlan(steps, traceId);
       
       const pipelineResult: PipelineResult = {
-        success: results.every(r => r.success),
+        success: results.every((r: ToolResult) => r.success),
         steps: results,
         metadata: {
           executionId,

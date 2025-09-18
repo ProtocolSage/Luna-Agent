@@ -1,5 +1,21 @@
 # Luna Agent Changelog
 
+## [Unreleased]
+
+### Changed
+- **STT response standardized to { text }.**
+  - Adds response headers for one release:
+    - Deprecation: true
+    - Link: </docs/voice#response>; rel="describedby"
+  - Temporary compatibility toggle: POST /api/voice/transcribe?legacy=1 returns { text, transcription, result: { text } }.
+
+### Deprecated
+- /api/voice/stt kept as an alias for this release; slated for removal in the next minor version once logs show no callers.
+
+### Migration
+- Clients should read 	ext (preferred).
+- Legacy fields (	ranscription, esult.text) will be removed in the next minor.
+
 ## v1.0.0 - Production Release (2025-08-03)
 
 ### 🎉 Initial Production Release
@@ -106,4 +122,5 @@
 - Set up backup and recovery procedures
 - Implement user authentication
 - Add advanced analytics and reporting
+
 

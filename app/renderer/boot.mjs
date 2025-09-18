@@ -1,23 +1,8 @@
-// ---- Dynamic API base discovery + fetch shim (strict CSP-safe) ----
-const DEFAULT_PORTS = [3000, 3001, 3002, 3003, 3004, 3005];
-
-async function probeBase() {
-  const bases = [];
-  if (window.__LUNA_BOOT?.API_BASE) bases.push(window.__LUNA_BOOT.API_BASE);
-  for (const p of DEFAULT_PORTS) bases.push(`http://localhost:${p}`);
-
-  for (const base of bases) {
-    try {
-      const r = await fetch(`${base}/health`, { method: 'GET', cache: 'no-store' });
-      if (r.ok) return base;
-    } catch {
-      // ignore and try next
-    }
-  }
-  return 'http://localhost:3000'; // last resort
-}
-
-const API_BASE = await probeBase();
+// ---- API base init + fetch shim (strict CSP-safe) ----
+// Prefer single source of truth: API_BASE passed from main via query/preload
+const API_BASE = (window.__LUNA_BOOT && window.__LUNA_BOOT.API_BASE)
+  ? window.__LUNA_BOOT.API_BASE
+  : 'http://localhost:3000';
 
 // merge into global
 window.__LUNA_BOOT = Object.assign(

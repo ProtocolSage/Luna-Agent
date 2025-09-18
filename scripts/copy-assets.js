@@ -19,10 +19,10 @@ function copyFileSync(src, dest) {
         }
         
         fs.copyFileSync(src, dest);
-        console.log(`✓ Copied: ${src} → ${dest}`);
+        console.log(`? Copied: ${src} ? ${dest}`);
         return true;
     } catch (error) {
-        console.error(`✗ Failed to copy ${src} → ${dest}:`, error.message);
+        console.error(`? Failed to copy ${src} ? ${dest}:`, error.message);
         return false;
     }
 }
@@ -53,11 +53,11 @@ function copyDirSync(src, dest) {
         }
         
         if (success) {
-            console.log(`✓ Copied directory: ${src} → ${dest}`);
+            console.log(`? Copied directory: ${src} ? ${dest}`);
         }
         return success;
     } catch (error) {
-        console.error(`✗ Failed to copy directory ${src} → ${dest}:`, error.message);
+        console.error(`? Failed to copy directory ${src} ? ${dest}:`, error.message);
         return false;
     }
 }
@@ -68,7 +68,7 @@ function copyBackendJs() {
     const distBackendDir = 'dist/backend';
     
     if (!fs.existsSync(backendDir)) {
-        console.error(`✗ Backend directory not found: ${backendDir}`);
+        console.error(`? Backend directory not found: ${backendDir}`);
         return false;
     }
     
@@ -144,7 +144,7 @@ function copyNonTsFiles(srcDir, destDir) {
         
         return success;
     } catch (error) {
-        console.error(`✗ Failed to copy non-TS files from ${srcDir}:`, error.message);
+        console.error(`? Failed to copy non-TS files from ${srcDir}:`, error.message);
         return false;
     }
 }
@@ -154,11 +154,11 @@ function verifyBackendCompilation() {
     const serverPath = 'dist/backend/server.js';
     
     if (!fs.existsSync(serverPath)) {
-        console.warn('⚠️  Backend server not found at dist/backend/server.js (continuing).');
+        console.warn('??  Backend server not found at dist/backend/server.js (continuing).');
         return true; // Don't fail, just warn
     }
     
-    console.log(`✓ Backend compiled: ${serverPath}`);
+    console.log(`? Backend compiled: ${serverPath}`);
     return true;
 }
 
@@ -166,13 +166,25 @@ function copyRendererHtml() {
     console.log('\n[4/8] Copying renderer HTML...');
     const src = 'app/renderer/index.csp.html';
     const dest = 'dist/app/renderer/index.html';
-    
+    const legacySrc = 'app/renderer/index.legacy.html';
+    const legacyDest = 'dist/app/renderer/index.legacy.html';
+    const showLegacy = (process.env.SHOW_LEGACY ?? 'false').toLowerCase() === 'true';
+
     if (!fs.existsSync(src)) {
-        console.error(`✗ Source file not found: ${src}`);
+        console.error('? Source file not found: ' + src);
         return false;
     }
-    
-    return copyFileSync(src, dest);
+
+    const copied = copyFileSync(src, dest);
+
+    if (showLegacy && fs.existsSync(legacySrc)) {
+        copyFileSync(legacySrc, legacyDest);
+    } else if (!showLegacy && fs.existsSync(legacyDest)) {
+        fs.rmSync(legacyDest, { force: true });
+        console.log('?? Removed legacy renderer HTML (SHOW_LEGACY disabled).');
+    }
+
+    return copied;
 }
 
 function copyRendererStyles() {
@@ -181,7 +193,7 @@ function copyRendererStyles() {
     const dest = 'dist/app/renderer/styles';
     
     if (!fs.existsSync(src)) {
-        console.error(`✗ Source directory not found: ${src}`);
+        console.error(`? Source directory not found: ${src}`);
         return false;
     }
     
@@ -194,7 +206,7 @@ function copyRendererLoader() {
     const dest = 'dist/app/renderer/loader.js';
     
     if (!fs.existsSync(src)) {
-        console.error(`✗ Source file not found: ${src}`);
+        console.error(`? Source file not found: ${src}`);
         return false;
     }
     
@@ -207,7 +219,7 @@ function copyRendererBoot() {
     const dest = 'dist/app/renderer/boot.mjs';
     
     if (!fs.existsSync(src)) {
-        console.error(`✗ Source file not found: ${src}`);
+        console.error(`? Source file not found: ${src}`);
         return false;
     }
     
@@ -220,7 +232,7 @@ function copyConfigDirectory() {
     const dest = 'dist/config';
     
     if (!fs.existsSync(src)) {
-        console.error(`✗ Source directory not found: ${src}`);
+        console.error(`? Source directory not found: ${src}`);
         return false;
     }
     
@@ -228,7 +240,7 @@ function copyConfigDirectory() {
 }
 
 function main() {
-    console.log('🔄 Starting asset copying process...\n');
+    console.log('?? Starting asset copying process...\n');
     
     const tasks = [
         copyBackendJs,
@@ -252,10 +264,10 @@ function main() {
     console.log('\n' + '='.repeat(50));
     
     if (allSuccess) {
-        console.log('✅ All assets copied successfully!');
+        console.log('? All assets copied successfully!');
         process.exit(0);
     } else {
-        console.error('❌ Some assets failed to copy. Check errors above.');
+        console.error('? Some assets failed to copy. Check errors above.');
         process.exit(1);
     }
 }

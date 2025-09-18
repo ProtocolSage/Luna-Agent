@@ -893,7 +893,10 @@
         // Check voice providers on startup
         async function checkVoiceProviders() {
             try {
-                const response = await fetch('/api/voice/tts/check');
+                const base = (window.location && window.location.origin) || '';
+                const response = await fetch(`${base}/api/voice/tts/check`, {
+                  headers: (typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'development') ? { 'x-api-key': 'dev-local' } : {}
+                });
                 if (response.ok) {
                     const data = await response.json();
                     console.log('Available voice providers:', data.availableProviders);

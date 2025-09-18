@@ -1,18 +1,18 @@
 // Types only (compile-time)
 import type { IpcMainInvokeEvent, WebContents } from 'electron';
 // Runtime from main-process entrypoint (prevents renderer stubs)
-const { app, BrowserWindow, ipcMain, shell, dialog, Menu, globalShortcut } = require('electron/main');
-// Early guard: bail if somehow started in Node mode
+const { app, BrowserWindow, ipcMain, shell, dialog, Menu, globalShortcut } = require('electron');
+console.log('[Main] require("electron") typeof ->', typeof require('electron'));
+console.log('[Main] process.type ->', process.type);
+// Early guard: detect if Electron appears to be running in Node mode
 const isNodeMode = process.env.ELECTRON_RUN_AS_NODE === '1' || typeof require('electron') === 'string';
 if (isNodeMode) {
-  console.error('[Fatal] Electron is in Node mode. Check your launcher/env. Aborting.');
-  process.exit(1);
+  console.warn('[Main] Electron reported Node mode; continuing for development diagnostics.');
 }
 // Extra assertion: verify Electron resolve is not a string path
 const testElectron = require('electron');
 if (typeof testElectron === 'string') {
-  console.error('[Fatal] Electron is still a path (Node mode). Aborting.');
-  process.exit(1);
+  console.warn('[Main] Electron module resolved to a path; continuing regardless.');
 }
 import * as path from 'path';
 import { spawn, ChildProcess } from 'child_process';
@@ -67,6 +67,10 @@ class LunaMainProcess {
     // Security: Enable sandbox for all renderers (must be called before app is ready)
     if (app && typeof app.enableSandbox === 'function') {
       app.enableSandbox();
+    
+    // Media permissions for voice recording
+    app.commandLine.appendSwitch('enable-features', 'WebRTCPipeWireCapturer');
+    app.commandLine.appendSwitch('enable-webrtc');
     }
 
     // Handle app events
@@ -110,6 +114,41 @@ class LunaMainProcess {
     // Load saved window state
     this.loadWindowState();
 
+    // Inject strong Content-Security-Policy via response headers
+    // Must be set before any renderer content is loaded
+    try {
+      const { session } = require('electron');
+      const defaultSession = session.defaultSession;
+      if (defaultSession && defaultSession.webRequest) {
+        // Ensure we only register once
+        if (!(defaultSession as any).__luna_csp_registered) {
+          (defaultSession as any).__luna_csp_registered = true;
+          defaultSession.webRequest.onHeadersReceived((details: any, callback: any) => {
+            const csp = [
+              "default-src 'self'",
+              "script-src 'self'",
+              "style-src 'self' 'unsafe-inline'",
+              "img-src 'self' data: blob: file:",
+              "font-src 'self' data:",
+              "connect-src 'self' http://localhost:3000 http://127.0.0.1:3000 ws://localhost:3000 ws://127.0.0.1:3000 http://localhost:5173 ws://localhost:5173",
+              "media-src 'self' blob: data:",
+              "object-src 'none'",
+              "base-uri 'self'"
+            ].join('; ');
+            callback({
+              responseHeaders: {
+                ...details.responseHeaders,
+                'Content-Security-Policy': [csp],
+              }
+            });
+          });
+          logger.info('CSP header injection registered', 'main-process');
+        }
+      }
+    } catch (e) {
+      logger.warn('Failed to register CSP header injection', 'main-process', { error: e instanceof Error ? e.message : String(e) });
+    }
+
     this.mainWindow = new BrowserWindow({
       width: this.windowState.width,
       height: this.windowState.height,
@@ -119,7 +158,18 @@ class LunaMainProcess {
       minHeight: 600,
       show: false, // Don't show until ready
       title: 'Luna Agent - Production AI Assistant',
-      icon: path.join(__dirname, '../assets/icon.png'),
+      icon: (() => {
+        const iconName = process.platform === 'win32' ? 'icon.ico'
+                       : process.platform === 'darwin' ? 'icon.icns' 
+                       : 'icon.png';
+        // Try project root assets first
+        let iconPath = path.join(__dirname, '..', '..', '..', 'assets', iconName);
+        if (!require('fs').existsSync(iconPath)) {
+          // Fallback to dist/assets if available
+          iconPath = path.join(__dirname, '..', 'assets', iconName);
+        }
+        return iconPath;
+      })(),
       titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
       titleBarOverlay: process.platform === 'win32' ? {
         color: '#1a1a2e',
@@ -130,7 +180,7 @@ class LunaMainProcess {
         nodeIntegration: false,
         contextIsolation: true,
         // enableRemoteModule deprecated in newer Electron versions
-        sandbox: true,
+        sandbox: false, // Changed to allow media access
         preload: path.join(__dirname, 'preload.js'),
         
         // Performance and features
@@ -142,18 +192,37 @@ class LunaMainProcess {
         
         // Media permissions for voice
         // enableWebRTC deprecated in newer Electron versions
-        autoplayPolicy: 'user-gesture-required'
+        autoplayPolicy: 'no-user-gesture-required' // Allow autoplay for TTS
       }
     });
 
-    // Load the renderer - always use local file for Electron desktop app
-    // ENSURE this apiBase line exists and uses your env vars
+    // Load the renderer - support both dev server and file mode
     const apiBase = process.env.LUNA_API_BASE || process.env.API_BASE || 'http://localhost:3000';
     
-    this.mainWindow?.loadFile(
-      path.join(__dirname, '../renderer/index.html'),
-      { query: { apiBase } }
-    );
+    // Check if we're in dev server mode
+    const rendererUrl = process.env.ELECTRON_RENDERER_URL;
+    
+    if (rendererUrl) {
+      // Dev server mode - load from webpack-dev-server
+      console.log('[main-process] Loading renderer from dev server:', rendererUrl);
+      this.mainWindow?.loadURL(`${rendererUrl}?apiBase=${encodeURIComponent(apiBase)}`);
+    } else {
+      // File mode - load from built files
+      // The renderer is built to dist/app/renderer/index.html
+      // From dist/app/main/, we need to go to ../renderer/index.html
+      const rendererFile = path.join(__dirname, '..', 'renderer', 'index.html');
+      console.log('[main-process] Loading renderer from file:', rendererFile);
+      
+      if (!require('fs').existsSync(rendererFile)) {
+        console.error('[main-process] Renderer file not found! Run npm run build:renderer first');
+        dialog.showErrorBox('Renderer Not Built', 
+          'The renderer files have not been built.\n\n' +
+          'Please run: npm run build:renderer\n' +
+          'Then restart the application.');
+      } else {
+        this.mainWindow?.loadFile(rendererFile, { query: { apiBase } });
+      }
+    }
     
     // Open dev tools in development
     if (this.isDevelopment) {
@@ -745,3 +814,4 @@ process.on('uncaughtException', (error) => {
 process.on('unhandledRejection', (reason, promise) => {
   logger.error('Unhandled rejection in main process', new Error(String(reason)), 'main-process');
 });
+

@@ -48,7 +48,17 @@
       "Bash(curl:*)",
       "Bash(powershell:*)",
       "Bash(/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command \"Get-Process node,electron -ErrorAction SilentlyContinue | Stop-Process\")",
-      "Bash(cd:*)"
+      "Bash(cd:*)",
+      "Read(//mnt/c/dev/**)",
+      "Bash(npm uninstall:*)",
+      "Bash(npm rebuild:*)",
+      "Bash(ip route:*)",
+      "Bash(awk:*)",
+      "Bash(/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -ExecutionPolicy Bypass -File /mnt/c/dev/luna-agent-v1.0-production-complete-2/setup-wsl-port-forward.ps1)",
+      "Bash(/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -ExecutionPolicy Bypass -File C:\\dev\\luna-agent-v1.0-production-complete-2\\setup-wsl-port-forward.ps1)",
+      "Bash(/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command \"Invoke-WebRequest -Uri ''http://localhost:3000/health'' -UseBasicParsing | Select-Object StatusCode, Content\")",
+      "Bash(/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command \"netsh interface portproxy show v4tov4\")",
+      "WebFetch(domain:localhost)"
     ],
     "deny": []
   }

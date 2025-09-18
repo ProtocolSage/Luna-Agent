@@ -32,9 +32,11 @@ interface VoiceStatus {
     elevenlabs: boolean;
     openai: boolean;
     webSpeech: boolean;
+    streaming: boolean;
   };
   availableProviders: string[];
-  recommended: string;
+  streaming?: { available?: boolean };
+recommended: string;
   timestamp: string;
 }
 
@@ -84,14 +86,14 @@ const REFRESH_INTERVAL = 10_000;
 
 const formatNumber = (value?: number, options: Intl.NumberFormatOptions = { maximumFractionDigits: 0 }): string => {
   if (typeof value !== 'number' || Number.isNaN(value)) {
-    return '—';
+    return '?';
   }
   return new Intl.NumberFormat('en-US', options).format(value);
 };
 
 const formatPercent = (value?: number): string => {
   if (typeof value !== 'number' || Number.isNaN(value)) {
-    return '—';
+    return '?';
   }
   const precision = value >= 100 || value === 0 ? 0 : 1;
   return `${value.toFixed(precision)}%`;
@@ -110,7 +112,7 @@ const formatCurrency = (value?: number): string => {
 
 const formatBytes = (bytes?: number): string => {
   if (typeof bytes !== 'number' || Number.isNaN(bytes)) {
-    return '—';
+    return '?';
   }
   if (bytes === 0) {
     return '0 B';
@@ -124,7 +126,7 @@ const formatBytes = (bytes?: number): string => {
 
 const formatDuration = (seconds?: number): string => {
   if (typeof seconds !== 'number' || Number.isNaN(seconds)) {
-    return '—';
+    return '?';
   }
   const totalSeconds = Math.floor(seconds);
   if (totalSeconds < 60) {
@@ -143,7 +145,7 @@ const formatDuration = (seconds?: number): string => {
 
 const formatTime = (date: Date | null): string => {
   if (!date) {
-    return '—';
+    return '?';
   }
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 };
@@ -325,13 +327,18 @@ export function DiagnosticPanel() {
 
   const voiceProviders = useMemo(() => {
     if (!voice) {
-      return [] as Array<{ name: string; available: boolean }>;
+      return [] as Array<{ name: string; available: boolean; badge?: string }>;
     }
 
     return [
       { name: 'ElevenLabs', available: !!voice.providers?.elevenlabs },
       { name: 'OpenAI TTS', available: !!voice.providers?.openai },
       { name: 'Web Speech', available: !!voice.providers?.webSpeech },
+      {
+        name: 'Streaming',
+        available: !!voice.streaming?.available,
+        badge: voice.streaming?.available ? 'Experimental' : 'Experimental/Unavailable',
+      },
     ];
   }, [voice]);
 
@@ -369,7 +376,7 @@ export function DiagnosticPanel() {
         <span className="metrics-toggle-time">
           {lastUpdated ? `Updated ${formatTime(lastUpdated)}` : 'Awaiting data'}
         </span>
-        <span className="metrics-toggle-caret">{isOpen ? '▾' : '▸'}</span>
+        <span className="metrics-toggle-caret">{isOpen ? '?' : '?'}</span>
       </button>
 
       {isOpen && (
@@ -394,7 +401,7 @@ export function DiagnosticPanel() {
                 className="metrics-refresh"
                 disabled={isLoading}
               >
-                {isLoading ? 'Refreshing…' : 'Refresh'}
+                {isLoading ? 'Refreshing?' : 'Refresh'}
               </button>
             </div>
           </header>
@@ -521,6 +528,11 @@ export function DiagnosticPanel() {
                   >
                     <span>{provider.name}</span>
                     <strong>{provider.available ? 'Online' : 'Offline'}</strong>
+                    {provider.badge && (
+                      <span className={`metrics-voice-badge ${provider.available ? 'badge-available' : 'badge-unavailable'}`}>
+                        {provider.badge}
+                      </span>
+                    )}
                   </div>
                 ))}
               </div>
@@ -530,9 +542,9 @@ export function DiagnosticPanel() {
           </section>
 
           <footer className="metrics-footer">
-            <span>Last updated {lastUpdated ? formatTime(lastUpdated) : '—'}</span>
+            <span>Last updated {lastUpdated ? formatTime(lastUpdated) : '?'}</span>
             <span>
-              Metrics timestamp {metrics?.timestamp ? new Date(metrics.timestamp).toLocaleTimeString() : '—'}
+              Metrics timestamp {metrics?.timestamp ? new Date(metrics.timestamp).toLocaleTimeString() : '?'}
             </span>
           </footer>
         </div>
@@ -540,3 +552,8 @@ export function DiagnosticPanel() {
     </div>
   );
 }
+
+
+
+
+

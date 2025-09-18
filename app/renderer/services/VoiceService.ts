@@ -1,6 +1,7 @@
 import EventEmitter from 'events';
 import { SecurityService } from './SecurityService';
 import { API_BASE, apiFetch } from './config';
+import { extractText, SttResponse } from './voiceContracts';
 import { API } from '../config/endpoints';
 
 // Browser speech APIs (using type assertion where needed)
@@ -266,13 +267,11 @@ export class VoiceService extends EventEmitter {
         throw new Error(`STT failed: ${response.status}`);
       }
       
-      const data = await response.json().catch(() => ({} as any));
-      const transcript = (
-        data.text ??
-        data.transcription ??
-        (data.result ? data.result.text : undefined) ??
-        ''
-      ).toString();
+      const payload = (await response.json()) as SttResponse;
+      const transcript = extractText(payload);
+      if (!transcript) {
+        throw new Error('STT returned empty text');
+      }
       return transcript;
     } catch (error) {
       console.error('[VoiceService] Transcribe error:', error);

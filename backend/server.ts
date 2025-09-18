@@ -3,7 +3,15 @@ import 'module-alias/register';
 
 // Load environment variables first, before any other imports
 import * as dotenv from 'dotenv';
+import fs from 'fs';
 dotenv.config();
+// Debug: Log loaded OpenAI API key
+console.log('[ENV] OPENAI_API_KEY loaded:', process.env.OPENAI_API_KEY ? 
+  `${process.env.OPENAI_API_KEY.substring(0, 10)}...` : 'NOT SET');
+// Optionally load .env.local if present (overrides default .env)
+if (fs.existsSync('.env.local')) {
+  dotenv.config({ path: '.env.local', override: true });
+}
 
 // Load File polyfill before any other imports
 if (typeof globalThis.File === 'undefined') {
@@ -33,15 +41,19 @@ import cookieParser from 'cookie-parser';
 import { readSessionId } from './helpers/session';
 import compression from 'compression';
 import authRoutes from './routes/auth';
+// import securityRoutes from './routes/security'; // Temporarily disabled
 import { ModelRouter } from '@agent/orchestrator/modelRouter';
 import { PIIFilter } from '@agent/validators/piiFilter';
 import { ChatRequest, ChatResponse, ModelConfig } from '../types';
 import { createAgentRouter } from './routes/agent';
 import voiceRouter from './routes/voice';
+import streamingVoiceRouter, { initializeVoiceWebSocket } from './routes/streamingVoice';
+import publicVoiceDiagnosticsRouter from './routes/publicVoiceDiagnostics';
 import memoryRoutes from './routes/memory';
 import toolsRoutes from './routes/tools';
 import { getDatabaseService } from './DatabaseService';
 import { SecurityService } from './utils/SecurityService';
+// import { securityInitializer } from './services/SecurityInitializer'; // Temporarily disabled
 import { execSync } from 'child_process';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
@@ -81,6 +93,9 @@ if (!process.env.OPENAI_API_KEY || !process.env.ANTHROPIC_API_KEY) {
   }
 }
 
+// Debug: confirm provider key presence at startup
+console.log('[config] OPENAI_API_KEY set?', !!process.env.OPENAI_API_KEY);
+
 // Generate JWT secret if not provided
 const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(64).toString('hex');
 const API_VERSION = 'v1';
@@ -109,6 +124,7 @@ class SecureExpressServer {
   private anthropic: any;
   private port: number;
   private server: any;
+  private voiceWebSocketServer: any;
 
   constructor() {
     this.app = express();
@@ -165,6 +181,9 @@ class SecureExpressServer {
     // Initialize services
     await this.securityService.initialize();
     await this.databaseService.initialize();
+    
+    // Initialize enterprise security system
+    // await securityInitializer.initialize(); // Temporarily disabled
 
     // Setup middleware in correct order
     this.setupSecurityMiddleware();
@@ -181,28 +200,40 @@ class SecureExpressServer {
     // Trust proxy for accurate IP addresses
     this.app.set('trust proxy', 1);
 
-    // Security headers with Helmet
+    // Security headers with Helmet - production vs development CSP
+    const isDevelopment = process.env.NODE_ENV !== 'production';
+    
     this.app.use(helmet({
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
-          styleSrc: ["'self'", "'unsafe-inline'"],
-          scriptSrc: ["'self'", "'unsafe-eval'"], // Allow eval for dynamic imports
+          styleSrc: isDevelopment 
+            ? ["'self'", "'unsafe-inline'"] // Dev: allow inline styles for HMR
+            : ["'self'"], // Prod: remove unsafe-inline (use hashes/nonces)
+          scriptSrc: ["'self'", "'unsafe-eval'"], // Keep for dynamic imports
           imgSrc: ["'self'", "data:", "https:"],
-          connectSrc: ["'self'", "ws:", "wss:"],
+          connectSrc: isDevelopment 
+            ? ["'self'", "ws:", "wss:", "http://localhost:5173", "http://127.0.0.1:5173"] // Dev: include dev server
+            : ["'self'", "ws:", "wss:"], // Prod: remove dev server entries
           fontSrc: ["'self'"],
           objectSrc: ["'none'"],
           mediaSrc: ["'self'"],
           frameSrc: ["'none'"],
+          baseUri: ["'self'"],
+          formAction: ["'self'"],
+          frameAncestors: ["'self'"],
+          scriptSrcAttr: ["'none'"],
+          ...(isDevelopment ? {} : { upgradeInsecureRequests: [] }), // Only in production
         },
       },
       crossOriginEmbedderPolicy: false, // Disable for compatibility
     }));
 
-    // CORS configuration - ENSURE this matches your requirements
+    // CORS configuration - production vs development
     const corsOptions = {
       origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-        // Allow requests with no origin (mobile apps, Postman, etc.)
+        // Production: allow !origin (Electron packaged apps send no Origin)
+        // Development: allow !origin for testing tools (Postman, curl, etc.)
         if (!origin) return callback(null, true);
         
         if (this.securityService.validateOrigin(origin)) {
@@ -213,11 +244,26 @@ class SecureExpressServer {
       },
       credentials: true,
       optionsSuccessStatus: 200,
-      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-      allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization', 'X-CSRF-Token', 'x-session-id']
+      methods: 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
+      // Include all headers actually used by the application
+      allowedHeaders: [
+        'Origin', 
+        'X-Requested-With', 
+        'Content-Type', 
+        'Accept', 
+        'Authorization', 
+        'X-CSRF-Token', 
+        'x-session-id',
+        'x-api-key',
+        'X-Request-Id',
+        'X-Client-Version'
+      ]
     };
 
     this.app.use(cors(corsOptions));
+    
+    // Global OPTIONS handler for preflight requests
+    this.app.options('*', cors(corsOptions));
 
     // Compression
     this.app.use(compression({
@@ -262,15 +308,21 @@ class SecureExpressServer {
 
     // Very strict rate limit for chat endpoints
     this.app.use('/api/agent/chat', createRateLimit(1 * 60 * 1000, 60, 'Too many chat requests')); // 60 per minute
+    
+    // Rate limit for voice endpoints (especially TTS which can be expensive)
+    this.app.use('/api/voice/tts', createRateLimit(1 * 60 * 1000, 30, 'Too many TTS requests')); // 30 per minute
+    this.app.use('/api/voice/stt', createRateLimit(1 * 60 * 1000, 100, 'Too many STT requests')); // 100 per minute
+    this.app.use('/api/voice/transcribe', createRateLimit(1 * 60 * 1000, 100, 'Too many STT requests')); // match /stt alias
+    this.app.use('/api/voice/*', createRateLimit(1 * 60 * 1000, 120, 'Too many voice requests')); // 120 per minute general voice
   }
 
   private setupCoreMiddleware(): void {
     // Cookie parsing - MUST be before routes - ENSURE this line exists
     this.app.use(cookieParser(process.env.COOKIE_SECRET || 'dev-secret'));
     
-    // Body parsing with size limits - ENSURE this line exists
+    // Body parsing with size limits (5MB per ship checklist)
     this.app.use(express.json({ 
-      limit: '10mb',
+      limit: '5mb',
       verify: (req: any, res, buf) => {
         req.rawBody = buf;
       }
@@ -278,19 +330,44 @@ class SecureExpressServer {
     
     this.app.use(express.urlencoded({ 
       extended: true, 
-      limit: '10mb' 
+      limit: '5mb' 
     }));
 
-    // Request logging and IP tracking
+    // Request logging, ID generation, and timeout configuration
     this.app.use((req: AuthenticatedRequest, res: Response, next: NextFunction): any => {
+      // Generate unique request ID for structured logging
+      const requestId = crypto.randomUUID();
+      req.headers['x-request-id'] = requestId;
+      res.setHeader('X-Request-Id', requestId);
+      
       req.clientIP = this.getClientIP(req);
       
-      // Log all requests
-      console.log(`[${new Date().toISOString()}] ${req.method} ${req.path} from ${req.clientIP}`);
+      // Set request timeout (30s default, 60s for voice endpoints)
+      const isVoiceEndpoint = req.path.startsWith('/api/voice/');
+      const timeout = isVoiceEndpoint ? 60000 : 30000; // 60s for voice, 30s otherwise
+      
+      const timeoutId = setTimeout(() => {
+        if (!res.headersSent) {
+          console.warn(`[${requestId}] Request timeout after ${timeout}ms: ${req.method} ${req.path}`);
+          res.status(408).json({ 
+            error: 'Request timeout',
+            requestId,
+            timeout: timeout / 1000 
+          });
+        }
+      }, timeout);
+      
+      // Clear timeout when response finishes
+      res.on('finish', () => clearTimeout(timeoutId));
+      res.on('close', () => clearTimeout(timeoutId));
+      
+      // Structured logging with request ID
+      console.log(`[${new Date().toISOString()}] [${requestId}] ${req.method} ${req.path} from ${req.clientIP}`);
       
       // Check if IP is banned
       if (this.securityService.isIPBanned(req.clientIP)) {
-        return res.status(403).json({ error: 'Access denied' });
+        clearTimeout(timeoutId);
+        return res.status(403).json({ error: 'Access denied', requestId });
       }
 
       // Add security headers
@@ -375,6 +452,10 @@ class SecureExpressServer {
       });
     };
 
+    // Mount public voice diagnostic endpoints before authentication
+    console.log('[SecureServer] Mounting public voice diagnostics at /api/voice/diagnostics');
+    this.app.use('/api/voice/diagnostics', publicVoiceDiagnosticsRouter);
+
     // Apply authentication to protected routes
     this.app.use('/api/agent', authenticateToken);
     this.app.use('/api/voice', authenticateToken);
@@ -445,6 +526,16 @@ class SecureExpressServer {
   }
 
   private async setupRoutes(): Promise<void> {
+    // Configuration endpoint for frontend - no auth needed for local use
+    this.app.get('/api/config/openai-key', (req: Request, res: Response) => {
+        // Only return if API key exists
+        if (process.env.OPENAI_API_KEY) {
+            res.json({ apiKey: process.env.OPENAI_API_KEY });
+        } else {
+            res.status(404).json({ error: 'OpenAI API key not configured' });
+        }
+    });
+
     // Health check endpoint (no authentication required) - ENSURE this line exists
     this.app.get('/health', (req: Request, res: Response) => {
       res.json({
@@ -467,6 +558,9 @@ class SecureExpressServer {
 
     // ENSURE auth routes are mounted - this line exists
     this.app.use('/api/auth', authRoutes);
+
+    // Security credential management routes
+    // this.app.use('/api/security', securityRoutes); // Temporarily disabled
 
     // Enhanced SSE Streaming Chat Route with security
     this.app.post('/api/agent/chat/stream', async (req: AuthenticatedRequest, res: Response): Promise<any> => {
@@ -739,6 +833,10 @@ class SecureExpressServer {
       this.app.use('/api/tools', toolsRoutes);
       console.log('[SecureServer] Tools routes mounted successfully');
       
+      console.log('[SecureServer] Mounting streaming voice routes at /api/voice/streaming');
+      this.app.use('/api/voice/streaming', streamingVoiceRouter);
+      console.log('[SecureServer] Streaming voice routes mounted successfully');
+      
       // Then mount auth routes
       this.app.use('/api', routes);  // This mounts /api/auth from routes/index.ts
       
@@ -797,9 +895,18 @@ class SecureExpressServer {
             this.port = currentPort;
             // ENSURE this line exists
             console.log(`[backend] listening on http://localhost:${this.port}`);
-            console.log(`📊 Health check: http://localhost:${this.port}/health`);
-            console.log(`🔒 Security metrics: http://localhost:${this.port}/api/security/status`);
-            console.log(`📈 System metrics: http://localhost:${this.port}/api/metrics`);
+            console.log(`?? Health check: http://localhost:${this.port}/health`);
+            console.log(`?? Security metrics: http://localhost:${this.port}/api/security/status`);
+            console.log(`?? System metrics: http://localhost:${this.port}/api/metrics`);
+            
+            // Initialize WebSocket server for streaming voice
+            try {
+              this.voiceWebSocketServer = initializeVoiceWebSocket(this.server);
+              console.log(`?? Streaming voice WebSocket: ws://localhost:${this.port}/ws/voice/stream`);
+            } catch (error) {
+              console.error('[StreamingVoice] Failed to initialize WebSocket server:', error);
+            }
+            
             resolve();
           })
           .on('error', (err: any) => {
@@ -828,6 +935,9 @@ class SecureExpressServer {
         });
       });
     }
+
+    // Shutdown enterprise security system
+    // await securityInitializer.shutdown(); // Temporarily disabled
 
     // Close database connections
     await this.databaseService.close();

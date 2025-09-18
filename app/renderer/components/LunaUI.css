@@ -1,0 +1,470 @@
+/* Luna Voice Assistant UI Styles */
+.luna-container {
+  width: 100vw;
+  height: 100vh;
+  background: radial-gradient(ellipse at center, #1a1a2e 0%, #0f0f1e 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  cursor: pointer;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+}
+
+/* Animated Orb */
+.luna-orb-container {
+  position: relative;
+  width: 200px;
+  height: 200px;
+  margin-bottom: 40px;
+}
+
+.luna-orb {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #6a5acd, #4a4a8a);
+  position: relative;
+  transition: all 0.3s ease;
+  box-shadow: 0 0 50px rgba(106, 90, 205, 0.5);
+}
+
+.luna-orb.active {
+  animation: pulse 2s infinite;
+  background: radial-gradient(circle at 30% 30%, #00ff88, #00cc66);
+  box-shadow: 0 0 80px rgba(0, 255, 136, 0.8);
+}
+
+.luna-orb-inner {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 60%;
+  height: 60%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 40%, rgba(255, 255, 255, 0.3), transparent);
+}
+
+.luna-orb-glow {
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  right: -50%;
+  bottom: -50%;
+  background: radial-gradient(circle, transparent, rgba(106, 90, 205, 0.2));
+  animation: rotate 10s linear infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 80px rgba(0, 255, 136, 0.8);
+  }
+  50% {
+    transform: scale(1.1);
+    box-shadow: 0 0 120px rgba(0, 255, 136, 1);
+  }
+}
+
+@keyframes rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Status Display */
+.luna-status {
+  color: #ffffff;
+  font-size: 24px;
+  font-weight: 300;
+  text-align: center;
+  margin-bottom: 30px;
+  opacity: 0.9;
+  text-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+  min-height: 30px;
+}
+
+/* Messages */
+.luna-messages {
+  position: absolute;
+  bottom: 120px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80%;
+  max-width: 600px;
+  max-height: 200px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.luna-message {
+  padding: 12px 20px;
+  border-radius: 20px;
+  backdrop-filter: blur(10px);
+  animation: slideIn 0.3s ease;
+  max-width: 80%;
+}
+
+.luna-message.user {
+  background: rgba(106, 90, 205, 0.3);
+  align-self: flex-end;
+  border: 1px solid rgba(106, 90, 205, 0.5);
+}
+
+.luna-message.assistant {
+  background: rgba(0, 255, 136, 0.2);
+  align-self: flex-start;
+  border: 1px solid rgba(0, 255, 136, 0.4);
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Controls */
+.luna-controls {
+  position: absolute;
+  bottom: 40px;
+  display: flex;
+  gap: 20px;
+}
+
+.luna-btn {
+  padding: 12px 30px;
+  border: none;
+  border-radius: 25px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+  color: white;
+}
+
+.luna-btn.interrupt {
+  background: rgba(255, 140, 0, 0.3);
+  border: 1px solid rgba(255, 140, 0, 0.6);
+}
+
+.luna-btn.interrupt:hover {
+  background: rgba(255, 140, 0, 0.5);
+  transform: scale(1.05);
+}
+
+.luna-btn.stop {
+  background: rgba(255, 0, 0, 0.3);
+  border: 1px solid rgba(255, 0, 0, 0.6);
+}
+
+.luna-btn.stop:hover {
+  background: rgba(255, 0, 0, 0.5);
+  transform: scale(1.05);
+}
+
+/* Start Prompt */
+.luna-start-prompt {
+  position: absolute;
+  top: 60%;
+  text-align: center;
+  color: white;
+}
+
+.luna-start-prompt h2 {
+  font-size: 32px;
+  font-weight: 300;
+  margin-bottom: 10px;
+  opacity: 0.9;
+}
+
+.luna-start-prompt p {
+  font-size: 18px;
+  opacity: 0.7;
+  animation: fadeInOut 2s infinite;
+}
+
+@keyframes fadeInOut {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 0.3; }
+}
+
+/* Scrollbar */
+.luna-messages::-webkit-scrollbar {
+  width: 6px;
+}
+
+.luna-messages::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+.luna-messages::-webkit-scrollbar-thumb {
+  background: rgba(106, 90, 205, 0.5);
+  border-radius: 3px;
+}
+
+.luna-messages::-webkit-scrollbar-thumb:hover {
+  background: rgba(106, 90, 205, 0.7);
+}
+
+/* Developer Tools Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+  backdrop-filter: blur(5px);
+}
+
+.modal-content {
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 12px;
+  max-width: 90vw;
+  max-height: 90vh;
+  overflow: auto;
+  position: relative;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.modal-close {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: rgba(255, 68, 68, 0.2);
+  border: 1px solid rgba(255, 68, 68, 0.5);
+  color: #ff4444;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: bold;
+  transition: all 0.2s ease;
+  z-index: 2001;
+}
+
+.modal-close:hover {
+  background: rgba(255, 68, 68, 0.4);
+  transform: scale(1.1);
+}
+
+/* Settings Panel Styles */
+.settings-panel {
+  padding: 25px;
+  color: white;
+  max-width: 600px;
+}
+
+.settings-panel h2 {
+  color: #00ff41;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.settings-panel h3 {
+  color: #00aaff;
+  margin: 20px 0 10px 0;
+  font-size: 16px;
+}
+
+.feature-flags {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.feature-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.feature-toggle:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.feature-toggle input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #00ff41;
+}
+
+.feature-name {
+  text-transform: capitalize;
+  font-size: 14px;
+}
+
+/* Developer Panel Styles */
+.developer-panel {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.95);
+  border: 1px solid #333;
+  border-radius: 25px;
+  backdrop-filter: blur(10px);
+  z-index: 1500;
+}
+
+.developer-tabs {
+  display: flex;
+  gap: 5px;
+  padding: 8px;
+}
+
+.developer-tabs button {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #ccc;
+  padding: 8px 16px;
+  border-radius: 18px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.developer-tabs button:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.developer-tabs button.active {
+  background: linear-gradient(135deg, #00ff41 0%, #00cc33 100%);
+  color: black;
+  border-color: #00ff41;
+}
+
+/* Developer Shortcuts */
+.developer-shortcuts {
+  margin-top: 15px;
+  opacity: 0.5;
+  font-family: monospace;
+}
+
+.developer-shortcuts small {
+  color: #888;
+  font-size: 11px;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+  .modal-content {
+    max-width: 95vw;
+    max-height: 95vh;
+  }
+
+  .settings-panel {
+    padding: 15px;
+  }
+
+  .developer-panel {
+    bottom: 10px;
+    left: 10px;
+    right: 10px;
+    transform: none;
+  }
+
+  .developer-tabs {
+    justify-content: space-around;
+  }
+
+  .developer-tabs button {
+    flex: 1;
+    padding: 10px 8px;
+  }
+}
+
+/* Animation for developer tools */
+.modal-overlay {
+  animation: modalFadeIn 0.2s ease-out;
+}
+
+.modal-content {
+  animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.developer-panel {
+  animation: slideUpFade 0.3s ease-out;
+}
+
+@keyframes slideUpFade {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* Credential Manager Modal Specific Styles */
+.credential-manager-modal {
+  max-width: 95vw;
+  min-width: 800px;
+  max-height: 95vh;
+  padding: 0;
+  background: #f8fafc;
+  color: #1f2937;
+}
+
+.credential-manager-modal .modal-close {
+  color: #6b7280;
+  background: rgba(107, 114, 128, 0.1);
+  border-radius: 8px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.credential-manager-modal .modal-close:hover {
+  background: rgba(107, 114, 128, 0.2);
+  color: #374151;
+}

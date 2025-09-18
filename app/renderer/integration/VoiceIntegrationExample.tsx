@@ -54,9 +54,9 @@ Current Configuration:
 • PTT Key: ${voiceConfig.pttKey}
         `);
 
-      } catch (error) {
+      } catch (error: unknown) {
         console.error('[VoiceIntegration] Failed to initialize voice system:', error);
-        onError?.(`Voice system initialization failed: ${error.message}`);
+        onError?.(`Voice system initialization failed: ${error instanceof Error ? error.message : String(error)}`);
       }
     };
 

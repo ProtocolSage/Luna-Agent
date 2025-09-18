@@ -149,9 +149,9 @@ export class EnhancedVoiceService extends EventEmitter {
       console.log('[EnhancedVoiceService] Initialized successfully');
       this.emit('initialized');
       
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('[EnhancedVoiceService] Initialization failed:', error);
-      this.emit('error', `Enhanced voice service initialization failed: ${error.message}`);
+      this.emit('error', `Enhanced voice service initialization failed: ${error instanceof Error ? error.message : String(error)}`);
       throw error;
     }
   }
@@ -213,9 +213,9 @@ export class EnhancedVoiceService extends EventEmitter {
       // Start enhanced monitoring
       await this.startEnhancedListening();
       
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('[EnhancedVoiceService] Failed to start listening:', error);
-      this.emit('error', `Failed to start listening: ${error.message}`);
+      this.emit('error', `Failed to start listening: ${error instanceof Error ? error.message : String(error)}`);
       throw error;
     }
   }
@@ -280,8 +280,8 @@ export class EnhancedVoiceService extends EventEmitter {
       
       console.log('[EnhancedVoiceService] Enhanced audio processing ready');
       
-    } catch (error) {
-      throw new Error(`Failed to setup enhanced audio processing: ${error.message}`);
+    } catch (error: unknown) {
+      throw new Error(`Failed to setup enhanced audio processing: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
@@ -314,8 +314,8 @@ export class EnhancedVoiceService extends EventEmitter {
       this.emit('enhanced-listening-started');
       console.log('[EnhancedVoiceService] Enhanced listening started');
       
-    } catch (error) {
-      throw new Error(`Failed to start enhanced listening: ${error.message}`);
+    } catch (error: unknown) {
+      throw new Error(`Failed to start enhanced listening: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
@@ -357,8 +357,8 @@ export class EnhancedVoiceService extends EventEmitter {
       // Don't connect to destination (no feedback)
       console.log('[EnhancedVoiceService] Audio analysis setup complete');
       
-    } catch (error) {
-      throw new Error(`Failed to setup audio analysis: ${error.message}`);
+    } catch (error: unknown) {
+      throw new Error(`Failed to setup audio analysis: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 

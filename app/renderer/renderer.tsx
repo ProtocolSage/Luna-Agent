@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import App from './App';
 import ErrorBoundary from './components/ErrorBoundary';
 import { getAudioService } from './services/AudioService';
+import './styles/App.css';  // Import existing CSS file
 
 // Global error handlers for unhandled promise rejections and errors
 function setupGlobalErrorHandlers() {
@@ -59,6 +60,18 @@ function initializeTTSHandlers() {
 
 // Wait for DOM to be ready
 document.addEventListener('DOMContentLoaded', () => {
+  // Guard: Some legacy templates may reference a global dragEvent handler.
+  // Provide a safe no-op to avoid ReferenceError in DevTools.
+  try {
+    const g: any = window as any;
+    if (typeof g.dragEvent !== 'function') {
+      g.dragEvent = (e?: Event) => {
+        try { (e as any)?.preventDefault?.(); } catch {}
+        return false;
+      };
+    }
+  } catch {}
+
   const container = document.getElementById('root');
   if (!container) {
     throw new Error('Root element not found');
@@ -94,4 +107,3 @@ if (typeof module !== 'undefined' && module.hot) {
     }
   });
 }
-

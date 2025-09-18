@@ -1,0 +1,128 @@
+ M .claude/settings.local.json
+ M .env.example
+ M CHANGELOG.md
+ M GEMINI.md
+ M app/main/main.ts
+ M app/main/voiceHandler.ts
+ M app/renderer/App.tsx
+ M app/renderer/boot.mjs
+ M app/renderer/components/DiagnosticPanel.tsx
+ M app/renderer/components/EnhancedVoiceControls.tsx
+ M app/renderer/components/FuturisticUI.tsx
+ M app/renderer/components/LuxuryApp.tsx
+ M app/renderer/config/voiceConfig.ts
+ M app/renderer/index.csp.html
+ M app/renderer/index.legacy.html
+ M app/renderer/integration/VoiceIntegrationExample.tsx
+ M app/renderer/loader.js
+ M app/renderer/renderer.tsx
+ M app/renderer/services/EnhancedVoiceService.ts
+ M app/renderer/services/GlobalDebugService.ts
+ M app/renderer/services/MemoryClient.ts
+ M app/renderer/services/VoiceService.ts
+ M app/renderer/services/api/sttClient.ts
+ M app/renderer/services/api/voiceClient.ts
+ M backend/database.js
+ M backend/database.ts
+ M backend/routes/agent.ts
+ M backend/routes/voice.ts
+ M backend/server.ts
+ M backend/services/enhancedToolExecutor.ts
+ M backend/services/simplifiedPipeline.ts
+ M backend/utils/SecurityService.ts
+ M memory/luna-memory-legacy.db-shm
+ M memory/luna-memory.db
+ M memory/luna-memory.db-shm
+ M memory/luna-memory.db-wal
+ M memory/vector-store.db-shm
+ M memory/vector-store.db-wal
+ M package-lock.json
+ M package.json
+ M scripts/build-renderer.js
+ M scripts/copy-assets.js
+ M scripts/launch-electron.cjs
+ M scripts/write-bootstrap.cjs
+ M tsconfig.json
+ M tsconfig.renderer.json
+ M voice-probe.ps1
+ M webpack.config.js
+ D webpack.renderer.config.js
+ D webpack.renderer.js
+?? .github/workflows/build-and-smoke.yml
+?? .github/workflows/voice-smoke.yml
+?? .webpack-cache/
+?? 2025-09-12-compiled-with-problems.txt
+?? BUILD_SYSTEM.md
+?? DEBUG-SERVER-STARTUP.ps1
+?? DEBUG-VOICE-ROUTES.ps1
+?? ELECTRON_STARTUP_FIX_README.md
+?? FINAL-VOICE-TEST.ps1
+?? FIX-AND-TEST-VOICE.ps1
+?? FIX-ESBUILD-WINDOWS.ps1
+?? LUNA-DEPLOY.bat
+?? LUNA-FIXED.bat
+?? LUNA-NO-BUILD.bat
+?? LUNA-QUICK-START.bat
+?? "Luna Voice Assistant - System Pro.txt"
+?? QUICK-VOICE-TEST.ps1
+?? START-LUNA-COMPLETE.bat
+?? START-LUNA-DEV-SERVER.bat
+?? START-LUNA-FILE-MODE.bat
+?? START-LUNA-WITH-MEDIA.bat
+?? SUCCESS-VOICE-SYSTEM.ps1
+?? SUPABASE-SETUP.md
+?? TEST-VOICE-DETAILED.ps1
+?? TEST-VOICE-FIXES.ps1
+?? TEST-VOICE-SYSTEM.ps1
+?? VERIFY-LUNA-SETUP.bat
+?? VOICE-DIAGNOSTIC-REPORT.md
+?? app/main/main.backup.ts
+?? app/renderer/components/CredentialManager.tsx
+?? app/renderer/components/DiagnosticPanel.css
+?? app/renderer/components/LunaUI.css
+?? app/renderer/components/LunaUI.tsx
+?? app/renderer/components/StreamingVoiceInterface.tsx
+?? app/renderer/components/VoiceAgentUI.tsx
+?? app/renderer/components/VoiceSystemTest.tsx
+?? app/renderer/index.html
+?? app/renderer/public/
+?? app/renderer/services/ConversationFlow-fixed.ts
+?? app/renderer/services/ConversationFlow.backup.ts
+?? app/renderer/services/FeatureFlags.ts
+?? app/renderer/services/LunaVoiceAgent.ts
+?? app/renderer/services/StreamingVoiceClient.ts
+?? app/renderer/services/metrics.ts
+?? app/renderer/services/vad-loader.ts
+?? app/renderer/services/voiceContracts.ts
+?? app/renderer/vad-loader.ts
+?? backend/config/
+?? backend/database-persistent.ts
+?? backend/routes/publicVoiceDiagnostics.ts
+?? backend/routes/streamingVoice.ts
+?? backend/services/OpenAIRealtime.ts
+?? backend/services/StreamingVoiceService.ts
+?? backend/services/ToolOrchestrator.ts
+?? backend/services/VoiceInputService.ts
+?? backend/sql/
+?? docs/STATE_OF_VOICE.md
+?? docs/VOICE_CONTRACTS/
+?? fix-mediarecorder.ps1
+?? fixtures/
+?? gemini2.md
+?? luna_test.wav
+?? memory/HybridMemoryService.ts
+?? memory/SupabaseMemoryStore.ts
+?? reports/
+?? scripts/smoke-check.mjs
+?? setup-wsl-port-forward.ps1
+?? test-luna-agent-windows.ps1
+?? test-microphone.html
+?? test-voice-input.js
+?? test/unit/FeatureFlags.test.ts
+?? test/unit/system.test.ts
+?? test_audio.wav
+?? types/mic.d.ts
+?? verify-build-system.js
+?? webpack.dev.js
+?? webpack.renderer.UNUSED.js
+?? webpack.renderer.config.UNUSED.js

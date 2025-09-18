@@ -2,6 +2,7 @@
 // Robust TTS/STT client for the renderer. Works with strict CSP and your fetch shim.
 
 import { apiFetch } from '../config';
+import { extractText, SttResponse } from '../voiceContracts';
 import { API } from '../../config/endpoints';
 
 export type TTSProvider = 'elevenlabs' | 'openai' | undefined;
@@ -50,13 +51,14 @@ export async function transcribe(audio: Blob): Promise<string> {
   const r = await apiFetch(API.STT_TRANSCRIBE, { method: 'POST', body: fd });
   if (!r.ok) {
     const msg = await safeError(r);
-    throw new Error(`Transcribe ${r.status}: ${msg}`);
+    throw new Error('Transcribe ' + r.status + ': ' + msg);
   }
-  const j = await r.json();
-  if (!j || typeof j.transcription !== 'string') {
+  const j = (await r.json()) as SttResponse;
+  const text = extractText(j);
+  if (!text) {
     throw new Error('transcribe malformed response');
   }
-  return j.transcription;
+  return text;
 }
 
 /** Play an audio Blob (mp3) and return a controller with stop() */
@@ -80,3 +82,4 @@ async function safeError(r: Response): Promise<string> {
     try { const j = JSON.parse(t); return j?.error || j?.message || t; } catch { return t; }
   } catch { return `${r.statusText}`; }
 }
+

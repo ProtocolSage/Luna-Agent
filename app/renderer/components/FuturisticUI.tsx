@@ -5,6 +5,8 @@ import { transcribeBlob } from '../services/api/sttClient';
 import { addMemory, memAdd as memAddCompat, memSearch as memSearchCompat } from '../services/api/memoryClient';
 import * as THREE from 'three';
 import './FuturisticUI.css';
+import { apiFetch } from '../services/config';
+import { API } from '../config/endpoints';
 
 /** ---------- Types ---------- */
 interface SpeechRecognitionInterface {
@@ -41,7 +43,7 @@ interface PerformanceMetrics {
 /** ---------- API base ---------- */
 const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
 const URL_API_BASE = params.get('apiBase');
-const ENV_API_BASE = (import.meta as any)?.env?.VITE_API_BASE || (window as any)?.API_BASE;
+const ENV_API_BASE = (window as any)?.API_BASE || process.env.API_BASE;
 const API_BASE = (URL_API_BASE || ENV_API_BASE || 'http://localhost:3000').replace(/\/+$/, '');
 
 /** ---------- Response Parser ---------- */
@@ -687,7 +689,7 @@ const FuturisticUI: React.FC = () => {
 
   const checkVoiceProviders = async () => {
     try {
-      const r = await fetch(`${API_BASE}/api/voice/tts/check`);
+      const r = await apiFetch(API.TTS_CHECK);
       if (!r.ok) throw new Error(`Voice check ${r.status}`);
       const data = await r.json();
       if (!data.availableProviders?.length) setVoiceStatus(p => ({ ...p, error: 'No voice providers available' }));

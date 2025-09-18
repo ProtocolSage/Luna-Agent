@@ -417,12 +417,12 @@ Current Configuration:
 • PTT Key: ${voiceConfig.pttKey}
       `);
 
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('[LuxuryApp] Enhanced voice system initialization failed:', error);
       // Don't throw - let the app continue with base voice service
       setVoiceState(prev => ({ 
         ...prev, 
-        lastError: `Enhanced voice features unavailable: ${error.message}` 
+        lastError: `Enhanced voice features unavailable: ${error instanceof Error ? error.message : String(error)}` 
       }));
     }
   };
@@ -1070,7 +1070,7 @@ Current Configuration:
                   setInitError(null);
                   setIsInitializing(true);
                   setErrorRecoveryCount(0); // Reset recovery count for manual retry
-                  initializeSecureSession(0); // Start with retry attempt 0
+                  initializeSecureSession(); // Start manual retry
                 }}
                 className="retry-btn"
               >

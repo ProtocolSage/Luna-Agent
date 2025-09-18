@@ -2,6 +2,7 @@
 // Dedicated speech-to-text client that forces backend Whisper first
 
 import { apiFetch } from '../config';
+import { extractText, SttResponse } from '../voiceContracts';
 import { API } from '../../config/endpoints';
 
 export async function transcribeBlob(b: Blob, filename = 'audio.webm') {
@@ -10,9 +11,11 @@ export async function transcribeBlob(b: Blob, filename = 'audio.webm') {
 
   const r = await apiFetch(API.STT_TRANSCRIBE, { method: 'POST', body: fd });
   if (!r.ok) throw new Error(`transcribe ${r.status}`);
-  const j = await r.json();
-  if (!j || typeof j.transcription !== 'string') {
+  const j = (await r.json()) as SttResponse;
+  const text = extractText(j);
+  if (!text) {
     throw new Error('transcribe malformed response');
   }
-  return j.transcription;
+  return text;
 }
+

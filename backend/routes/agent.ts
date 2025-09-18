@@ -1,6 +1,8 @@
+// Complete agent route with full tool integration
 import { Router, Request, Response } from 'express';
 import { ReasoningEngine } from '@agent/orchestrator/reasoningEngine';
 import { ToolExecutive } from '@agent/tools/executive';
+import { ToolOrchestrator } from '../services/ToolOrchestrator';
 import { VectorStore } from '@agent/memory/vectorStore';
 import { ModelRouter } from '@agent/orchestrator/modelRouter';
 import { PIIFilter } from '@agent/validators/piiFilter';
@@ -15,103 +17,156 @@ import { v4 as uuidv4 } from 'uuid';
 let civilMode = false;
 
 export async function createAgentRouter(modelRouter: ModelRouter): Promise<Router> {
-    // Core component instantiation
     const router = Router();
     const goalManager = new GoalManager();
     const reminderManager = new ReminderManager();
     const vectorStore = new VectorStore();
+    const toolOrchestrator = new ToolOrchestrator();
     let reasoningEngine: ReasoningEngine;
     let toolExecutive: ToolExecutive;
     let piiFilter: PIIFilter;
 
-    // --- CONFIG LOADING ---
+    // Initialize components
+    async function initializeComponents() {
+        try {
+            // Load configs
+            const reasoningConfig = await loadConfig('reasoning.json');
+            const policyConfig = await loadConfig('policy.json');
+            
+            // Initialize stores
+            await vectorStore.initialize();
+            
+            // Create instances
+            reasoningEngine = new ReasoningEngine(modelRouter, reasoningConfig);
+            toolExecutive = new ToolExecutive(policyConfig);
+            piiFilter = new PIIFilter();
+            
+            console.log('Agent components initialized successfully');
+        } catch (error) {
+            console.error('Failed to initialize agent components:', error);
+            throw error;
+        }
+    }
+
     async function loadConfig(filename: string) {
         try {
             const configPath = path.join(__dirname, '../../config', filename);
             const content = await fs.readFile(configPath, 'utf8');
             return JSON.parse(content);
         } catch (error) {
-            console.warn(`Failed to load config ${filename}:`, error);
+            console.warn(`Config ${filename} not found, using defaults`);
             return {};
         }
     }
 
-    // --- INITIALIZE COMPONENTS ---
-    const [reasoningConfig, policyConfig] = await Promise.all([
-        loadConfig('reasoning.json'),
-        loadConfig('policy.json')
-    ]);
-    await vectorStore.initialize();
-    reasoningEngine = new ReasoningEngine(modelRouter, reasoningConfig);
-    toolExecutive = new ToolExecutive(policyConfig);
-    piiFilter = new PIIFilter();
+    // Initialize on startup
+    await initializeComponents();
 
-    // --- NIGHTLY JOURNAL ---
-    schedule.scheduleJob('59 23 * * *', async () => {
-        try {
-            const allTasks = goalManager.getTasks();
-            const openTasks = allTasks.filter(t => !t.done);
-            const closedTasks = allTasks.filter(
-                t => t.done && t.completedAt && t.completedAt >= Date.now() - 24 * 60 * 60 * 1000
-            );
-            const summary = `Today you finished: ${closedTasks.map(t => t.task).join(', ') || 'nothing'}.\nRemaining: ${openTasks.map(t => t.task).join(', ') || 'nothing'}`;
-            const journal: MemoryDocument = {
-                id: uuidv4(),
-                type: 'document',
-                timestamp: new Date().toISOString(),
-                content: `[Journal] ${new Date().toISOString()}\n${summary}`,
-                metadata: { source: 'auto-journal' }
-            };
-            await vectorStore.upsert(journal);
-            console.log('Nightly journal entry created.');
-        } catch (err) {
-            console.error('Journal job failed:', err);
-        }
-    });
-
-    // ---- ENDPOINTS ----
-
+    // Main chat endpoint with complete tool integration
     router.post('/chat', async (req: Request, res: Response) => {
         try {
-            const { message, mode, persona, useTools = true, sessionId } = req.body;
-            const cleanMessage = await piiFilter.filter(message);
-            const memories = await vectorStore.search(cleanMessage, { limit: 10, type: 'document' });
-            const context = {
-                sessionHistory: memories,
-                availableTools: useTools ? await toolExecutive.getToolDefinitionsAsText() : [],
-                mode,      // e.g. 'cot', 'tot', etc
-                persona    // e.g. 'roast', 'civil', etc
-            };
-            const result = await reasoningEngine.reason(
-                '',
-                cleanMessage,
-                context,
-                civilMode
-            );
-            if (result.type === 'tool_use' && result.toolCalls) {
-                const toolResults = await toolExecutive.executePlan(result.toolCalls, sessionId);
-                return res.json({ type: 'tool_results', results: toolResults });
+            const { message, mode = 'conversational', persona = 'helpful', useTools = true, sessionId, context = [] } = req.body;
+            
+            if (!message) {
+                return res.status(400).json({ error: 'Message is required' });
             }
-            return res.json(result);
-        } catch (error) {
-            console.error('Agent chat error:', error);
-            return res.status(500).json({ error: 'Internal Server Error' });
+
+            // Clean message
+            const cleanMessage = await piiFilter.filter(message);
+            
+            // Get relevant memories
+            const memories = await vectorStore.search(cleanMessage, { limit: 10, type: 'document' });
+            
+            // Check for tool requests first
+            let toolResult = null;
+            if (useTools) {
+                toolResult = await toolOrchestrator.processWithTools(cleanMessage, { sessionId });
+            }
+
+            if (toolResult) {
+                // Tool was executed, format response
+                const response = {
+                    type: 'tool_response',
+                    message: toolResult.message,
+                    toolUsed: toolResult.tool,
+                    result: toolResult.result,
+                    response: `I've executed the ${toolResult.tool || 'requested'} tool. ${toolResult.message}`
+                };
+                
+                // Store in memory
+                await vectorStore.upsert({
+                    id: uuidv4(),
+                    type: 'conversation',
+                    timestamp: new Date().toISOString(),
+                    content: `User: ${message}\nAssistant: ${response.response}`,
+                    metadata: { sessionId, hasTools: true }
+                });
+                
+                return res.json(response);
+            }
+
+            // No tool needed, get AI response
+            const aiContext = {
+                sessionHistory: memories,
+                conversationContext: context,
+                availableTools: useTools ? toolOrchestrator.getAvailableTools() : [],
+                mode,
+                persona
+            };
+
+            // Get response from reasoning engine
+            const result = await reasoningEngine.reason('', cleanMessage, aiContext, civilMode);
+            
+            // Format response
+            const response = {
+                type: 'chat_response',
+                response: (result as any).response || (result as any).content || 'I understand. How can I help you further?',
+                reasoning: (result as any).reasoning,
+                confidence: (result as any).confidence
+            };
+
+            // Store conversation in memory
+            await vectorStore.upsert({
+                id: uuidv4(),
+                type: 'conversation',
+                timestamp: new Date().toISOString(),
+                content: `User: ${message}\nAssistant: ${response.response}`,
+                metadata: { sessionId }
+            });
+
+            return res.json(response);
+            
+        } catch (error: any) {
+            console.error('Chat error:', error);
+            return res.status(500).json({ 
+                error: 'Failed to process message',
+                details: error.message 
+            });
         }
     });
 
+    // Tool execution endpoint
     router.post('/execute-tool', async (req: Request, res: Response) => {
         try {
             const { tool, args, sessionId } = req.body;
-            const result = await toolExecutive.executePlan([{ tool, args }], sessionId);
-            return res.json(result);
-        } catch (error) {
+            
+            if (!tool) {
+                return res.status(400).json({ error: 'Tool name is required' });
+            }
+
+            const result = await toolExecutive.executePlan([{ tool, args }], sessionId || 'direct');
+            return res.json(result[0]);
+            
+        } catch (error: any) {
             console.error('Tool execution error:', error);
-            return res.status(500).json({ error: 'Internal Server Error' });
+            return res.status(500).json({ 
+                error: 'Tool execution failed',
+                details: error.message 
+            });
         }
     });
 
-    // ---- MEMORY ENDPOINTS ----
-
+    // Memory endpoints
     router.post('/memory/store', async (req: Request, res: Response) => {
         try {
             const { content, metadata = {} } = req.body;
@@ -123,10 +178,10 @@ export async function createAgentRouter(modelRouter: ModelRouter): Promise<Route
                 ...metadata
             };
             await vectorStore.upsert(doc);
-            return res.status(201).json({ id: doc.id });
-        } catch (error) {
+            return res.status(201).json({ id: doc.id, success: true });
+        } catch (error: any) {
             console.error('Memory store error:', error);
-            return res.status(500).json({ error: 'Internal Server Error' });
+            return res.status(500).json({ error: 'Failed to store memory' });
         }
     });
 
@@ -134,70 +189,62 @@ export async function createAgentRouter(modelRouter: ModelRouter): Promise<Route
         try {
             const { query, limit = 5, type = 'document' } = req.body;
             const results = await vectorStore.search(query, { limit, type });
-            return res.json(results);
-        } catch (error) {
+            return res.json({ results, count: results.length });
+        } catch (error: any) {
             console.error('Memory search error:', error);
-            return res.status(500).json({ error: 'Internal Server Error' });
+            return res.status(500).json({ error: 'Failed to search memory' });
         }
     });
 
-    // ---- MODES, GOALS, REMINDERS ----
-
+    // Mode control
     router.post('/civil', (req, res) => {
         civilMode = !!req.body.enabled;
-        return res.json({ civilMode });
+        return res.json({ civilMode, message: `Civil mode ${civilMode ? 'enabled' : 'disabled'}` });
     });
 
-    // Goal tracking
+    // Task management
     router.post('/task/add', (req, res) => {
         const { task, due } = req.body;
         const newTask = goalManager.addTask(task, due);
-        return res.json({ added: true, task: newTask });
+        return res.json({ success: true, task: newTask });
     });
 
     router.get('/tasks', (req, res) => {
         const tasks = goalManager.getTasks();
-        return res.json(tasks);
+        return res.json({ tasks, count: tasks.length });
     });
 
-    router.post('/task/done', (req, res) => {
-        const { task } = req.body;
-        const success = goalManager.markTaskDone(task);
-        return res.json({ markedDone: success });
+    router.post('/task/complete', (req, res) => {
+        const { taskId } = req.body;
+        // GoalManager identifies tasks by 'task' name; mark by name
+        const ok = goalManager.markTaskDone(taskId);
+        return res.json({ success: ok, message: ok ? 'Task marked as complete' : 'Task not found' });
     });
 
-    // Status
-    router.get('/status', (req, res) => {
-        return res.json({
-            uptime: process.uptime(),
-            memory: process.memoryUsage(),
-            civilMode,
-            roastMode: false,
-            privateMode: false,
-            focusMode: false
-        });
-    });
-
-    // Reminders
+    // Reminder management
     router.post('/reminder/add', (req, res) => {
-        const { message, time } = req.body;
-        const result = reminderManager.addReminder(message, time);
-        if (!result.scheduled) {
-            return res.status(400).json({ error: result.error });
-        }
-        return res.json({ scheduled: true });
+        const { text, time } = req.body;
+        const reminder = reminderManager.addReminder(text, time); // Pass time as string
+        return res.json({ success: true, reminder });
     });
 
     router.get('/reminders', (req, res) => {
-        const reminders = reminderManager.getReminders();
-        return res.json(reminders);
+        const reminders = reminderManager.getReminders(); // Use correct method name
+        return res.json({ reminders, count: reminders.length });
     });
 
-    // Journal
-    router.get('/journal/today', async (req, res) => {
-        const today = new Date().toISOString().slice(0, 10);
-        const entries = await vectorStore.search(`[Journal] ${today}`, { limit: 1, type: 'document' });
-        return res.json({ journal: entries[0] ?? 'No entry yet.' });
+    // Health check
+    router.get('/health', (req, res) => {
+        res.json({ 
+            status: 'healthy',
+            components: {
+                reasoning: !!reasoningEngine,
+                tools: !!toolExecutive,
+                memory: !!vectorStore,
+                orchestrator: !!toolOrchestrator
+            },
+            timestamp: new Date().toISOString()
+        });
     });
 
     return router;

@@ -3,9 +3,9 @@
  * This replaces the basic toolExecutor with full ToolPipeline integration
  */
 
-import { ToolExecutive, ToolStep, ToolResult, createToolExecutive } from './toolExecutive';
+import { ToolExecutive, ToolStep, ToolResult } from '@agent/tools/executive';
 import { ToolPipeline, PipelineContext, PipelineResult, PipelineRequest, PipelineService } from './simplifiedPipeline';
-import { ModelRouter } from '../../agent/orchestrator/modelRouter';
+import { ModelRouter } from '@agent/orchestrator/modelRouter';
 import { ModelConfig } from '../../types';
 import { getDB } from './sqlite';
 import { randomUUID } from 'crypto';
@@ -69,7 +69,7 @@ export function initializeToolSystem(router?: ModelRouter): void {
     }
 
     // Initialize ToolExecutive with comprehensive tool set
-    toolExecutive = createToolExecutive({
+    toolExecutive = new ToolExecutive({
       allowlist: [
         'read_file', 'write_file', 'list_directory', 'stat_file',
         'fetch_url', 'web_search', 'scrape_text', 'scrape_links',
@@ -113,7 +113,7 @@ export function initializeToolSystem(router?: ModelRouter): void {
 export function getToolExecutive(): ToolExecutive {
   if (!toolExecutive) {
     console.log('⚠️  ToolExecutive not initialized, creating with defaults...');
-    initializeToolSystem();
+    toolExecutive = new ToolExecutive({ allowlist: [] });
   }
   return toolExecutive!;
 }
@@ -305,7 +305,7 @@ export async function submitPipelineRequest(
  */
 export function getAvailableTools(): Array<{name: string; description: string; parameters: any}> {
   const executive = getToolExecutive();
-  return executive.getToolDefinitions().map(tool => ({
+  return executive.getToolDefinitions().map((tool: any) => ({
     name: tool.name,
     description: tool.description,
     parameters: tool.parameters

@@ -1,0 +1,12 @@
+{
+  "status": "ok",
+  "providers": {
+    "elevenlabs": true,
+    "openai": true,
+    "webSpeech": true
+  },
+  "availableProviders": ["elevenlabs", "openai", "webSpeech"],
+  "recommended": "elevenlabs",
+  "timestamp": "2025-09-18T18:38:14.123Z"
+}
+

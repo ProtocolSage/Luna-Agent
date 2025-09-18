@@ -95,9 +95,9 @@ export const EnhancedVoiceControls: React.FC<EnhancedVoiceControlsProps> = ({
         // Set initial mode
         enhancedVoiceService.current.setVoiceMode(state.enhancedMode);
         
-      } catch (error) {
+      } catch (error: unknown) {
         console.error('[EnhancedVoiceControls] Failed to initialize enhanced service:', error);
-        onError?.(`Enhanced voice features unavailable: ${error.message}`);
+        onError?.(`Enhanced voice features unavailable: ${error instanceof Error ? error.message : String(error)}`);
       }
     };
 

@@ -7,10 +7,14 @@ const electronBin =
   process.env.ELECTRON_PATH ||
   require('electron'); // resolves to electron binary path
 
+// Create a clean environment without ELECTRON_RUN_AS_NODE to prevent Node mode
+const cleanEnv = { ...process.env };
+delete cleanEnv.ELECTRON_RUN_AS_NODE;
+
 const child = spawn(electronBin, ['.'], {
   stdio: 'inherit',
   cwd: path.resolve(__dirname, '..'),
-  env: process.env,
+  env: cleanEnv,
 });
 
 child.on('exit', (code, signal) => {

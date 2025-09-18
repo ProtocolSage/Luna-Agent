@@ -219,67 +219,13 @@ const backendConfig = {
   devtool: process.env.NODE_ENV === 'development' ? 'source-map' : false
 };
 
-// Renderer process configuration
-const rendererConfig = {
-  mode: process.env.NODE_ENV || 'development',
-  target: 'web',
-  entry: './app/renderer/renderer.tsx',
-  output: {
-    path: path.resolve(__dirname, 'dist/app/renderer'),
-    filename: 'renderer.js',
-    publicPath: './',
-    environment: {
-      module: true
-    },
-    library: {
-      type: 'module'
-    }
-  },
-  optimization: {
-    splitChunks: false,
-    runtimeChunk: false
-  },
-  experiments: {
-    outputModule: true
-  },
-  resolve: {
-    extensions: ['.ts', '.tsx', '.js', '.jsx'],
-    alias: {
-      '@': path.resolve(__dirname),
-      '@agent': path.resolve(__dirname, 'agent')
-    }
-  },
-  module: {
-    rules: [
-      {
-        test: /\.tsx?$/,
-        use: [
-          {
-            loader: 'ts-loader',
-            options: {
-              configFile: 'tsconfig.renderer.json',
-              transpileOnly: true
-            }
-          }
-        ],
-        exclude: /node_modules/
-      },
-      {
-        test: /\.css$/,
-        use: ['style-loader', 'css-loader']
-      }
-    ]
-  },
-  // No externals needed for sandboxed renderer
-  externals: {},
-  plugins: [
-    new CopyRendererFilesPlugin(),
-    new webpack.DefinePlugin({
-      'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development')
-    })
-  ],
-  devtool: process.env.NODE_ENV === 'development' ? 'source-map' : false
-};
+// ===============================================================================
+// ⚠️  RENDERER CONFIG REMOVED - NOT USED IN PRODUCTION
+// ===============================================================================
+// Production renderer builds use: scripts/build-renderer.js (esbuild)
+// Development renderer uses: webpack.dev.js (webpack-dev-server)
+// This file only handles BACKEND webpack builds
+// ===============================================================================
 
-// Export only backend and renderer configurations (main/preload now use tsc directly)
-module.exports = [backendConfig, rendererConfig];
+// Export only backend configuration (main/preload use tsc directly, renderer uses esbuild)
+module.exports = backendConfig;

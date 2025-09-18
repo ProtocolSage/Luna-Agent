@@ -39,8 +39,7 @@
     "dist",
     "coverage",
     "**/*.test.ts",
-    "**/*.spec.ts",
-    "app/renderer/**/*"
+    "**/*.spec.ts"
   ]
 }
 

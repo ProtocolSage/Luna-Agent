@@ -192,13 +192,13 @@ export class GlobalDebugService {
       let startX = 0;
       let startY = 0;
 
-      header.addEventListener('mousedown', (e) => {
+      header.addEventListener('mousedown', ((e: MouseEvent) => {
         isDragging = true;
         startX = e.clientX - this.state.position.x;
         startY = e.clientY - this.state.position.y;
         document.addEventListener('mousemove', onMouseMove);
         document.addEventListener('mouseup', onMouseUp);
-      });
+      }) as EventListener);
 
       const onMouseMove = (e: MouseEvent) => {
         if (!isDragging || !this.debugPanel) return;
@@ -306,7 +306,7 @@ export class GlobalDebugService {
           <div style="font-size: 24px; margin-bottom: 8px;">❌</div>
           <div>Enhanced Voice Service not available</div>
           <div style="font-size: 10px; margin-top: 8px; color: #888;">
-            ${error.message}
+            ${error instanceof Error ? error.message : String(error)}
           </div>
         </div>
       `;

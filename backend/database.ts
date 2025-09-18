@@ -1,20 +1,17 @@
-import Database from 'better-sqlite3';
-import type { Database as DatabaseInstance } from 'better-sqlite3';
-
-// Centralized database connection manager
-const dbInstances = new Map<string, DatabaseInstance>();
+// Import persistent database implementation
+import { getDatabase as getPersistentDatabase } from './database-persistent';
 
 /**
- * Returns a singleton database instance for the given path.
- * Creates the instance if it doesn't exist.
+ * Returns a database instance with persistent file storage.
+ * Automatically handles fallback to in-memory if file persistence fails.
  */
-export function getDatabase(dbPath: string = './memory/luna-memory.db'): DatabaseInstance {
-  if (!dbInstances.has(dbPath)) {
-    const db = new Database(dbPath, { verbose: console.log });
-    db.pragma('journal_mode = WAL');
-    dbInstances.set(dbPath, db);
+export function getDatabase(dbPath: string = './memory/luna-memory.db'): any {
+  try {
+    return getPersistentDatabase(dbPath);
+  } catch (error) {
+    console.error('[Database] Failed to get persistent database:', error);
+    throw error;
   }
-  return dbInstances.get(dbPath)!;
 }
 
-export type { DatabaseInstance };
+export type DatabaseInstance = any;

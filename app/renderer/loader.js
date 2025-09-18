@@ -3,8 +3,8 @@
 
 (function() {
     // Prevent default drag and drop behavior globally
-    window.addEventListener('dragover', (e) => e.preventDefault());
-    window.addEventListener('drop', (e) => e.preventDefault());
+    window.addEventListener('dragover', (e) => e.preventDefault(), { passive: false });
+    window.addEventListener('drop', (e) => e.preventDefault(), { passive: false });
     
     // Load the actual renderer script as a module
     const script = document.createElement('script');

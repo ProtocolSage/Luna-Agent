@@ -324,8 +324,9 @@ let dbInstance = null;
 // Try to load better-sqlite3, but don't fail if it's not available
 try {
   Database = require('better-sqlite3');
+  console.log('better-sqlite3 loaded successfully');
 } catch (error) {
-  console.warn('better-sqlite3 not available, using in-memory fallback');
+  console.warn('better-sqlite3 not available, using in-memory fallback:', error.message);
   Database = InMemoryDatabase;
 }
 

@@ -14,6 +14,7 @@ export class VoiceHandler extends EventEmitter {
   private isListening: boolean = false;
   private currentMode: 'auto' | 'push' | 'manual' = 'manual';
   private pushToTalkActive: boolean = false;
+  private elevenLabsAvailable: boolean = false;
   // hybridSTT removed - using renderer-based STT
 
   // Public setter for backend URL
@@ -30,12 +31,18 @@ export class VoiceHandler extends EventEmitter {
     this.setupIPCHandlers();
     // STT handlers removed - using renderer-based STT
     
-    // VoiceService must be initialized before conversationManager
-    const ELEVEN_API_KEY = process.env.ELEVEN_API_KEY;
-    if (!ELEVEN_API_KEY) {
-      throw new Error('ElevenLabs API key not configured');
+    // VoiceService must be initialized before conversationManager when ElevenLabs is available
+    this.elevenLabsAvailable = !!process.env.ELEVEN_API_KEY;
+    if (!this.elevenLabsAvailable) {
+      console.warn('[VoiceHandler] ELEVEN_API_KEY not configured; ElevenLabs TTS disabled. Falling back to browser speech.');
+    } else {
+      try {
+        initializeVoiceService();
+      } catch (error) {
+        this.elevenLabsAvailable = false;
+        console.warn('[VoiceHandler] Failed to initialize ElevenLabs voice service:', error);
+      }
     }
-    initializeVoiceService();
     this.initializeConversationManager();
     // Hybrid STT initialization removed - using renderer-based STT
   }
@@ -74,31 +81,29 @@ export class VoiceHandler extends EventEmitter {
     });
 
     // TTS Handlers - Using ElevenLabs API with browser fallback
-    ipcMain.handle('voice:tts-speak', async (event, text: string, options?: any) => {
+
+ipcMain.handle('voice:tts-speak', async (event, text: string, options?: any) => {
+  try {
+    if (this.elevenLabsAvailable) {
       try {
-        // Try ElevenLabs first
         const audioData = await this.getElevenLabsAudio(text);
-        
-        // Send audio data to renderer to play using Web Audio API
         this.sendToRenderer('voice:tts-audio-data', audioData);
         this.sendToRenderer('voice:tts-started');
-        
         return { success: true, provider: 'elevenlabs' };
-      } catch (error: any) {
-        console.warn('ElevenLabs TTS failed, falling back to browser TTS:', error);
-        
-        // Fallback to browser speechSynthesis
-        try {
-          this.sendToRenderer('voice:tts-browser-speak', { text, options });
-          this.sendToRenderer('voice:tts-started');
-          return { success: true, provider: 'browser' };
-        } catch (fallbackError: any) {
-          console.error('Both TTS providers failed:', fallbackError);
-          this.sendToRenderer('voice:tts-error', 'All TTS providers failed');
-          return { success: false, error: 'All TTS providers failed' };
-        }
+      } catch (elevenLabsError: any) {
+        console.warn('ElevenLabs TTS failed, falling back to browser TTS:', elevenLabsError);
       }
-    });
+    }
+
+    this.sendToRenderer('voice:tts-browser-speak', { text, options });
+    this.sendToRenderer('voice:tts-started');
+    return { success: true, provider: this.elevenLabsAvailable ? 'browser-fallback' : 'browser' };
+  } catch (error: any) {
+    console.error('voice:tts-speak fatal error:', error);
+    this.sendToRenderer('voice:tts-error', error?.message ?? 'All TTS providers failed');
+    return { success: false, error: error?.message ?? 'All TTS providers failed' };
+  }
+});
 
     ipcMain.on('voice:tts-stop', async (event) => {
       try {
@@ -238,8 +243,8 @@ export class VoiceHandler extends EventEmitter {
   private async getElevenLabsAudio(text: string): Promise<Buffer> {
     const ELEVEN_API_KEY = process.env.ELEVEN_API_KEY;
     
-    if (!ELEVEN_API_KEY) {
-      throw new Error('ElevenLabs API key not configured');
+    if (!this.elevenLabsAvailable || !ELEVEN_API_KEY) {
+      throw new Error('ElevenLabs TTS not available');
     }
 
     try {
@@ -431,34 +436,52 @@ export class VoiceHandler extends EventEmitter {
     }
   }
   
-  private async processVoiceCommand(command: string): Promise<void> {
-    try {
-      // Process voice command by sending to agent and speaking response
-      const response = await this.sendToAgent(command);
-      
-      // Generate TTS for the response
-      const audioData = await this.getElevenLabsAudio(response);
-      this.sendToRenderer('voice:tts-audio-data', audioData);
-      
-      console.log('Voice command processed successfully');
-    } catch (error: any) {
-      console.error('Failed to process voice command:', error);
-      throw error;
+
+private async processVoiceCommand(command: string): Promise<void> {
+  try {
+    // Process voice command by sending to agent and speaking response
+    const response = await this.sendToAgent(command);
+
+    // Generate TTS for the response
+    if (this.elevenLabsAvailable) {
+      try {
+        const audioData = await this.getElevenLabsAudio(response);
+        this.sendToRenderer('voice:tts-audio-data', audioData);
+      } catch (error: any) {
+        console.warn('ElevenLabs TTS failed during processVoiceCommand:', error);
+        this.sendToRenderer('voice:tts-browser-speak', { text: response });
+      }
+    } else {
+      this.sendToRenderer('voice:tts-browser-speak', { text: response });
     }
+
+    console.log('Voice command processed successfully');
+  } catch (error: any) {
+    console.error('Failed to process voice command:', error);
+    throw error;
   }
+}
 
   // Public methods
-  async speak(text: string): Promise<void> {
-    try {
-      // Try ElevenLabs first
-      const audioData = await this.getElevenLabsAudio(text);
-      this.sendToRenderer('voice:tts-audio-data', audioData);
-    } catch (error: any) {
-      console.warn('ElevenLabs TTS failed in speak(), falling back to browser TTS:', error);
-      // Fallback to browser speechSynthesis
-      this.sendToRenderer('voice:tts-browser-speak', { text });
+
+async speak(text: string): Promise<void> {
+  try {
+    if (this.elevenLabsAvailable) {
+      try {
+        const audioData = await this.getElevenLabsAudio(text);
+        this.sendToRenderer('voice:tts-audio-data', audioData);
+        return;
+      } catch (error: any) {
+        console.warn('ElevenLabs TTS failed in speak(), falling back to browser TTS:', error);
+      }
     }
+
+    this.sendToRenderer('voice:tts-browser-speak', { text });
+  } catch (error: any) {
+    console.warn('ElevenLabs TTS failed in speak(), falling back to browser TTS:', error);
+    this.sendToRenderer('voice:tts-browser-speak', { text });
   }
+}
 
   async interrupt(): Promise<void> {
     this.sendToRenderer('voice:tts-stop-playback');

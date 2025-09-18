@@ -57,14 +57,43 @@ export function getSessionId(): string | null {
 /**
  * Helper function for making API calls with proper base URL and credentials
  */
-export function apiFetch(path: string, init: RequestInit = {}): Promise<Response> {
-  const sid = getSessionId();
-  const headers = {
-    ...(init.headers || {}),
-    // use lower-case key; Express/Node normalize to lowercase
-    'x-session-id': sid ?? ''
-  };
-  return fetch(`${API_BASE}${path}`, { credentials: 'include', ...init, headers });
+type ApiFetchInit = Omit<RequestInit, 'body'> & { body?: any };
+
+export async function apiFetch(path: string, init: ApiFetchInit = {}) {
+  const url = `${API_BASE}${path}`;
+  const finalInit: RequestInit = { ...init };
+  const headers = new Headers(init.headers as HeadersInit | undefined);
+  const body = init.body;
+
+  const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
+  const isBlob = typeof Blob !== 'undefined' && body instanceof Blob;
+  const isArrayBuffer = typeof ArrayBuffer !== 'undefined' && (body instanceof ArrayBuffer || ArrayBuffer.isView(body as any));
+  const isReadableStream = typeof ReadableStream !== 'undefined' && body instanceof ReadableStream;
+  const isURLSearchParams = typeof URLSearchParams !== 'undefined' && body instanceof URLSearchParams;
+  const isPlainObject = !!body && typeof body === 'object' && body.constructor === Object;
+  const shouldJsonify = isPlainObject && !isFormData && !isBlob && !isArrayBuffer && !isReadableStream && !isURLSearchParams;
+
+  if (isFormData) {
+    headers.delete('Content-Type');
+  } else if (shouldJsonify) {
+    headers.set('Content-Type', 'application/json');
+    finalInit.body = JSON.stringify(body);
+  }
+
+  const isDev = typeof process !== 'undefined' && (process as any).env?.NODE_ENV === 'development';
+  if (isDev && path.startsWith('/api/voice/')) {
+    headers.set('x-api-key', 'dev-local');
+  }
+
+  if (path !== '/api/voice/tts/check') {
+    const sid = getSessionId();
+    if (sid) headers.set('x-session-id', sid);
+  }
+
+  finalInit.credentials = finalInit.credentials ?? 'include';
+  finalInit.headers = headers;
+
+  return fetch(url, finalInit);
 }
 
 /**

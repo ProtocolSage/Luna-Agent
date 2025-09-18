@@ -1,9 +1,9 @@
+// Luna Voice Assistant - Main App Entry
 import React from 'react';
-import FuturisticUI from './components/FuturisticUI';
-import './components/FuturisticUI.css';
+import { LunaUI } from './components/LunaUI';
 
 function App() {
-  return <FuturisticUI />;
+  return <LunaUI />;
 }
 
 export default App;

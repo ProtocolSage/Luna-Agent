@@ -1,6 +1,7 @@
 import { ToolExecutive, ToolStep, ToolResult, ToolDefinition } from '../tools/executive';
 import { ModelRouter } from '../orchestrator/modelRouter';
 import { memoryService } from '../../memory/MemoryService';
+import { PlanParser } from './planParser';
 
 export interface PipelineConfig {
   maxSteps: number;
@@ -189,32 +190,22 @@ Respond with a JSON object containing:
         }
       );
 
-      const planning = JSON.parse(response.content);
-      
-      // Validate the planning structure
-      if (!planning.steps || !Array.isArray(planning.steps)) {
-        throw new Error('Invalid planning response: missing steps array');
+      // SECURITY: Use safe parser with JSON repair and schema validation
+      const planning = PlanParser.parsePlan(response.content);
+
+      // SECURITY: Fail-safe - return empty plan instead of unsafe fallback
+      if (!planning || !planning.steps || planning.steps.length === 0) {
+        console.warn('[ToolPipeline] Planning failed - returning empty plan (safe)');
+        return PlanParser.emptyPlan();
       }
 
-      return {
-        steps: planning.steps,
-        reasoning: planning.reasoning || 'Auto-generated plan',
-        confidence: planning.confidence || 0.7,
-        dependencies: planning.dependencies || [],
-        estimatedTimeMs: planning.estimatedTimeMs || 60000
-      };
+      return planning;
 
     } catch (error) {
-      // Fallback to simple single-step execution
-      console.warn('Planning failed, using fallback approach:', error);
-      
-      return {
-        steps: [{ tool: 'execute_command', args: { command: userRequest } }],
-        reasoning: 'Fallback execution plan due to planning failure',
-        confidence: 0.3,
-        dependencies: [],
-        estimatedTimeMs: 30000
-      };
+      // SECURITY: NEVER execute raw user input as fallback
+      // Return empty plan instead - fail-safe behavior
+      console.error('[ToolPipeline] Planning error - returning empty plan (safe):', error);
+      return PlanParser.emptyPlan();
     }
   }
 

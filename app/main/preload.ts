@@ -20,18 +20,14 @@ contextBridge.exposeInMainWorld('__ENV', {
   LUNA_AUTO_LISTEN_AFTER_TTS: process.env.LUNA_AUTO_LISTEN_AFTER_TTS === 'true',
   LUNA_SILENCE_TIMEOUT: parseInt(process.env.LUNA_SILENCE_TIMEOUT || '3000', 10),
   LUNA_SENTENCE_TTS: process.env.LUNA_SENTENCE_TTS === 'true',
-  // Keep existing env vars that may be needed
-  AZURE_SPEECH_KEY: process.env.AZURE_SPEECH_KEY,
-  AZURE_SPEECH_REGION: process.env.AZURE_SPEECH_REGION,
-  DEEPGRAM_API_KEY: process.env.DEEPGRAM_API_KEY,
-  GOOGLE_CLOUD_API_KEY: process.env.GOOGLE_CLOUD_API_KEY,
-  OPENAI_API_KEY: process.env.OPENAI_API_KEY,
-  ELEVEN_API_KEY: process.env.ELEVEN_API_KEY,
+  // SECURITY: API keys are NOT exposed to renderer
+  // Renderer must call backend APIs that use keys server-side
+  // Only expose non-sensitive configuration
   STT_PROVIDER: process.env.STT_PROVIDER || 'azure',
   STT_PREFER_LOCAL: process.env.STT_PREFER_LOCAL === 'true',
-  // Wake word configuration
-  PICOVOICE_ACCESS_KEY: process.env.PICOVOICE_ACCESS_KEY,
-  WAKE_WORD: process.env.WAKE_WORD || 'luna'
+  WAKE_WORD: process.env.WAKE_WORD || 'luna',
+  // Region is non-sensitive configuration
+  AZURE_SPEECH_REGION: process.env.AZURE_SPEECH_REGION
 });
 
 contextBridge.exposeInMainWorld('voiceIPC', {

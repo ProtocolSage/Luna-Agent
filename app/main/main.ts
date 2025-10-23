@@ -97,11 +97,12 @@ class LunaMainProcess {
     // Security: Enable sandbox for all renderers (must be called before app is ready)
     if (app && typeof app.enableSandbox === 'function') {
       app.enableSandbox();
-    
+      logger.info('Electron sandbox enabled globally', 'main-process');
+    }
+
     // Media permissions for voice recording
     app.commandLine.appendSwitch('enable-features', 'WebRTCPipeWireCapturer');
     app.commandLine.appendSwitch('enable-webrtc');
-    }
 
     // Handle app events
     app.whenReady().then(() => {
@@ -127,15 +128,37 @@ class LunaMainProcess {
       this.cleanup();
     });
 
-    // Security: Prevent new window creation
+    // Security: Prevent new window creation and handle permissions
     app.on('web-contents-created', (event: unknown, contents: WebContents) => {
+      // Prevent new windows
       contents.setWindowOpenHandler(({ url }: { url: string }) => {
         shell.openExternal(url);
         return { action: 'deny' };
       });
 
-      contents.setWindowOpenHandler(() => {
-        return { action: 'deny' };
+      // Handle media permissions for voice in sandbox mode
+      contents.session.setPermissionRequestHandler((webContents, permission, callback) => {
+        const allowedPermissions = ['media', 'mediaKeySystem', 'notifications'];
+        if (allowedPermissions.includes(permission)) {
+          callback(true);
+        } else {
+          logger.warn(`Permission denied: ${permission}`, 'main-process');
+          callback(false);
+        }
+      });
+
+      // Block navigation to external URLs
+      contents.on('will-navigate', (event, navigationUrl) => {
+        const parsedUrl = new URL(navigationUrl);
+        const isLocal = parsedUrl.protocol === 'file:' ||
+                       parsedUrl.hostname === 'localhost' ||
+                       parsedUrl.hostname === '127.0.0.1';
+
+        if (!isLocal) {
+          event.preventDefault();
+          shell.openExternal(navigationUrl);
+          logger.warn(`Blocked navigation to external URL: ${navigationUrl}`, 'main-process');
+        }
       });
     });
   }
@@ -160,7 +183,7 @@ class LunaMainProcess {
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: blob: file:",
               "font-src 'self' data:",
-              "connect-src 'self' http://localhost:3000 http://127.0.0.1:3000 ws://localhost:3000 ws://127.0.0.1:3000 http://localhost:5173 ws://localhost:5173",
+              "connect-src 'self' http://localhost:3001 http://127.0.0.1:3001 ws://localhost:3001 ws://127.0.0.1:3001 http://localhost:5173 ws://localhost:5173",
               "media-src 'self' blob: data:",
               "object-src 'none'",
               "base-uri 'self'"
@@ -209,25 +232,25 @@ class LunaMainProcess {
         // Security: Critical settings
         nodeIntegration: false,
         contextIsolation: true,
-        // enableRemoteModule deprecated in newer Electron versions
-        sandbox: false, // Changed to allow media access
+        sandbox: true,  // SECURITY: Enable sandbox for renderer process
         preload: path.join(__dirname, 'preload.js'),
-        
+
         // Performance and features
         webSecurity: true,
         allowRunningInsecureContent: false,
         experimentalFeatures: false,
         enableBlinkFeatures: '',
         disableBlinkFeatures: '',
-        
+
         // Media permissions for voice
-        // enableWebRTC deprecated in newer Electron versions
+        // Note: Media access (getUserMedia) works in sandbox mode
+        // via the permissions API and preload bridge
         autoplayPolicy: 'no-user-gesture-required' // Allow autoplay for TTS
       }
     });
 
     // Load the renderer - support both dev server and file mode
-    const apiBase = process.env.LUNA_API_BASE || process.env.API_BASE || 'http://localhost:3000';
+    const apiBase = process.env.LUNA_API_BASE || process.env.API_BASE || 'http://localhost:3001';
     
     // Check if we're in dev server mode
     const rendererUrl = process.env.ELECTRON_RENDERER_URL;
@@ -348,7 +371,7 @@ class LunaMainProcess {
       if (fs.existsSync(serverPath)) {
         console.log('[Main] Starting backend server:', serverPath);
         this.serverProcess = spawn('node', [serverPath], {
-          env: { ...process.env, PORT: '3000' },
+          env: { ...process.env, PORT: '3001' },
           stdio: 'pipe'
         });
         
@@ -378,7 +401,7 @@ class LunaMainProcess {
         console.warn('  ', path.join(process.resourcesPath, 'app', 'dist', 'backend', 'server.js'));
         console.warn('  ', path.join(process.resourcesPath, 'backend', 'server.js'));
         console.warn('  ', path.join(__dirname, 'backend', 'server.js'));
-        console.warn('[Main] App will try to connect to external backend at localhost:3000');
+        console.warn('[Main] App will try to connect to external backend at localhost:3001');
       }
     } else {
       // Development: Backend started externally

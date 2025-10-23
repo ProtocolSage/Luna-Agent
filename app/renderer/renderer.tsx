@@ -79,11 +79,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const root = createRoot(container);
   root.render(
-    <ErrorBoundary 
-      onError={(error, errorInfo) => {
-        console.error('Global error boundary caught:', error, errorInfo);
-      }}
-    >
+    <ErrorBoundary>
       <App />
     </ErrorBoundary>
   );

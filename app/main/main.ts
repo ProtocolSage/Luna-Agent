@@ -1,21 +1,51 @@
 // Types only (compile-time)
 import type { IpcMainInvokeEvent, WebContents } from 'electron';
-// Runtime from main-process entrypoint (prevents renderer stubs)
-const { app, BrowserWindow, ipcMain, shell, dialog, Menu, globalShortcut } = require('electron');
-console.log('[Main] require("electron") typeof ->', typeof require('electron'));
-console.log('[Main] process.type ->', process.type);
-// Early guard: detect if Electron appears to be running in Node mode
-const isNodeMode = process.env.ELECTRON_RUN_AS_NODE === '1' || typeof require('electron') === 'string';
-if (isNodeMode) {
-  console.warn('[Main] Electron reported Node mode; continuing for development diagnostics.');
-}
-// Extra assertion: verify Electron resolve is not a string path
-const testElectron = require('electron');
-if (typeof testElectron === 'string') {
-  console.warn('[Main] Electron module resolved to a path; continuing regardless.');
-}
 import * as path from 'path';
 import { spawn, ChildProcess } from 'child_process';
+
+// Runtime Electron import - CRITICAL FIX for electron module resolution
+// When require('electron') is called, it returns the path to electron.exe (a string)
+// instead of the Electron API object. We need to load electron/index.js directly.
+let electron: any;
+try {
+  // First try: standard require (works in properly configured environments)
+  electron = require('electron');
+
+  // If we got a string instead of an object, electron module resolution is broken
+  if (typeof electron === 'string') {
+    console.log('[Main] Electron resolved to path string, loading index.js directly...');
+
+    // Find the electron module directory
+    const electronModulePath = require.resolve('electron');
+    const electronDir = path.dirname(electronModulePath);
+    const electronIndexPath = path.join(electronDir, 'index.js');
+
+    // Load the actual electron API from index.js
+    electron = require(electronIndexPath);
+    console.log('[Main] Loaded Electron API from:', electronIndexPath);
+  }
+} catch (error) {
+  console.error('[Main] FATAL: Failed to load Electron module:', error);
+  process.exit(1);
+}
+
+const app = electron.app;
+const BrowserWindow = electron.BrowserWindow;
+const ipcMain = electron.ipcMain;
+const shell = electron.shell;
+const dialog = electron.dialog;
+const Menu = electron.Menu;
+const globalShortcut = electron.globalShortcut;
+
+// Verify Electron loaded correctly
+if (!app || typeof app.whenReady !== 'function') {
+  console.error('[Main] FATAL: Electron did not load correctly!');
+  console.error('[Main] typeof electron:', typeof electron);
+  console.error('[Main] electron value:', electron);
+  process.exit(1);
+}
+
+console.log('[Main] Electron loaded successfully');
 
 // Create a simple logger fallback if the main logger fails
 const logger = {

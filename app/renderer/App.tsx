@@ -1,9 +1,9 @@
-// Luna Voice Assistant - Main App Entry
+// Luna Voice Assistant - Premium Edition
 import React from 'react';
-import { LunaUI } from './components/LunaUI';
+import PremiumLuxuryApp from './components/PremiumLuxuryApp';
 
 function App() {
-  return <LunaUI />;
+  return <PremiumLuxuryApp />;
 }
 
 export default App;

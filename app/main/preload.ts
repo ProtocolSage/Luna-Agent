@@ -12,8 +12,14 @@ type HandleChannels = 'voice:get-state' | 'voice:get-history' | 'voice:chat-with
 contextBridge.exposeInMainWorld('__ENV', {
   LUNA_API_BASE: process.env.LUNA_API_BASE,
   API_BASE: process.env.API_BASE,
-  VOICE_AUTO_LISTEN: false,
-  WAKE_WORD_ENABLED: false,
+  // Jarvis Mode Configuration - Properly expose from environment
+  VOICE_AUTO_LISTEN: process.env.VOICE_AUTO_LISTEN === 'true',
+  WAKE_WORD_ENABLED: process.env.WAKE_WORD_ENABLED === 'true',
+  VOICE_ENABLED: process.env.VOICE_ENABLED === 'true',
+  LUNA_CONTINUOUS_CONVERSATION: process.env.LUNA_CONTINUOUS_CONVERSATION === 'true',
+  LUNA_AUTO_LISTEN_AFTER_TTS: process.env.LUNA_AUTO_LISTEN_AFTER_TTS === 'true',
+  LUNA_SILENCE_TIMEOUT: parseInt(process.env.LUNA_SILENCE_TIMEOUT || '3000', 10),
+  LUNA_SENTENCE_TTS: process.env.LUNA_SENTENCE_TTS === 'true',
   // Keep existing env vars that may be needed
   AZURE_SPEECH_KEY: process.env.AZURE_SPEECH_KEY,
   AZURE_SPEECH_REGION: process.env.AZURE_SPEECH_REGION,

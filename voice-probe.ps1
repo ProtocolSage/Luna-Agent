@@ -120,7 +120,7 @@ try {
   Write-Host "[probe] POST $canonicalBase/api/voice/transcribe"
   $transcribe = Invoke-JsonRequest -Uri "$canonicalBase/api/voice/transcribe" -Method Post -Headers $headers -Form @{ file = Get-Item $audioPath }
   Assert-True ($transcribe.StatusCode -eq 200) 'Transcribe endpoint did not return 200.'
-  Assert-True (-not [string]::IsNullOrWhiteSpace($transcribe.Body?.text)) 'Transcribe response missing text.'
+  Assert-True (-not [string]::IsNullOrWhiteSpace(($transcribe.Body -and $transcribe.Body.text))) 'Transcribe response missing text.'
 
   Write-Host "[probe] POST $canonicalBase/api/voice/stt"
   $sttResponse = Invoke-WebRequest -Uri "$canonicalBase/api/voice/stt" -Method Post -Headers $headers -Form @{ file = Get-Item $audioPath }
@@ -146,3 +146,5 @@ try {
   Write-Host "[probe] FAILED: $($_.Exception.Message)" -ForegroundColor Red
   exit 1
 }
+
+

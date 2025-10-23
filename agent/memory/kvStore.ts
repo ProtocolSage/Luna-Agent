@@ -207,7 +207,7 @@ export class KVStore {
     }
 
     // Return direct value if not TTL wrapped
-    return tempData;
+    return tempData as SessionValue;
   }
 
   private async ensureDataDir(): Promise<void> {

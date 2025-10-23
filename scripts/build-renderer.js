@@ -60,14 +60,15 @@ async function buildRenderer() {
         'process.env.NODE_ENV': '"production"',
         'process.env.REACT_APP_API_URL': '"http://localhost:3000"',
         'process.env.SENTRY_DSN': '""',
-        'process.env.ERROR_REPORTING_ENDPOINT': '""'
+        'process.env.ERROR_REPORTING_ENDPOINT': '""',
+        'global': 'window'
       },
       minify: process.env.NODE_ENV === 'production',
       drop: isProd ? ['console', 'debugger'] : [],
       legalComments: isProd ? 'none' : 'eof',
       sourcemap: !isProd,
-      // Don't bundle electron since it's provided by the runtime
-      external: ['electron'],
+      // Don't bundle electron and native modules - they're provided by Electron runtime
+      external: ['electron', 'better-sqlite3', 'bindings'],
       logLevel: 'info',
       metafile: false
     });
@@ -152,9 +153,9 @@ async function buildRenderer() {
     // Ensure index.html uses ESM script loading
     if (fs.existsSync(indexPath)) {
       let html = fs.readFileSync(indexPath, 'utf8');
-      // Update script tag to use type="module" for ESM
+      // Update script tag to use type="module" for ESM (match opening and closing tags)
       html = html.replace(
-        /<script([^>]*?)src="[^"]*renderer\.js"([^>]*?)>/g,
+        /<script([^>]*?)src="[^"]*renderer\.js"([^>]*?)>(<\/script>)?/g,
         '<script type="module" src="./renderer.js"></script>'
       );
       fs.writeFileSync(indexPath, html);

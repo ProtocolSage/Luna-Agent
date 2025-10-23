@@ -1,0 +1,591 @@
+/* ============================================
+   LUNA AGENT - PREMIUM LUXURY UI
+   ============================================ */
+
+/* Premium Color Palette */
+:root {
+  /* Premium Dark Theme */
+  --luxury-bg-primary: #0a0a0f;
+  --luxury-bg-secondary: #13131a;
+  --luxury-bg-tertiary: #1a1a24;
+
+  /* Elegant Accent Colors */
+  --luxury-accent-primary: #8b7ff5;
+  --luxury-accent-glow: rgba(139, 127, 245, 0.4);
+  --luxury-accent-soft: rgba(139, 127, 245, 0.1);
+
+  /* Premium Gold Accents */
+  --luxury-gold: #d4af37;
+  --luxury-gold-glow: rgba(212, 175, 55, 0.3);
+
+  /* Sophisticated Neutrals */
+  --luxury-text-primary: #f5f5f7;
+  --luxury-text-secondary: #a1a1aa;
+  --luxury-text-muted: #71717a;
+
+  /* Elegant Borders & Dividers */
+  --luxury-border: rgba(255, 255, 255, 0.08);
+  --luxury-border-hover: rgba(255, 255, 255, 0.15);
+
+  /* Premium Shadows */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.6);
+  --shadow-glow: 0 0 20px var(--luxury-accent-glow);
+
+  /* Typography */
+  --font-display: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-body: 'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'SF Mono', 'Consolas', 'Monaco', monospace;
+
+  /* Spacing Scale */
+  --space-xs: 0.25rem;
+  --space-sm: 0.5rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2rem;
+  --space-2xl: 3rem;
+
+  /* Border Radius */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-full: 9999px;
+}
+
+/* Global Styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--luxury-bg-primary);
+  color: var(--luxury-text-primary);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow: hidden;
+}
+
+/* ============================================
+   PREMIUM LAYOUT
+   ============================================ */
+
+.luna-app {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(
+    135deg,
+    var(--luxury-bg-primary) 0%,
+    var(--luxury-bg-secondary) 50%,
+    var(--luxury-bg-tertiary) 100%
+  );
+  position: relative;
+  overflow: hidden;
+}
+
+/* Animated Background Gradient */
+.luna-app::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(
+    circle at center,
+    var(--luxury-accent-soft) 0%,
+    transparent 70%
+  );
+  animation: rotate 30s linear infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+
+@keyframes rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ============================================
+   PREMIUM HEADER
+   ============================================ */
+
+.luna-header {
+  position: relative;
+  z-index: 100;
+  padding: var(--space-lg) var(--space-2xl);
+  background: rgba(10, 10, 15, 0.8);
+  backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 1px solid var(--luxury-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.luna-branding {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.luna-logo {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, var(--luxury-accent-primary), var(--luxury-gold));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  box-shadow: var(--shadow-glow);
+}
+
+.luna-title {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, var(--luxury-text-primary), var(--luxury-text-secondary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.luna-status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--luxury-bg-secondary);
+  border: 1px solid var(--luxury-border);
+  border-radius: var(--radius-full);
+  font-size: 13px;
+  color: var(--luxury-text-secondary);
+}
+
+.status-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* ============================================
+   PREMIUM MAIN CONTENT
+   ============================================ */
+
+.luna-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+  padding: var(--space-2xl);
+  gap: var(--space-xl);
+}
+
+/* ============================================
+   CONVERSATION VIEW
+   ============================================ */
+
+.conversation-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: rgba(26, 26, 36, 0.4);
+  backdrop-filter: blur(40px) saturate(180%);
+  border: 1px solid var(--luxury-border);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  box-shadow: var(--shadow-xl);
+}
+
+.conversation-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+/* Custom Scrollbar */
+.conversation-messages::-webkit-scrollbar {
+  width: 8px;
+}
+
+.conversation-messages::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.conversation-messages::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-full);
+}
+
+.conversation-messages::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* Message Bubbles */
+.message {
+  display: flex;
+  flex-direction: column;
+  max-width: 75%;
+  animation: messageSlideIn 0.3s ease-out;
+}
+
+@keyframes messageSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.message.user {
+  align-self: flex-end;
+}
+
+.message.assistant {
+  align-self: flex-start;
+}
+
+.message-content {
+  padding: var(--space-md) var(--space-lg);
+  border-radius: var(--radius-lg);
+  font-size: 15px;
+  line-height: 1.6;
+  box-shadow: var(--shadow-md);
+}
+
+.message.user .message-content {
+  background: linear-gradient(135deg, var(--luxury-accent-primary), #6d5dd3);
+  color: white;
+  border-bottom-right-radius: var(--radius-sm);
+}
+
+.message.assistant .message-content {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--luxury-border);
+  color: var(--luxury-text-primary);
+  border-bottom-left-radius: var(--radius-sm);
+}
+
+.message-timestamp {
+  font-size: 11px;
+  color: var(--luxury-text-muted);
+  margin-top: var(--space-xs);
+  padding: 0 var(--space-sm);
+}
+
+/* Empty State */
+.conversation-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-lg);
+  text-align: center;
+  padding: var(--space-2xl);
+}
+
+.empty-icon {
+  font-size: 64px;
+  opacity: 0.6;
+}
+
+.empty-title {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 600;
+  color: var(--luxury-text-primary);
+}
+
+.empty-subtitle {
+  font-size: 15px;
+  color: var(--luxury-text-secondary);
+  max-width: 400px;
+}
+
+/* ============================================
+   PREMIUM INPUT AREA
+   ============================================ */
+
+.input-container {
+  padding: var(--space-lg) var(--space-xl);
+  background: rgba(10, 10, 15, 0.6);
+  backdrop-filter: blur(20px);
+  border-top: 1px solid var(--luxury-border);
+  display: flex;
+  gap: var(--space-md);
+  align-items: center;
+}
+
+.input-wrapper {
+  flex: 1;
+  position: relative;
+}
+
+.input-field {
+  width: 100%;
+  padding: var(--space-md) var(--space-lg);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--luxury-border);
+  border-radius: var(--radius-lg);
+  color: var(--luxury-text-primary);
+  font-family: var(--font-body);
+  font-size: 15px;
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+.input-field::placeholder {
+  color: var(--luxury-text-muted);
+}
+
+.input-field:focus {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--luxury-accent-primary);
+  box-shadow: 0 0 0 3px var(--luxury-accent-soft);
+}
+
+/* ============================================
+   PREMIUM BUTTONS
+   ============================================ */
+
+.btn {
+  padding: var(--space-md) var(--space-lg);
+  border-radius: var(--radius-lg);
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  outline: none;
+  white-space: nowrap;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--luxury-accent-primary), #6d5dd3);
+  color: white;
+  box-shadow: var(--shadow-md);
+}
+
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-lg), var(--shadow-glow);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+.btn-voice {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--luxury-accent-primary), #6d5dd3);
+  color: white;
+  font-size: 24px;
+  box-shadow: var(--shadow-lg);
+  position: relative;
+}
+
+.btn-voice:hover {
+  transform: scale(1.05);
+  box-shadow: var(--shadow-xl), var(--shadow-glow);
+}
+
+.btn-voice:active {
+  transform: scale(0.98);
+}
+
+.btn-voice.listening {
+  animation: voicePulse 1.5s ease-in-out infinite;
+}
+
+@keyframes voicePulse {
+  0%, 100% {
+    box-shadow: var(--shadow-lg), 0 0 0 0 var(--luxury-accent-glow);
+  }
+  50% {
+    box-shadow: var(--shadow-lg), 0 0 0 10px transparent;
+  }
+}
+
+/* ============================================
+   PREMIUM ANIMATIONS
+   ============================================ */
+
+.fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.slide-up {
+  animation: slideUp 0.4s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ============================================
+   TYPING INDICATOR
+   ============================================ */
+
+.typing-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: var(--space-sm) 0;
+}
+
+.typing-indicator span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--luxury-accent-primary);
+  animation: typingBounce 1.4s ease-in-out infinite;
+}
+
+.typing-indicator span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.typing-indicator span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes typingBounce {
+  0%, 60%, 100% {
+    transform: translateY(0);
+    opacity: 0.7;
+  }
+  30% {
+    transform: translateY(-10px);
+    opacity: 1;
+  }
+}
+
+/* ============================================
+   SPEAKING INDICATOR
+   ============================================ */
+
+.btn-voice.speaking {
+  animation: speakingPulse 0.8s ease-in-out infinite;
+}
+
+@keyframes speakingPulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: var(--shadow-lg), 0 0 0 0 rgba(16, 185, 129, 0.7);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: var(--shadow-lg), 0 0 0 8px rgba(16, 185, 129, 0);
+  }
+}
+
+/* ============================================
+   RECORDING VISUAL FEEDBACK
+   ============================================ */
+
+.input-field:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-voice:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+/* ============================================
+   RESPONSIVE DESIGN
+   ============================================ */
+
+@media (max-width: 768px) {
+  .luna-header {
+    padding: var(--space-md) var(--space-lg);
+  }
+
+  .luna-title {
+    font-size: 20px;
+  }
+
+  .luna-main {
+    padding: var(--space-lg);
+  }
+
+  .message {
+    max-width: 85%;
+  }
+
+  .input-container {
+    padding: var(--space-md);
+    gap: var(--space-sm);
+  }
+
+  .btn-voice {
+    width: 48px;
+    height: 48px;
+    font-size: 20px;
+  }
+}
+
+/* ============================================
+   SMOOTH TRANSITIONS
+   ============================================ */
+
+* {
+  transition: background-color 0.2s ease,
+              border-color 0.2s ease,
+              opacity 0.2s ease,
+              transform 0.2s ease;
+}

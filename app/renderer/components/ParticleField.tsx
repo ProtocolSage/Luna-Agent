@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from "react";
 
 interface Particle {
   x: number;
@@ -21,7 +21,7 @@ const ParticleField: React.FC = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
     const resizeCanvas = () => {
@@ -30,12 +30,20 @@ const ParticleField: React.FC = () => {
     };
 
     const createParticles = () => {
-      const count = Math.floor((window.innerWidth * window.innerHeight) / 15000);
+      const count = Math.floor(
+        (window.innerWidth * window.innerHeight) / 15000,
+      );
       particles.current = [];
-      
+
       const colors = [
-        '#00d4ff', '#8b5cf6', '#ff6b35', '#ff006e', '#00ff88',
-        '#ffffff', '#00d4ff', '#8b5cf6'
+        "#00d4ff",
+        "#8b5cf6",
+        "#ff6b35",
+        "#ff006e",
+        "#00ff88",
+        "#ffffff",
+        "#00d4ff",
+        "#8b5cf6",
       ];
 
       for (let i = 0; i < count; i++) {
@@ -47,21 +55,25 @@ const ParticleField: React.FC = () => {
           size: Math.random() * 3 + 1,
           color: colors[Math.floor(Math.random() * colors.length)],
           opacity: Math.random() * 0.5 + 0.3,
-          glow: Math.random() * 20 + 10
+          glow: Math.random() * 20 + 10,
         });
       }
     };
 
     const drawParticle = (particle: Particle) => {
       const gradient = ctx.createRadialGradient(
-        particle.x, particle.y, 0,
-        particle.x, particle.y, particle.glow
+        particle.x,
+        particle.y,
+        0,
+        particle.x,
+        particle.y,
+        particle.glow,
       );
-      
+
       // Helper to convert hex color + opacity to rgba()
       function hexToRgba(hex: string, alpha: number) {
         // Remove '#' if present
-        hex = hex.replace('#', '');
+        hex = hex.replace("#", "");
         // Parse r, g, b
         const bigint = parseInt(hex, 16);
         const r = (bigint >> 16) & 255;
@@ -70,8 +82,14 @@ const ParticleField: React.FC = () => {
         return `rgba(${r},${g},${b},${alpha})`;
       }
       gradient.addColorStop(0, hexToRgba(particle.color, particle.opacity));
-      gradient.addColorStop(0.1, hexToRgba(particle.color, particle.opacity * 0.8));
-      gradient.addColorStop(0.5, hexToRgba(particle.color, particle.opacity * 0.3));
+      gradient.addColorStop(
+        0.1,
+        hexToRgba(particle.color, particle.opacity * 0.8),
+      );
+      gradient.addColorStop(
+        0.5,
+        hexToRgba(particle.color, particle.opacity * 0.3),
+      );
       gradient.addColorStop(1, hexToRgba(particle.color, 0));
 
       ctx.beginPath();
@@ -87,7 +105,7 @@ const ParticleField: React.FC = () => {
     };
 
     const updateParticles = () => {
-      particles.current.forEach(particle => {
+      particles.current.forEach((particle) => {
         // Move particles
         particle.x += particle.vx;
         particle.y += particle.vy;
@@ -96,7 +114,7 @@ const ParticleField: React.FC = () => {
         const dx = mousePos.current.x - particle.x;
         const dy = mousePos.current.y - particle.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
-        
+
         if (distance < 150) {
           const force = (150 - distance) / 150;
           particle.vx += (dx / distance) * force * 0.02;
@@ -114,28 +132,32 @@ const ParticleField: React.FC = () => {
         if (particle.y > canvas.height) particle.y = 0;
 
         // Pulse effect
-        particle.opacity = 0.3 + Math.sin(Date.now() * 0.001 + particle.x * 0.01) * 0.2;
-        particle.glow = 15 + Math.sin(Date.now() * 0.002 + particle.y * 0.01) * 10;
+        particle.opacity =
+          0.3 + Math.sin(Date.now() * 0.001 + particle.x * 0.01) * 0.2;
+        particle.glow =
+          15 + Math.sin(Date.now() * 0.002 + particle.y * 0.01) * 10;
       });
     };
 
     const drawConnections = () => {
       particles.current.forEach((particle, i) => {
-        particles.current.slice(i + 1).forEach(otherParticle => {
+        particles.current.slice(i + 1).forEach((otherParticle) => {
           const dx = particle.x - otherParticle.x;
           const dy = particle.y - otherParticle.y;
           const distance = Math.sqrt(dx * dx + dy * dy);
 
           if (distance < 120) {
             const opacity = (1 - distance / 120) * 0.3;
-            
+
             const gradient = ctx.createLinearGradient(
-              particle.x, particle.y,
-              otherParticle.x, otherParticle.y
+              particle.x,
+              particle.y,
+              otherParticle.x,
+              otherParticle.y,
             );
             // Use hexToRgba helper for connections as well
             function hexToRgba(hex: string, alpha: number) {
-              hex = hex.replace('#', '');
+              hex = hex.replace("#", "");
               const bigint = parseInt(hex, 16);
               const r = (bigint >> 16) & 255;
               const g = (bigint >> 8) & 255;
@@ -157,7 +179,7 @@ const ParticleField: React.FC = () => {
     };
 
     const animate = () => {
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+      ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       updateParticles();
@@ -175,18 +197,18 @@ const ParticleField: React.FC = () => {
     createParticles();
     animate();
 
-    window.addEventListener('resize', () => {
+    window.addEventListener("resize", () => {
       resizeCanvas();
       createParticles();
     });
-    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener("mousemove", handleMouseMove);
 
     return () => {
       if (animationFrame.current) {
         cancelAnimationFrame(animationFrame.current);
       }
-      window.removeEventListener('resize', resizeCanvas);
-      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener("resize", resizeCanvas);
+      window.removeEventListener("mousemove", handleMouseMove);
     };
   }, []);
 
@@ -194,14 +216,14 @@ const ParticleField: React.FC = () => {
     <canvas
       ref={canvasRef}
       style={{
-        position: 'fixed',
+        position: "fixed",
         top: 0,
         left: 0,
-        width: '100%',
-        height: '100%',
+        width: "100%",
+        height: "100%",
         zIndex: 0,
-        pointerEvents: 'none',
-        opacity: 0.7
+        pointerEvents: "none",
+        opacity: 0.7,
       }}
     />
   );

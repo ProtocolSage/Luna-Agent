@@ -5,6 +5,7 @@ This directory contains the frontend API clients that provide a clean interface 
 ## Overview
 
 The API clients solve several critical issues:
+
 - **CSP Compliance**: Work with strict Content Security Policy
 - **Process Isolation**: Remove `process is not defined` errors by keeping Node.js dependencies in backend
 - **Error Handling**: Graceful fallbacks and proper error propagation
@@ -23,8 +24,8 @@ The API clients solve several critical issues:
 ## Quick Start
 
 ```typescript
-import { tts, transcribe, playMp3Blob } from '../services/api/voiceClient';
-import { addMemory, search } from '../services/api/memoryClient';
+import { tts, transcribe, playMp3Blob } from "../services/api/voiceClient";
+import { addMemory, search } from "../services/api/memoryClient";
 ```
 
 ## Voice Client Usage
@@ -38,10 +39,10 @@ const player = playMp3Blob(audio);
 
 // Advanced TTS with specific settings
 const audio = await tts("Hello world", {
-  provider: 'elevenlabs',
-  voiceId: '21m00Tcm4TlvDq8ikWAM',
+  provider: "elevenlabs",
+  voiceId: "21m00Tcm4TlvDq8ikWAM",
   stability: 0.75,
-  similarityBoost: 0.75
+  similarityBoost: 0.75,
 });
 const player = playMp3Blob(audio);
 
@@ -54,7 +55,7 @@ player.stop();
 ```typescript
 // Transcribe recorded audio
 const transcript = await transcribe(audioBlob);
-console.log('User said:', transcript);
+console.log("User said:", transcript);
 ```
 
 ## Memory Client Usage
@@ -63,17 +64,17 @@ console.log('User said:', transcript);
 
 ```typescript
 // Store user message
-await addMemory(userText, 'user', sessionId);
+await addMemory(userText, "user", sessionId);
 
 // Store assistant reply
-await addMemory(assistantReply, 'assistant', sessionId);
+await addMemory(assistantReply, "assistant", sessionId);
 ```
 
 ### Search & Retrieve
 
 ```typescript
 // Search for relevant context
-const results = await search('machine learning', 8, sessionId);
+const results = await search("machine learning", 8, sessionId);
 
 // Get recent conversations
 const recent = await recent(20, sessionId);
@@ -86,19 +87,19 @@ const recent = await recent(20, sessionId);
 ```typescript
 async function handleSend(text: string) {
   // 1. Store user message
-  await addMemory(text, 'user', sessionId);
+  await addMemory(text, "user", sessionId);
 
   // 2. Get AI response
-  const response = await fetch('/api/agent/chat', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message: text, sessionId })
+  const response = await fetch("/api/agent/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message: text, sessionId }),
   });
   const data = await response.json();
-  const assistantReply = data?.content || '';
+  const assistantReply = data?.content || "";
 
   // 3. Store assistant reply
-  await addMemory(assistantReply, 'assistant', sessionId);
+  await addMemory(assistantReply, "assistant", sessionId);
 
   // 4. Speak the response
   await handleAssistantReplySpeak(assistantReply);
@@ -123,7 +124,7 @@ async function handleMicrophoneStop(audioBlob: Blob) {
     const text = await transcribe(audioBlob);
     await handleSend(text);
   } catch (error) {
-    console.error('Transcription failed:', error);
+    console.error("Transcription failed:", error);
   }
 }
 ```

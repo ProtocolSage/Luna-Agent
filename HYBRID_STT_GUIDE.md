@@ -5,6 +5,7 @@ Luna Agent now features a robust hybrid STT system that automatically switches b
 ## Overview
 
 The hybrid STT system provides:
+
 - **Cloud-first approach**: Azure Speech or Deepgram for optimal accuracy and speed
 - **Automatic fallback**: Local Whisper when cloud services are unavailable
 - **Seamless switching**: Transparent failover without user intervention
@@ -49,12 +50,14 @@ STT_PREFER_LOCAL=false           # false = cloud-first, true = local-first
 ### 2. Cloud STT Setup
 
 #### Azure Speech Services
+
 1. Go to [Azure Portal](https://portal.azure.com)
 2. Create a "Cognitive Services" → "Speech" resource
 3. Copy the API key and region
 4. Add to your `.env` file
 
 #### Deepgram (Alternative)
+
 1. Go to [Deepgram Console](https://console.deepgram.com/)
 2. Create an API key
 3. Add to your `.env` file
@@ -64,6 +67,7 @@ STT_PREFER_LOCAL=false           # false = cloud-first, true = local-first
 For offline fallback capability:
 
 1. **Download Whisper executable**:
+
    ```bash
    # Windows (recommended location)
    resources/whisper/whisper.exe
@@ -71,10 +75,11 @@ For offline fallback capability:
    ```
 
 2. **Or install system-wide**:
+
    ```bash
    # Using pip
    pip install whisper
-   
+
    # Using conda
    conda install whisper
    ```
@@ -86,7 +91,7 @@ For offline fallback capability:
 The hybrid system automatically switches between engines based on:
 
 1. **Network availability**: Offline → Whisper
-2. **Service health**: Cloud API down → Whisper  
+2. **Service health**: Cloud API down → Whisper
 3. **Authentication**: Invalid API keys → Whisper
 4. **Performance**: Repeated failures → Whisper
 5. **User preference**: Manual override available
@@ -108,6 +113,7 @@ Switch back when available
 ### Circuit Breaker
 
 Prevents system overload by:
+
 - Tracking failure rates
 - Opening circuit after repeated failures
 - Providing fast-fail responses
@@ -124,13 +130,13 @@ await window.stt.start();
 // Listen for transcriptions
 window.stt.onTranscript(({ text, isFinal }) => {
   if (isFinal) {
-    console.log('Final transcript:', text);
+    console.log("Final transcript:", text);
   }
 });
 
 // Listen for engine switches
 window.stt.onEngineSwitch(({ engine, isCloud }) => {
-  console.log(`Switched to: ${engine} (${isCloud ? 'Cloud' : 'Local'})`);
+  console.log(`Switched to: ${engine} (${isCloud ? "Cloud" : "Local"})`);
 });
 ```
 
@@ -145,12 +151,12 @@ await window.stt.switchToWhisper();
 
 // Check current status
 const status = await window.stt.getStatus();
-console.log('Current engine:', status.currentEngine);
-console.log('Is using cloud:', status.isCloud);
+console.log("Current engine:", status.currentEngine);
+console.log("Is using cloud:", status.isCloud);
 
 // Health check
 const health = await window.stt.healthCheck();
-console.log('Engine health:', health);
+console.log("Engine health:", health);
 ```
 
 ## UI Integration
@@ -165,6 +171,7 @@ The voice controls automatically show:
 ## Performance Characteristics
 
 ### Cloud STT (Azure/Deepgram)
+
 - **Latency**: <200ms first token
 - **Accuracy**: High (better than local Whisper-tiny)
 - **Features**: Punctuation, profanity filter, language detection
@@ -172,7 +179,8 @@ The voice controls automatically show:
 - **Cost**: Per-minute usage
 
 ### Local Whisper
-- **Latency**: ~500ms-2s (CPU dependent)  
+
+- **Latency**: ~500ms-2s (CPU dependent)
 - **Accuracy**: Good (Whisper-tiny model)
 - **Features**: Basic transcription
 - **Requirements**: CPU resources, local model files
@@ -183,20 +191,24 @@ The voice controls automatically show:
 ### Common Issues
 
 **1. "No STT system available"**
+
 - Ensure either cloud API keys are configured OR Whisper is installed
 - Check network connectivity for cloud services
 
 **2. "Cloud STT failed repeatedly"**
+
 - Verify API keys and quotas
 - Check service status pages (Azure/Deepgram)
 - System will automatically fall back to Whisper
 
 **3. "Whisper not found"**
+
 - Install Whisper system-wide or bundle executable
 - Check PATH environment variable
 - Verify model files exist
 
 **4. "Poor accuracy"**
+
 - Cloud STT usually provides better accuracy
 - For Whisper: Use larger models (base/small vs tiny)
 - Ensure good microphone quality
@@ -220,8 +232,8 @@ Check browser console for detailed STT logs.
 ```typescript
 // For bundled Whisper models
 const whisperConfig = {
-  executablePath: 'resources/whisper/whisper.exe',
-  modelPath: 'resources/whisper/ggml-base.en.bin'
+  executablePath: "resources/whisper/whisper.exe",
+  modelPath: "resources/whisper/ggml-base.en.bin",
 };
 ```
 
@@ -232,7 +244,7 @@ const whisperConfig = {
 const cloudConfig = {
   maxRetries: 3,
   retryDelay: 1000,
-  healthCheckInterval: 30000
+  healthCheckInterval: 30000,
 };
 ```
 
@@ -241,10 +253,10 @@ const cloudConfig = {
 ```typescript
 // Optimize for accuracy vs performance
 const audioConfig = {
-  sampleRate: 16000,        // Standard for STT
-  echoCancellation: true,   // Better for cloud STT
-  noiseSuppression: true,   // Improves accuracy
-  autoGainControl: true     // Consistent volume
+  sampleRate: 16000, // Standard for STT
+  echoCancellation: true, // Better for cloud STT
+  noiseSuppression: true, // Improves accuracy
+  autoGainControl: true, // Consistent volume
 };
 ```
 
@@ -267,6 +279,6 @@ No code changes required - existing voice controls continue to work.
 ✅ **Automatic Recovery**: Self-healing from failures  
 ✅ **Cross-Platform**: Works consistently across browsers  
 ✅ **Production Ready**: Circuit breaker and error handling  
-✅ **Future-Proof**: Easy to add new STT providers  
+✅ **Future-Proof**: Easy to add new STT providers
 
 The hybrid STT system transforms Luna Agent from a demo-quality voice interface into a production-ready speech recognition system suitable for commercial deployment.

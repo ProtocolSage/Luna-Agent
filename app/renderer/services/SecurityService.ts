@@ -11,11 +11,11 @@ export class SecurityService {
   }
 
   public initialize(): void {
-    console.log('Security service initialized');
+    console.log("Security service initialized");
   }
 
   public logSecurityEvent(event: string, data?: any): void {
-    console.log('Security event:', event, data);
+    console.log("Security event:", event, data);
   }
 
   public validateOrigin(origin: string): boolean {
@@ -23,7 +23,7 @@ export class SecurityService {
   }
 
   public logAuditEvent(event: string, data?: any): void {
-    console.log('Audit event:', event, data);
+    console.log("Audit event:", event, data);
   }
 
   public isIPBanned(ip: string): boolean {
@@ -31,7 +31,7 @@ export class SecurityService {
   }
 
   public createSession(headers: any, cookies: any): string {
-    return 'session-' + Date.now();
+    return "session-" + Date.now();
   }
 
   public validateSession(sessionId: string): boolean {
@@ -56,7 +56,7 @@ export class SecurityService {
   }
 
   public generateCSRFToken(): string {
-    return 'csrf-' + Date.now();
+    return "csrf-" + Date.now();
   }
 
   public checkRateLimit(key: string): boolean {
@@ -64,27 +64,31 @@ export class SecurityService {
   }
 
   public sanitizeText(text: string): string {
-    return text.replace(/<[^>]*>/g, '');
+    return text.replace(/<[^>]*>/g, "");
   }
 
   public cleanup(): void {
-    console.log('Security service cleanup');
+    console.log("Security service cleanup");
   }
 
   public sanitizeInput(input: string): string {
-    return input.replace(/<script[^>]*>.*?<\/script>/gi, '').trim();
+    return input.replace(/<script[^>]*>.*?<\/script>/gi, "").trim();
   }
 
   public validateApiKey(key: string): boolean {
-    return typeof key === 'string' && key.length > 10;
+    return typeof key === "string" && key.length > 10;
   }
 
   public detectPII(text: string): boolean {
     const emailPattern = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g;
     const phonePattern = /\b\d{3}[-.]?\d{3}[-.]?\d{4}\b/g;
     const ssnPattern = /\b\d{3}-?\d{2}-?\d{4}\b/g;
-    
-    return emailPattern.test(text) || phonePattern.test(text) || ssnPattern.test(text);
+
+    return (
+      emailPattern.test(text) ||
+      phonePattern.test(text) ||
+      ssnPattern.test(text)
+    );
   }
 
   public hashSensitiveData(data: string): string {
@@ -92,7 +96,7 @@ export class SecurityService {
     let hash = 0;
     for (let i = 0; i < data.length; i++) {
       const char = data.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
+      hash = (hash << 5) - hash + char;
       hash = hash & hash;
     }
     return hash.toString();

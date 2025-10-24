@@ -40,10 +40,10 @@ luna-agent-production/
 
 ```typescript
 export class VoiceEngine {
-  private playing?: Promise<void>;     // Current playback promise
-  private abort?: AbortController;     // Interruption control
-  private retryCount = 0;             // Network failure tracking
-  private maxRetries = 3;             // Retry limit
+  private playing?: Promise<void>; // Current playback promise
+  private abort?: AbortController; // Interruption control
+  private retryCount = 0; // Network failure tracking
+  private maxRetries = 3; // Retry limit
 }
 ```
 
@@ -62,35 +62,35 @@ export class VoiceEngine {
 const resStream = got.stream.post(
   `https://api.elevenlabs.io/v1/text-to-speech/${VOICE_ID}/stream`,
   {
-    signal,                    // AbortController for interruption
+    signal, // AbortController for interruption
     timeout: { request: 30000 }, // 30s timeout
     headers: {
-      'xi-api-key': API_KEY,
-      accept: 'audio/wav',     // WAV format for real-time processing
-      'Content-Type': 'application/json'
+      "xi-api-key": API_KEY,
+      accept: "audio/wav", // WAV format for real-time processing
+      "Content-Type": "application/json",
     },
     json: {
       text,
-      model_id: 'eleven_monolingual_v1',
+      model_id: "eleven_monolingual_v1",
       voice_settings: {
         stability: 0.5,
         similarity_boost: 0.75,
         style: 0.0,
-        use_speaker_boost: true  // Optimized for Nova Westbrook
-      }
-    }
-  }
+        use_speaker_boost: true, // Optimized for Nova Westbrook
+      },
+    },
+  },
 );
 
 // 2️⃣ Real-time WAV Processing & Speaker Output
 const speaker = new Speaker({
-  channels: 1,        // Mono audio
-  bitDepth: 16,      // 16-bit samples
-  sampleRate: 44100  // CD quality
+  channels: 1, // Mono audio
+  bitDepth: 16, // 16-bit samples
+  sampleRate: 44100, // CD quality
 });
 
 // 3️⃣ WAV Header Stripping & Direct Pipe
-resStream.on('data', (chunk: Buffer) => {
+resStream.on("data", (chunk: Buffer) => {
   if (!headerSkipped) {
     // Skip first 44 bytes (WAV header)
     if (chunk.length > 44) {
@@ -114,7 +114,7 @@ resStream.on('data', (chunk: Buffer) => {
 class VoiceService {
   private tempDir: string;
   private isPlaying: boolean = false;
-  
+
   async speak(text: string): Promise<void> {
     const audioPath = await this.generateAudio(text);
     await this.playWithPowerShell(audioPath);
@@ -125,7 +125,7 @@ class VoiceService {
 // ✅ NEW: Streaming approach
 class VoiceService {
   private voiceEngine: VoiceEngine;
-  
+
   async speak(text: string, options = {}): Promise<void> {
     await this.voiceEngine.say(text, options);
   }
@@ -144,7 +144,9 @@ export function initializeVoiceService(config: VoiceConfig): VoiceService {
 
 export function getVoiceService(): VoiceService {
   if (!voiceService) {
-    throw new Error('VoiceService not initialized. Call initializeVoiceService first.');
+    throw new Error(
+      "VoiceService not initialized. Call initializeVoiceService first.",
+    );
   }
   return voiceService;
 }
@@ -156,9 +158,9 @@ export function getVoiceService(): VoiceService {
 
 ```json
 {
-  "got": "11.8.6",              // HTTP streaming client
-  "speaker": "0.5.4",           // Cross-platform audio output
-  "abort-controller": "3.0.0"   // Interruption control
+  "got": "11.8.6", // HTTP streaming client
+  "speaker": "0.5.4", // Cross-platform audio output
+  "abort-controller": "3.0.0" // Interruption control
 }
 ```
 
@@ -182,7 +184,7 @@ ELEVEN_API_KEY=your_elevenlabs_api_key_here
 
 ```typescript
 const API_KEY = process.env.ELEVEN_API_KEY!;
-const VOICE_ID = 'rSZFtT0J8GtnLqoDoFAp'; // Nova Westbrook
+const VOICE_ID = "rSZFtT0J8GtnLqoDoFAp"; // Nova Westbrook
 ```
 
 ## 🔄 Data Flow Architecture
@@ -205,7 +207,7 @@ Performance Metrics Logging (TTFB, Duration, Bytes)
 if (this.retryCount < this.maxRetries && this.isRetryableError(err)) {
   this.retryCount++;
   console.log(`Retrying (${this.retryCount}/${this.maxRetries})...`);
-  await new Promise(r => setTimeout(r, 1000 * this.retryCount)); // Exponential backoff
+  await new Promise((r) => setTimeout(r, 1000 * this.retryCount)); // Exponential backoff
   chunks.unshift(chunk); // Retry this chunk
 }
 ```
@@ -215,7 +217,7 @@ if (this.retryCount < this.maxRetries && this.isRetryableError(err)) {
 ```typescript
 private chunkText(text: string): string[] {
   if (text.length <= MAX_CHARS_PER_REQUEST) return [text];
-  
+
   const chunks: string[] = [];
   const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
   let currentChunk = '';
@@ -238,7 +240,7 @@ private chunkText(text: string): string[] {
 const startTime = Date.now();
 let firstByteTime: number | null = null;
 
-resStream.on('data', (chunk: Buffer) => {
+resStream.on("data", (chunk: Buffer) => {
   if (!firstByteTime) firstByteTime = Date.now();
   bytesReceived += chunk.length;
 });
@@ -246,7 +248,9 @@ resStream.on('data', (chunk: Buffer) => {
 // On completion
 const ttfb = firstByteTime - startTime;
 const duration = Date.now() - startTime;
-console.log(`🎯 Voice metrics: TTFB ${ttfb}ms, Total ${duration}ms, ${bytesReceived} bytes`);
+console.log(
+  `🎯 Voice metrics: TTFB ${ttfb}ms, Total ${duration}ms, ${bytesReceived} bytes`,
+);
 ```
 
 ### 4. Interruption Support
@@ -267,16 +271,16 @@ const { signal } = this.abort;
 
 ```typescript
 // Test 1: Basic speech
-await voice.say('Hello! I am Nova Westbrook, your AI assistant.');
+await voice.say("Hello! I am Nova Westbrook, your AI assistant.");
 
 // Test 2: Interruption
 setTimeout(() => {
-  voice.say('Interrupted! This is the new message.');
+  voice.say("Interrupted! This is the new message.");
 }, 1000);
-await voice.say('This is a long message that will be interrupted...');
+await voice.say("This is a long message that will be interrupted...");
 
 // Test 3: Long text chunking
-const longText = `${Array(10).fill('Long sentence...').join('')}`;
+const longText = `${Array(10).fill("Long sentence...").join("")}`;
 await voice.say(longText);
 ```
 
@@ -285,10 +289,10 @@ await voice.say(longText);
 ### Initialization (typically in your main app file):
 
 ```typescript
-import { initializeVoiceService } from './agent/services/voiceService';
+import { initializeVoiceService } from "./agent/services/voiceService";
 
 const voiceService = initializeVoiceService({
-  apiKey: process.env.ELEVEN_API_KEY!
+  apiKey: process.env.ELEVEN_API_KEY!,
 });
 await voiceService.initialize();
 ```
@@ -296,7 +300,7 @@ await voiceService.initialize();
 ### Usage (in your agent response handler):
 
 ```typescript
-import { getVoiceService } from './agent/services/voiceService';
+import { getVoiceService } from "./agent/services/voiceService";
 
 async function handleAgentResponse(text: string) {
   const voiceService = getVoiceService();
@@ -307,7 +311,7 @@ async function handleAgentResponse(text: string) {
 ### Cleanup (in your app shutdown):
 
 ```typescript
-process.on('SIGINT', async () => {
+process.on("SIGINT", async () => {
   const voiceService = getVoiceService();
   await voiceService.destroy();
   process.exit(0);

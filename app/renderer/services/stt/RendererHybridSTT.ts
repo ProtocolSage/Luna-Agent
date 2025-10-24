@@ -3,29 +3,30 @@
  * Manages STT in renderer process where browser APIs work properly
  */
 
-import { RendererCloudSTT } from './RendererCloudSTT';
-import { RendererWhisperSTT } from './RendererWhisperSTT';
-import { STTProvider, TranscriptionResult } from './STTInterface';
+import { RendererCloudSTT } from "./RendererCloudSTT";
+import { RendererWhisperSTT } from "./RendererWhisperSTT";
+import { STTProvider, TranscriptionResult } from "./STTInterface";
 
 interface RendererSTTEvents {
-  'transcript': { text: string; isFinal: boolean };
-  'engine-switched': { engine: string; isCloud: boolean };
-  'error': string;
-  'listening-started': void;
-  'listening-stopped': void;
+  transcript: { text: string; isFinal: boolean };
+  "engine-switched": { engine: string; isCloud: boolean };
+  error: string;
+  "listening-started": void;
+  "listening-stopped": void;
 }
 
 export class RendererHybridSTT {
   private currentEngine: STTProvider | null = null;
   private isStarted: boolean = false;
-  private eventListeners: Map<string, Array<(...args: any[]) => void>> = new Map();
+  private eventListeners: Map<string, Array<(...args: any[]) => void>> =
+    new Map();
   private whisperSTT: RendererWhisperSTT | null = null;
   private cloudSTT: RendererCloudSTT | null = null;
   private switchingInProgress: boolean = false;
   private lastError: string | null = null;
 
   constructor() {
-    console.log('[RendererHybridSTT] Initializing in renderer process');
+    console.log("[RendererHybridSTT] Initializing in renderer process");
   }
 
   async start(): Promise<{ success: boolean; error?: string }> {
@@ -35,37 +36,42 @@ export class RendererHybridSTT {
 
     try {
       this.isStarted = true;
-      
+
       // Check if we have cloud STT credentials
       const env = (window as any).__ENV || {};
       const hasCloudCredentials = env.AZURE_SPEECH_KEY || env.DEEPGRAM_API_KEY;
-      
+
       if (hasCloudCredentials) {
         // Try cloud STT first if credentials exist
         try {
           await this.initializeCloudSTT();
           return { success: true };
         } catch (cloudError: any) {
-          console.warn('[RendererHybridSTT] Cloud STT failed:', cloudError.message);
+          console.warn(
+            "[RendererHybridSTT] Cloud STT failed:",
+            cloudError.message,
+          );
           this.lastError = cloudError.message;
           // Fall through to Whisper
         }
       } else {
-        console.log('[RendererHybridSTT] No cloud credentials found, defaulting to Whisper STT');
+        console.log(
+          "[RendererHybridSTT] No cloud credentials found, defaulting to Whisper STT",
+        );
       }
-      
+
       // Fallback to Whisper (OpenAI) if cloud fails or no cloud credentials
-      console.log('[RendererHybridSTT] Using OpenAI Whisper STT');
+      console.log("[RendererHybridSTT] Using OpenAI Whisper STT");
       try {
         await this.initializeWhisperSTT();
         return { success: true };
       } catch (whisperError: any) {
-        console.error('[RendererHybridSTT] All STT engines failed');
+        console.error("[RendererHybridSTT] All STT engines failed");
         this.isStarted = false;
         this.lastError = whisperError.message;
-        return { 
-          success: false, 
-          error: `Both Cloud and Whisper STT failed: ${this.lastError}` 
+        return {
+          success: false,
+          error: `Both Cloud and Whisper STT failed: ${this.lastError}`,
         };
       }
     } catch (error: any) {
@@ -77,12 +83,12 @@ export class RendererHybridSTT {
   async stop(): Promise<{ success: boolean; error?: string }> {
     try {
       this.isStarted = false;
-      
+
       // Stop current engine
       if (this.currentEngine) {
         await this.currentEngine.stopListening();
       }
-      
+
       // Clean up any active engines
       if (this.cloudSTT) {
         await this.cloudSTT.stopListening();
@@ -90,8 +96,8 @@ export class RendererHybridSTT {
       if (this.whisperSTT) {
         await this.whisperSTT.stop();
       }
-      
-      this.emit('listening-stopped', undefined as any);
+
+      this.emit("listening-stopped", undefined as any);
       return { success: true };
     } catch (error: any) {
       return { success: false, error: error.message };
@@ -101,49 +107,49 @@ export class RendererHybridSTT {
   private async initializeCloudSTT(): Promise<void> {
     this.cloudSTT = new RendererCloudSTT();
     await this.cloudSTT.initialize({
-      language: 'en-US',
+      language: "en-US",
       continuous: true,
-      interimResults: true
+      interimResults: true,
     });
 
-    console.log('[RendererHybridSTT] Initialized cloud STT');
-    
-    this.cloudSTT.on('transcription', (result: TranscriptionResult) => {
-      this.emit('transcript', { text: result.text, isFinal: result.isFinal });
+    console.log("[RendererHybridSTT] Initialized cloud STT");
+
+    this.cloudSTT.on("transcription", (result: TranscriptionResult) => {
+      this.emit("transcript", { text: result.text, isFinal: result.isFinal });
     });
 
-    this.cloudSTT.on('error', (error: string) => {
-      console.error('[RendererHybridSTT] Cloud STT error:', error);
-      this.emit('error', error);
+    this.cloudSTT.on("error", (error: string) => {
+      console.error("[RendererHybridSTT] Cloud STT error:", error);
+      this.emit("error", error);
     });
 
     await this.cloudSTT.startListening();
     this.currentEngine = this.cloudSTT;
-    this.emit('engine-switched', { engine: 'CloudSTT', isCloud: true });
+    this.emit("engine-switched", { engine: "CloudSTT", isCloud: true });
   }
 
   private async initializeWhisperSTT(): Promise<void> {
     this.whisperSTT = new RendererWhisperSTT();
     await this.whisperSTT.initialize({
-      language: 'en-US',
+      language: "en-US",
       continuous: true,
-      interimResults: true
+      interimResults: true,
     });
 
-    console.log('[RendererHybridSTT] Initialized Whisper STT');
-    
-    this.whisperSTT.on('transcription', (result: TranscriptionResult) => {
-      this.emit('transcript', { text: result.text, isFinal: result.isFinal });
+    console.log("[RendererHybridSTT] Initialized Whisper STT");
+
+    this.whisperSTT.on("transcription", (result: TranscriptionResult) => {
+      this.emit("transcript", { text: result.text, isFinal: result.isFinal });
     });
 
-    this.whisperSTT.on('error', (error: string) => {
-      console.error('[RendererHybridSTT] Whisper STT error:', error);
-      this.emit('error', error);
+    this.whisperSTT.on("error", (error: string) => {
+      console.error("[RendererHybridSTT] Whisper STT error:", error);
+      this.emit("error", error);
     });
 
     await this.whisperSTT.start();
     this.currentEngine = this.whisperSTT;
-    this.emit('engine-switched', { engine: 'WhisperSTT', isCloud: false });
+    this.emit("engine-switched", { engine: "WhisperSTT", isCloud: false });
   }
 
   private async switchToWhisperFallback(): Promise<void> {
@@ -151,7 +157,7 @@ export class RendererHybridSTT {
       return;
     }
 
-    console.log('[RendererHybridSTT] Switching to Whisper fallback...');
+    console.log("[RendererHybridSTT] Switching to Whisper fallback...");
     this.switchingInProgress = true;
 
     try {
@@ -163,10 +169,9 @@ export class RendererHybridSTT {
 
       // Initialize Whisper
       await this.initializeWhisperSTT();
-      
     } catch (error: any) {
-      console.error('[RendererHybridSTT] Failed to switch to Whisper:', error);
-      this.emit('error', `Failed to switch to Whisper: ${error.message}`);
+      console.error("[RendererHybridSTT] Failed to switch to Whisper:", error);
+      this.emit("error", `Failed to switch to Whisper: ${error.message}`);
     } finally {
       this.switchingInProgress = false;
     }
@@ -183,22 +188,26 @@ export class RendererHybridSTT {
     lastError: string | null;
   } {
     return {
-      engine: this.currentEngine === this.whisperSTT ? 'WhisperSTT' : 
-              (this.currentEngine === this.cloudSTT ? 'CloudSTT' : 'None'),
+      engine:
+        this.currentEngine === this.whisperSTT
+          ? "WhisperSTT"
+          : this.currentEngine === this.cloudSTT
+            ? "CloudSTT"
+            : "None",
       isCloud: this.currentEngine === this.cloudSTT,
       isLocal: this.currentEngine === this.whisperSTT,
       isStarted: this.isStarted,
-      lastError: this.lastError
+      lastError: this.lastError,
     };
   }
 
   async switchToCloud(): Promise<void> {
     if (this.currentEngine === this.cloudSTT) {
-      console.log('[RendererHybridSTT] Already using cloud STT');
+      console.log("[RendererHybridSTT] Already using cloud STT");
       return;
     }
 
-    console.log('[RendererHybridSTT] Switching to cloud STT...');
+    console.log("[RendererHybridSTT] Switching to cloud STT...");
     this.switchingInProgress = true;
 
     try {
@@ -209,10 +218,9 @@ export class RendererHybridSTT {
 
       // Reinitialize cloud STT
       await this.initializeCloudSTT();
-      
     } catch (error: any) {
-      console.error('[RendererHybridSTT] Failed to switch to cloud:', error);
-      this.emit('error', `Failed to switch to cloud: ${error.message}`);
+      console.error("[RendererHybridSTT] Failed to switch to cloud:", error);
+      this.emit("error", `Failed to switch to cloud: ${error.message}`);
       // Fallback to Whisper if cloud fails
       await this.switchToWhisperFallback();
     } finally {
@@ -222,21 +230,25 @@ export class RendererHybridSTT {
 
   async switchToWhisper(): Promise<void> {
     if (this.currentEngine === this.whisperSTT) {
-      console.log('[RendererHybridSTT] Already using Whisper STT');
+      console.log("[RendererHybridSTT] Already using Whisper STT");
       return;
     }
 
-    console.log('[RendererHybridSTT] Switching to Whisper STT...');
+    console.log("[RendererHybridSTT] Switching to Whisper STT...");
     await this.switchToWhisperFallback();
   }
 
   async healthCheck(): Promise<{ healthy: boolean; details?: any }> {
     const hasWhisperKey = !!(window as any).__ENV?.OPENAI_API_KEY;
-    const hasCloudKey = !!(window as any).__ENV?.AZURE_SPEECH_KEY || !!(window as any).__ENV?.DEEPGRAM_API_KEY;
-    
+    const hasCloudKey =
+      !!(window as any).__ENV?.AZURE_SPEECH_KEY ||
+      !!(window as any).__ENV?.DEEPGRAM_API_KEY;
+
     const status = this.getStatus();
-    const healthy = !!this.currentEngine && (this.currentEngine.isListening() || this.currentEngine.isInitialized());
-    
+    const healthy =
+      !!this.currentEngine &&
+      (this.currentEngine.isListening() || this.currentEngine.isInitialized());
+
     if (!healthy && (hasWhisperKey || hasCloudKey)) {
       // Try to auto-recover
       try {
@@ -246,29 +258,35 @@ export class RendererHybridSTT {
           await this.switchToWhisperFallback();
         }
       } catch (error) {
-        console.error('[RendererHybridSTT] Auto-recovery failed:', error);
+        console.error("[RendererHybridSTT] Auto-recovery failed:", error);
       }
     }
-    
+
     return {
       healthy: !!this.currentEngine,
       details: {
         ...status,
         hasWhisperKey,
-        hasCloudKey
-      }
+        hasCloudKey,
+      },
     };
   }
 
   // Event emitter methods
-  on<K extends keyof RendererSTTEvents>(event: K, listener: (data: RendererSTTEvents[K]) => void): void {
+  on<K extends keyof RendererSTTEvents>(
+    event: K,
+    listener: (data: RendererSTTEvents[K]) => void,
+  ): void {
     if (!this.eventListeners.has(event)) {
       this.eventListeners.set(event, []);
     }
     this.eventListeners.get(event)!.push(listener as any);
   }
 
-  off<K extends keyof RendererSTTEvents>(event: K, listener: (data: RendererSTTEvents[K]) => void): void {
+  off<K extends keyof RendererSTTEvents>(
+    event: K,
+    listener: (data: RendererSTTEvents[K]) => void,
+  ): void {
     const listeners = this.eventListeners.get(event);
     if (listeners) {
       const index = listeners.indexOf(listener as any);
@@ -278,14 +296,20 @@ export class RendererHybridSTT {
     }
   }
 
-  private emit<K extends keyof RendererSTTEvents>(event: K, data: RendererSTTEvents[K]): void {
+  private emit<K extends keyof RendererSTTEvents>(
+    event: K,
+    data: RendererSTTEvents[K],
+  ): void {
     const listeners = this.eventListeners.get(event);
     if (listeners) {
-      listeners.forEach(listener => {
+      listeners.forEach((listener) => {
         try {
           listener(data);
         } catch (error) {
-          console.error(`[RendererHybridSTT] Error in event listener for ${event}:`, error);
+          console.error(
+            `[RendererHybridSTT] Error in event listener for ${event}:`,
+            error,
+          );
         }
       });
     }
@@ -294,7 +318,7 @@ export class RendererHybridSTT {
   destroy(): void {
     this.stop().catch(console.error);
     this.eventListeners.clear();
-    console.log('[RendererHybridSTT] Destroyed');
+    console.log("[RendererHybridSTT] Destroyed");
   }
 }
 

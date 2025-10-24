@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from "react";
 
 export interface Message {
   id: string;
   text: string;
-  role: 'user' | 'assistant';
+  role: "user" | "assistant";
   timestamp: number;
   isStreaming?: boolean;
 }
@@ -19,25 +19,25 @@ const StreamingConversation: React.FC<StreamingConversationProps> = ({
   messages,
   onSendMessage,
   isLoading = false,
-  className = ''
+  className = "",
 }) => {
-  const [inputValue, setInputValue] = useState('');
+  const [inputValue, setInputValue] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (inputValue.trim() && onSendMessage) {
       onSendMessage(inputValue.trim());
-      setInputValue('');
+      setInputValue("");
     }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSubmit(e);
     }
@@ -49,7 +49,7 @@ const StreamingConversation: React.FC<StreamingConversationProps> = ({
         {messages.map((message) => (
           <div
             key={message.id}
-            className={`message ${message.role} ${message.isStreaming ? 'streaming' : ''}`}
+            className={`message ${message.role} ${message.isStreaming ? "streaming" : ""}`}
           >
             <div className="message-content">
               {message.text}

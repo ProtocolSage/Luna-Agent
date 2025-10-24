@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { StreamingVoiceService } from '../services/StreamingVoiceClient';
+import React, { useEffect, useState, useRef, useCallback } from "react";
+import { StreamingVoiceService } from "../services/StreamingVoiceClient";
 
 interface ConversationState {
   isListening: boolean;
@@ -27,319 +27,353 @@ interface StreamingVoiceInterfaceProps {
   className?: string;
 }
 
-export const StreamingVoiceInterface: React.FC<StreamingVoiceInterfaceProps> = ({
+export const StreamingVoiceInterface: React.FC<
+  StreamingVoiceInterfaceProps
+> = ({
   onTranscription,
   onAIResponse,
   onError,
   autoStart = true,
-  className = ''
+  className = "",
 }) => {
   // Service reference
   const voiceServiceRef = useRef<StreamingVoiceService | null>(null);
-  
+
   // State management
   const [isInitialized, setIsInitialized] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
-  const [conversationState, setConversationState] = useState<ConversationState>({
-    isListening: false,
-    isSpeaking: false,
-    canInterrupt: false,
-    lastUserSpeechTime: 0,
-    lastAISpeechTime: 0,
-    conversationActive: false
-  });
+  const [conversationState, setConversationState] = useState<ConversationState>(
+    {
+      isListening: false,
+      isSpeaking: false,
+      canInterrupt: false,
+      lastUserSpeechTime: 0,
+      lastAISpeechTime: 0,
+      conversationActive: false,
+    },
+  );
   const [voiceConfig, setVoiceConfig] = useState<VoiceConfig>({
     inputSampleRate: 24000,
     outputSampleRate: 24000,
     bufferSize: 4096,
     vadThreshold: 0.01,
     silenceTimeout: 1500,
-    interruptThreshold: 200
+    interruptThreshold: 200,
   });
-  
+
   // UI State
-  const [currentTranscription, setCurrentTranscription] = useState('');
-  const [currentAIResponse, setCurrentAIResponse] = useState('');
+  const [currentTranscription, setCurrentTranscription] = useState("");
+  const [currentAIResponse, setCurrentAIResponse] = useState("");
   const [vadLevel, setVadLevel] = useState(0);
-  const [connectionStatus, setConnectionStatus] = useState('disconnected');
+  const [connectionStatus, setConnectionStatus] = useState("disconnected");
   const [error, setError] = useState<string | null>(null);
-  
+
   // Audio visualization
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameRef = useRef<number>();
-  
+
   /**
    * Initialize the streaming voice service
    */
   const initializeVoiceService = useCallback(async () => {
     try {
-      console.log('[StreamingVoiceUI] Initializing voice service...');
-      setConnectionStatus('connecting');
-      
+      console.log("[StreamingVoiceUI] Initializing voice service...");
+      setConnectionStatus("connecting");
+
       // Create voice service instance
       const voiceService = new StreamingVoiceService();
       voiceServiceRef.current = voiceService;
-      
+
       // Set up event listeners
       setupEventListeners(voiceService);
-      
+
       // Initialize the service
       await voiceService.initialize();
-      
+
       setIsInitialized(true);
       setIsConnected(true);
-      setConnectionStatus('connected');
-      
-      console.log('[StreamingVoiceUI] Voice service initialized successfully');
-      
+      setConnectionStatus("connected");
+
+      console.log("[StreamingVoiceUI] Voice service initialized successfully");
     } catch (error) {
-      console.error('[StreamingVoiceUI] Failed to initialize voice service:', error);
-      setError(error instanceof Error ? error.message : 'Failed to initialize voice service');
-      setConnectionStatus('error');
-      onError?.(error instanceof Error ? error.message : 'Failed to initialize voice service');
+      console.error(
+        "[StreamingVoiceUI] Failed to initialize voice service:",
+        error,
+      );
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Failed to initialize voice service",
+      );
+      setConnectionStatus("error");
+      onError?.(
+        error instanceof Error
+          ? error.message
+          : "Failed to initialize voice service",
+      );
     }
   }, [onError]);
-  
+
   /**
    * Setup event listeners for voice service
    */
-  const setupEventListeners = useCallback((voiceService: StreamingVoiceService) => {
-    // Connection events
-    voiceService.on('initialized', () => {
-      console.log('[StreamingVoiceUI] Voice service initialized');
-      setIsInitialized(true);
-    });
-    
-    voiceService.on('connected', () => {
-      console.log('[StreamingVoiceUI] Connected to voice service');
-      setIsConnected(true);
-      setConnectionStatus('connected');
-    });
-    
-    voiceService.on('disconnected', () => {
-      console.log('[StreamingVoiceUI] Disconnected from voice service');
-      setIsConnected(false);
-      setConnectionStatus('disconnected');
-    });
-    
-    // Listening state
-    voiceService.on('listening-started', () => {
-      setConversationState(prev => ({ ...prev, isListening: true }));
-    });
-    
-    voiceService.on('listening-stopped', () => {
-      setConversationState(prev => ({ ...prev, isListening: false }));
-    });
-    
-    // Speech detection
-    voiceService.on('speech-detected', () => {
-      console.log('[StreamingVoiceUI] Speech detected');
-    });
-    
-    voiceService.on('speech-ended', () => {
-      console.log('[StreamingVoiceUI] Speech ended');
-    });
-    
-    voiceService.on('user-speaking', (data: { level: number; timestamp: number }) => {
-      setVadLevel(data.level);
-    });
-    
-    // Transcription
-    voiceService.on('transcription', (text: string) => {
-      console.log('[StreamingVoiceUI] Transcription:', text);
-      setCurrentTranscription(text);
-      onTranscription?.(text);
-    });
-    
-    // AI responses
-    voiceService.on('ai-response-text', (text: string) => {
-      setCurrentAIResponse(prev => prev + text);
-    });
-    
-    voiceService.on('ai-speaking', () => {
-      setConversationState(prev => ({ ...prev, isSpeaking: true }));
-    });
-    
-    voiceService.on('ai-finished-speaking', () => {
-      setConversationState(prev => ({ ...prev, isSpeaking: false }));
-      
-      // Send complete AI response
-      if (currentAIResponse) {
-        onAIResponse?.(currentAIResponse);
-        setCurrentAIResponse('');
-      }
-    });
-    
-    // Conversation flow
-    voiceService.on('user-interrupted', () => {
-      console.log('[StreamingVoiceUI] User interrupted AI');
-      setCurrentAIResponse(''); // Clear interrupted response
-    });
-    
-    voiceService.on('response-complete', () => {
-      console.log('[StreamingVoiceUI] AI response complete');
-    });
-    
-    voiceService.on('continuous-mode-started', () => {
-      setConversationState(prev => ({ ...prev, conversationActive: true }));
-    });
-    
-    voiceService.on('continuous-mode-stopped', () => {
-      setConversationState(prev => ({ ...prev, conversationActive: false }));
-    });
-    
-    // State updates
-    voiceService.on('state-update', (state: ConversationState) => {
-      setConversationState(state);
-    });
-    
-    voiceService.on('config-update', (config: VoiceConfig) => {
-      setVoiceConfig(config);
-    });
-    
-    // Errors
-    voiceService.on('error', (error: string) => {
-      console.error('[StreamingVoiceUI] Voice service error:', error);
-      setError(error);
-      onError?.(error);
-    });
-    
-    voiceService.on('connection-error', (error: string) => {
-      console.error('[StreamingVoiceUI] Connection error:', error);
-      setConnectionStatus('error');
-      setError(error);
-      onError?.(error);
-    });
-  }, [onTranscription, onAIResponse, onError, currentAIResponse]);
-  
+  const setupEventListeners = useCallback(
+    (voiceService: StreamingVoiceService) => {
+      // Connection events
+      voiceService.on("initialized", () => {
+        console.log("[StreamingVoiceUI] Voice service initialized");
+        setIsInitialized(true);
+      });
+
+      voiceService.on("connected", () => {
+        console.log("[StreamingVoiceUI] Connected to voice service");
+        setIsConnected(true);
+        setConnectionStatus("connected");
+      });
+
+      voiceService.on("disconnected", () => {
+        console.log("[StreamingVoiceUI] Disconnected from voice service");
+        setIsConnected(false);
+        setConnectionStatus("disconnected");
+      });
+
+      // Listening state
+      voiceService.on("listening-started", () => {
+        setConversationState((prev) => ({ ...prev, isListening: true }));
+      });
+
+      voiceService.on("listening-stopped", () => {
+        setConversationState((prev) => ({ ...prev, isListening: false }));
+      });
+
+      // Speech detection
+      voiceService.on("speech-detected", () => {
+        console.log("[StreamingVoiceUI] Speech detected");
+      });
+
+      voiceService.on("speech-ended", () => {
+        console.log("[StreamingVoiceUI] Speech ended");
+      });
+
+      voiceService.on(
+        "user-speaking",
+        (data: { level: number; timestamp: number }) => {
+          setVadLevel(data.level);
+        },
+      );
+
+      // Transcription
+      voiceService.on("transcription", (text: string) => {
+        console.log("[StreamingVoiceUI] Transcription:", text);
+        setCurrentTranscription(text);
+        onTranscription?.(text);
+      });
+
+      // AI responses
+      voiceService.on("ai-response-text", (text: string) => {
+        setCurrentAIResponse((prev) => prev + text);
+      });
+
+      voiceService.on("ai-speaking", () => {
+        setConversationState((prev) => ({ ...prev, isSpeaking: true }));
+      });
+
+      voiceService.on("ai-finished-speaking", () => {
+        setConversationState((prev) => ({ ...prev, isSpeaking: false }));
+
+        // Send complete AI response
+        if (currentAIResponse) {
+          onAIResponse?.(currentAIResponse);
+          setCurrentAIResponse("");
+        }
+      });
+
+      // Conversation flow
+      voiceService.on("user-interrupted", () => {
+        console.log("[StreamingVoiceUI] User interrupted AI");
+        setCurrentAIResponse(""); // Clear interrupted response
+      });
+
+      voiceService.on("response-complete", () => {
+        console.log("[StreamingVoiceUI] AI response complete");
+      });
+
+      voiceService.on("continuous-mode-started", () => {
+        setConversationState((prev) => ({ ...prev, conversationActive: true }));
+      });
+
+      voiceService.on("continuous-mode-stopped", () => {
+        setConversationState((prev) => ({
+          ...prev,
+          conversationActive: false,
+        }));
+      });
+
+      // State updates
+      voiceService.on("state-update", (state: ConversationState) => {
+        setConversationState(state);
+      });
+
+      voiceService.on("config-update", (config: VoiceConfig) => {
+        setVoiceConfig(config);
+      });
+
+      // Errors
+      voiceService.on("error", (error: string) => {
+        console.error("[StreamingVoiceUI] Voice service error:", error);
+        setError(error);
+        onError?.(error);
+      });
+
+      voiceService.on("connection-error", (error: string) => {
+        console.error("[StreamingVoiceUI] Connection error:", error);
+        setConnectionStatus("error");
+        setError(error);
+        onError?.(error);
+      });
+    },
+    [onTranscription, onAIResponse, onError, currentAIResponse],
+  );
+
   /**
    * Start continuous conversation mode
    */
   const startContinuousMode = useCallback(async () => {
     const voiceService = voiceServiceRef.current;
     if (!voiceService || !isConnected) return;
-    
+
     try {
       await voiceService.startContinuousMode();
     } catch (error) {
-      console.error('[StreamingVoiceUI] Failed to start continuous mode:', error);
+      console.error(
+        "[StreamingVoiceUI] Failed to start continuous mode:",
+        error,
+      );
     }
   }, [isConnected]);
-  
+
   /**
    * Stop continuous conversation mode
    */
   const stopContinuousMode = useCallback(async () => {
     const voiceService = voiceServiceRef.current;
     if (!voiceService) return;
-    
+
     try {
       await voiceService.stopContinuousMode();
     } catch (error) {
-      console.error('[StreamingVoiceUI] Failed to stop continuous mode:', error);
+      console.error(
+        "[StreamingVoiceUI] Failed to stop continuous mode:",
+        error,
+      );
     }
   }, []);
-  
+
   /**
    * Update voice configuration
    */
   const updateConfig = useCallback((updates: Partial<VoiceConfig>) => {
     const voiceService = voiceServiceRef.current;
     if (!voiceService) return;
-    
+
     voiceService.updateConfig(updates);
   }, []);
-  
+
   /**
    * Audio visualization
    */
   const drawVisualization = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    
-    const ctx = canvas.getContext('2d');
+
+    const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    
+
     // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
+
     // Draw VAD level indicator
     const centerX = canvas.width / 2;
     const centerY = canvas.height / 2;
     const maxRadius = Math.min(canvas.width, canvas.height) / 3;
-    
+
     // Background circle
     ctx.beginPath();
     ctx.arc(centerX, centerY, maxRadius, 0, 2 * Math.PI);
-    ctx.fillStyle = conversationState.isListening ? 'rgba(0, 255, 0, 0.1)' : 'rgba(128, 128, 128, 0.1)';
+    ctx.fillStyle = conversationState.isListening
+      ? "rgba(0, 255, 0, 0.1)"
+      : "rgba(128, 128, 128, 0.1)";
     ctx.fill();
-    
+
     // VAD level visualization
     if (vadLevel > 0) {
-      const vadRadius = (vadLevel * maxRadius);
+      const vadRadius = vadLevel * maxRadius;
       ctx.beginPath();
       ctx.arc(centerX, centerY, vadRadius, 0, 2 * Math.PI);
       ctx.fillStyle = `rgba(0, 255, 0, ${Math.min(0.8, vadLevel * 5)})`;
       ctx.fill();
     }
-    
+
     // Speaking indicator
     if (conversationState.isSpeaking) {
       ctx.beginPath();
       ctx.arc(centerX, centerY, maxRadius * 0.8, 0, 2 * Math.PI);
-      ctx.strokeStyle = 'rgba(255, 100, 0, 0.8)';
+      ctx.strokeStyle = "rgba(255, 100, 0, 0.8)";
       ctx.lineWidth = 3;
       ctx.stroke();
     }
-    
+
     // Status text
-    ctx.fillStyle = '#333';
-    ctx.font = '14px Arial';
-    ctx.textAlign = 'center';
-    let statusText = 'Disconnected';
+    ctx.fillStyle = "#333";
+    ctx.font = "14px Arial";
+    ctx.textAlign = "center";
+    let statusText = "Disconnected";
     if (conversationState.conversationActive) {
-      statusText = conversationState.isListening ? 'Listening...' : 
-                  conversationState.isSpeaking ? 'AI Speaking...' : 'Ready';
+      statusText = conversationState.isListening
+        ? "Listening..."
+        : conversationState.isSpeaking
+          ? "AI Speaking..."
+          : "Ready";
     } else if (isConnected) {
-      statusText = 'Connected';
+      statusText = "Connected";
     }
     ctx.fillText(statusText, centerX, centerY + maxRadius + 20);
-    
+
     animationFrameRef.current = requestAnimationFrame(drawVisualization);
   }, [vadLevel, conversationState, isConnected]);
-  
+
   // Initialize on mount
   useEffect(() => {
     if (autoStart) {
       initializeVoiceService();
     }
-    
+
     return () => {
       // Cleanup on unmount
       const voiceService = voiceServiceRef.current;
       if (voiceService) {
         voiceService.cleanup();
       }
-      
+
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
   }, [autoStart, initializeVoiceService]);
-  
+
   // Start visualization
   useEffect(() => {
     if (isConnected) {
       drawVisualization();
     }
-    
+
     return () => {
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
   }, [isConnected, drawVisualization]);
-  
+
   return (
     <div className={`streaming-voice-interface ${className}`}>
       {/* Status Header */}
@@ -348,14 +382,10 @@ export const StreamingVoiceInterface: React.FC<StreamingVoiceInterfaceProps> = (
           <span className={`status-indicator ${connectionStatus}`}></span>
           <span className="status-text">{connectionStatus}</span>
         </div>
-        
-        {error && (
-          <div className="error-message">
-            ⚠️ {error}
-          </div>
-        )}
+
+        {error && <div className="error-message">⚠️ {error}</div>}
       </div>
-      
+
       {/* Audio Visualization */}
       <div className="voice-visualization">
         <canvas
@@ -365,35 +395,43 @@ export const StreamingVoiceInterface: React.FC<StreamingVoiceInterfaceProps> = (
           className="visualization-canvas"
         />
       </div>
-      
+
       {/* Control Buttons */}
       <div className="voice-controls">
         {!isInitialized ? (
           <button
             onClick={initializeVoiceService}
             className="btn btn-primary"
-            disabled={connectionStatus === 'connecting'}
+            disabled={connectionStatus === "connecting"}
           >
-            {connectionStatus === 'connecting' ? 'Connecting...' : 'Initialize Voice'}
+            {connectionStatus === "connecting"
+              ? "Connecting..."
+              : "Initialize Voice"}
           </button>
         ) : (
           <>
             <button
-              onClick={conversationState.conversationActive ? stopContinuousMode : startContinuousMode}
-              className={`btn ${conversationState.conversationActive ? 'btn-danger' : 'btn-success'}`}
+              onClick={
+                conversationState.conversationActive
+                  ? stopContinuousMode
+                  : startContinuousMode
+              }
+              className={`btn ${conversationState.conversationActive ? "btn-danger" : "btn-success"}`}
               disabled={!isConnected}
             >
-              {conversationState.conversationActive ? 'Stop Conversation' : 'Start Conversation'}
+              {conversationState.conversationActive
+                ? "Stop Conversation"
+                : "Start Conversation"}
             </button>
           </>
         )}
       </div>
-      
+
       {/* Configuration Panel */}
       <div className="voice-config-panel">
         <details>
           <summary>Voice Settings</summary>
-          
+
           <div className="config-item">
             <label>VAD Threshold:</label>
             <input
@@ -402,11 +440,13 @@ export const StreamingVoiceInterface: React.FC<StreamingVoiceInterfaceProps> = (
               max="0.1"
               step="0.001"
               value={voiceConfig.vadThreshold}
-              onChange={(e) => updateConfig({ vadThreshold: parseFloat(e.target.value) })}
+              onChange={(e) =>
+                updateConfig({ vadThreshold: parseFloat(e.target.value) })
+              }
             />
             <span>{voiceConfig.vadThreshold.toFixed(3)}</span>
           </div>
-          
+
           <div className="config-item">
             <label>Silence Timeout (ms):</label>
             <input
@@ -415,11 +455,13 @@ export const StreamingVoiceInterface: React.FC<StreamingVoiceInterfaceProps> = (
               max="3000"
               step="100"
               value={voiceConfig.silenceTimeout}
-              onChange={(e) => updateConfig({ silenceTimeout: parseInt(e.target.value) })}
+              onChange={(e) =>
+                updateConfig({ silenceTimeout: parseInt(e.target.value) })
+              }
             />
             <span>{voiceConfig.silenceTimeout}ms</span>
           </div>
-          
+
           <div className="config-item">
             <label>Interrupt Threshold (ms):</label>
             <input
@@ -428,13 +470,15 @@ export const StreamingVoiceInterface: React.FC<StreamingVoiceInterfaceProps> = (
               max="500"
               step="50"
               value={voiceConfig.interruptThreshold}
-              onChange={(e) => updateConfig({ interruptThreshold: parseInt(e.target.value) })}
+              onChange={(e) =>
+                updateConfig({ interruptThreshold: parseInt(e.target.value) })
+              }
             />
             <span>{voiceConfig.interruptThreshold}ms</span>
           </div>
         </details>
       </div>
-      
+
       {/* Transcription Display */}
       <div className="voice-transcription">
         {currentTranscription && (
@@ -442,14 +486,14 @@ export const StreamingVoiceInterface: React.FC<StreamingVoiceInterfaceProps> = (
             <strong>You:</strong> {currentTranscription}
           </div>
         )}
-        
+
         {currentAIResponse && (
           <div className="ai-response-text">
             <strong>Luna:</strong> {currentAIResponse}
           </div>
         )}
       </div>
-      
+
       <style>{`
         .streaming-voice-interface {
           display: flex;

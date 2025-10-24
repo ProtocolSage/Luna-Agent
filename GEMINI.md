@@ -1,6 +1,6 @@
 ## user
 
-I'm working on the Luna Voice Agent project located at C:\dev\luna-agent-v1.0-production-complete-2. This is a Windows-first desktop voice assistant built with Electron, React, and Node.js. 
+I'm working on the Luna Voice Agent project located at C:\dev\luna-agent-v1.0-production-complete-2. This is a Windows-first desktop voice assistant built with Electron, React, and Node.js.
 
 I need help analyzing the current state of the project and creating a comprehensive restoration plan. The application is currently non-functional due to critical infrastructure failures in the Electron main process.
 
@@ -42,9 +42,11 @@ The Luna Voice Agent is structured as a modern Electron application with:
 ### Critical Issues Identified
 
 1. **Electron Main Process Failure**
+
    ```
    TypeError: Cannot read properties of undefined (reading 'whenReady')
    ```
+
    This indicates the app object isn't properly initialized in the main process.
 
 2. **Database Issues**
@@ -63,18 +65,21 @@ The Luna Voice Agent is structured as a modern Electron application with:
 ### Restoration Plan Priority
 
 **Phase 1: Critical Infrastructure** (Must fix first)
+
 - Fix Electron main process initialization
-- Resolve webpack configuration issues  
+- Resolve webpack configuration issues
 - Implement proper SQLite database with fallbacks
 - Secure configuration management
 
 **Phase 2: Voice Pipeline**
+
 - Connect wake word detection to voice capture
 - Implement multi-provider STT system
 - Complete TTS integration with caching
 - Natural conversation flow manager
 
 **Phase 3: AI Integration**
+
 - Complete model router implementation
 - Memory and learning system
 - Tool execution framework
@@ -90,6 +95,7 @@ Yes, please fix the Electron main process issue first. Show me exactly what need
 I'll fix the Electron main process issue. Let me first examine the current main process file to identify the problem:
 
 Looking at the error `TypeError: Cannot read properties of undefined (reading 'whenReady')`, this typically happens when:
+
 1. The Electron app module isn't properly imported
 2. The file is being executed before Electron is ready
 3. Webpack bundling issues are preventing proper module resolution
@@ -97,13 +103,22 @@ Looking at the error `TypeError: Cannot read properties of undefined (reading 'w
 Here's the corrected main process implementation:
 
 ### FILE: app/main/index.ts
+
 ```typescript
-import { app, BrowserWindow, Tray, Menu, shell, ipcMain, session } from 'electron';
-import * as path from 'path';
-import * as url from 'url';
-import * as fs from 'fs';
-import { spawn, ChildProcess } from 'child_process';
-import isDev from 'electron-is-dev';
+import {
+  app,
+  BrowserWindow,
+  Tray,
+  Menu,
+  shell,
+  ipcMain,
+  session,
+} from "electron";
+import * as path from "path";
+import * as url from "url";
+import * as fs from "fs";
+import { spawn, ChildProcess } from "child_process";
+import isDev from "electron-is-dev";
 
 // Ensure Electron doesn't quit when all windows are closed
 app.setQuitOnAllWindowsClosed(false);
@@ -119,31 +134,31 @@ const BACKEND_PORT = process.env.BACKEND_PORT || 3001;
 const BACKEND_URL = `http://localhost:${BACKEND_PORT}`;
 
 // Production logging
-const userDataPath = app.getPath('userData');
-const logPath = path.join(userDataPath, 'luna.log');
+const userDataPath = app.getPath("userData");
+const logPath = path.join(userDataPath, "luna.log");
 
 // Ensure userData directory exists
 if (!fs.existsSync(userDataPath)) {
   fs.mkdirSync(userDataPath, { recursive: true });
 }
 
-const logStream = fs.createWriteStream(logPath, { flags: 'a' });
+const logStream = fs.createWriteStream(logPath, { flags: "a" });
 
 function log(level: string, message: string, ...args: any[]) {
   const timestamp = new Date().toISOString();
-  const logEntry = `[${timestamp}] [${level}] ${message} ${args.length ? JSON.stringify(args) : ''}`;
+  const logEntry = `[${timestamp}] [${level}] ${message} ${args.length ? JSON.stringify(args) : ""}`;
   console.log(logEntry);
-  logStream.write(logEntry + '\n');
+  logStream.write(logEntry + "\n");
 }
 
 // Single instance lock
 const gotTheLock = app.requestSingleInstanceLock();
 
 if (!gotTheLock) {
-  log('WARN', 'Another instance is already running, quitting...');
+  log("WARN", "Another instance is already running, quitting...");
   app.quit();
 } else {
-  app.on('second-instance', () => {
+  app.on("second-instance", () => {
     // Someone tried to run a second instance, focus our window instead
     if (mainWindow) {
       if (mainWindow.isMinimized()) mainWindow.restore();
@@ -155,17 +170,17 @@ if (!gotTheLock) {
 // Backend server management
 async function startBackendServer(): Promise<void> {
   return new Promise((resolve, reject) => {
-    log('INFO', 'Starting backend server...');
-    
-    const backendScript = isDev 
-      ? path.join(__dirname, '../../backend/server.js')
-      : path.join(process.resourcesPath, 'app/dist/backend/server.js');
-    
-    log('INFO', `Backend script path: ${backendScript}`);
-    
+    log("INFO", "Starting backend server...");
+
+    const backendScript = isDev
+      ? path.join(__dirname, "../../backend/server.js")
+      : path.join(process.resourcesPath, "app/dist/backend/server.js");
+
+    log("INFO", `Backend script path: ${backendScript}`);
+
     if (!fs.existsSync(backendScript)) {
       const error = `Backend server not found at: ${backendScript}`;
-      log('ERROR', error);
+      log("ERROR", error);
       reject(new Error(error));
       return;
     }
@@ -173,71 +188,77 @@ async function startBackendServer(): Promise<void> {
     const env = {
       ...process.env,
       PORT: BACKEND_PORT.toString(),
-      NODE_ENV: process.env.NODE_ENV || 'production',
-      ELECTRON_RUN_AS_NODE: '1'
+      NODE_ENV: process.env.NODE_ENV || "production",
+      ELECTRON_RUN_AS_NODE: "1",
     };
 
     backendProcess = spawn(process.execPath, [backendScript], {
       env,
-      stdio: ['ignore', 'pipe', 'pipe'],
-      windowsHide: true
+      stdio: ["ignore", "pipe", "pipe"],
+      windowsHide: true,
     });
 
-    backendProcess.stdout?.on('data', (data) => {
+    backendProcess.stdout?.on("data", (data) => {
       const message = data.toString().trim();
-      log('BACKEND', message);
-      
+      log("BACKEND", message);
+
       // Check if backend is ready
-      if (message.includes('Server running') || message.includes('listening on port')) {
-        log('INFO', 'Backend server is ready');
+      if (
+        message.includes("Server running") ||
+        message.includes("listening on port")
+      ) {
+        log("INFO", "Backend server is ready");
         resolve();
       }
     });
 
-    backendProcess.stderr?.on('data', (data) => {
-      log('BACKEND-ERROR', data.toString().trim());
+    backendProcess.stderr?.on("data", (data) => {
+      log("BACKEND-ERROR", data.toString().trim());
     });
 
-    backendProcess.on('error', (error) => {
-      log('ERROR', 'Backend process error:', error.message);
+    backendProcess.on("error", (error) => {
+      log("ERROR", "Backend process error:", error.message);
       reject(error);
     });
 
-    backendProcess.on('exit', (code, signal) => {
-      log('WARN', `Backend process exited with code ${code} and signal ${signal}`);
+    backendProcess.on("exit", (code, signal) => {
+      log(
+        "WARN",
+        `Backend process exited with code ${code} and signal ${signal}`,
+      );
       if (!isQuitting) {
-        log('INFO', 'Restarting backend server in 5 seconds...');
+        log("INFO", "Restarting backend server in 5 seconds...");
         setTimeout(() => startBackendServer().catch(console.error), 5000);
       }
     });
 
     // Timeout if backend doesn't start
     setTimeout(() => {
-      reject(new Error('Backend server startup timeout'));
+      reject(new Error("Backend server startup timeout"));
     }, 30000);
   });
 }
 
 // Create the main window
 function createMainWindow() {
-  log('INFO', 'Creating main window...');
-  
+  log("INFO", "Creating main window...");
+
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
     minWidth: 800,
     minHeight: 600,
-    title: 'Luna Voice Agent',
-    icon: path.join(__dirname, '../../assets/icon.ico'),
+    title: "Luna Voice Agent",
+    icon: path.join(__dirname, "../../assets/icon.ico"),
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      preload: path.join(__dirname, 'preload.js'),
-      webSecurity: !isDev
+      preload: path.join(__dirname, "preload.js"),
+      webSecurity: !isDev,
     },
     show: false,
     frame: true,
-    backgroundColor: '#1a1a1a'
+    backgroundColor: "#1a1a1a",
   });
 
   // Set CSP headers for security
@@ -245,7 +266,8 @@ function createMainWindow() {
     callback({
       responseHeaders: {
         ...details.responseHeaders,
-        'Content-Security-Policy': [`
+        "Content-Security-Policy": [
+          `
           default-src 'self';
           script-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:*;
           style-src 'self' 'unsafe-inline';
@@ -253,166 +275,170 @@ function createMainWindow() {
           img-src 'self' data: https:;
           connect-src 'self' http://localhost:* ws://localhost:* https://api.openai.com https://api.elevenlabs.io;
           media-src 'self' blob: data:;
-        `.replace(/\s+/g, ' ').trim()]
-      }
+        `
+            .replace(/\s+/g, " ")
+            .trim(),
+        ],
+      },
     });
   });
 
   // Load the app
-  const startUrl = isDev 
-    ? 'http://localhost:3000' // Vite dev server
+  const startUrl = isDev
+    ? "http://localhost:3000" // Vite dev server
     : `${BACKEND_URL}`;
-    
+
   mainWindow.loadURL(startUrl);
-  
+
   if (isDev) {
     mainWindow.webContents.openDevTools();
   }
 
-  mainWindow.once('ready-to-show', () => {
-    log('INFO', 'Main window ready to show');
+  mainWindow.once("ready-to-show", () => {
+    log("INFO", "Main window ready to show");
     mainWindow?.show();
   });
 
-  mainWindow.on('close', (event) => {
-    if (!isQuitting && process.platform === 'darwin') {
+  mainWindow.on("close", (event) => {
+    if (!isQuitting && process.platform === "darwin") {
       event.preventDefault();
       mainWindow?.hide();
     }
   });
 
-  mainWindow.on('closed', () => {
+  mainWindow.on("closed", () => {
     mainWindow = null;
   });
 
   // Handle external links
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url);
-    return { action: 'deny' };
+    return { action: "deny" };
   });
 }
 
 // Create system tray
 function createTray() {
-  log('INFO', 'Creating system tray...');
-  
-  const trayIconPath = path.join(__dirname, '../../assets/tray.png');
-  
+  log("INFO", "Creating system tray...");
+
+  const trayIconPath = path.join(__dirname, "../../assets/tray.png");
+
   if (!fs.existsSync(trayIconPath)) {
-    log('WARN', 'Tray icon not found, skipping tray creation');
+    log("WARN", "Tray icon not found, skipping tray creation");
     return;
   }
 
   tray = new Tray(trayIconPath);
-  
+
   const contextMenu = Menu.buildFromTemplate([
     {
-      label: 'Show Luna',
+      label: "Show Luna",
       click: () => {
         mainWindow?.show();
         mainWindow?.focus();
-      }
+      },
     },
-    { type: 'separator' },
+    { type: "separator" },
     {
-      label: 'Quit',
+      label: "Quit",
       click: () => {
         isQuitting = true;
         app.quit();
-      }
-    }
+      },
+    },
   ]);
 
-  tray.setToolTip('Luna Voice Agent');
+  tray.setToolTip("Luna Voice Agent");
   tray.setContextMenu(contextMenu);
-  
-  tray.on('double-click', () => {
+
+  tray.on("double-click", () => {
     mainWindow?.show();
     mainWindow?.focus();
   });
 }
 
 // IPC Handlers
-ipcMain.handle('app:getVersion', () => app.getVersion());
-ipcMain.handle('app:getPlatform', () => process.platform);
-ipcMain.handle('app:getBackendUrl', () => BACKEND_URL);
+ipcMain.handle("app:getVersion", () => app.getVersion());
+ipcMain.handle("app:getPlatform", () => process.platform);
+ipcMain.handle("app:getBackendUrl", () => BACKEND_URL);
 
 // App event handlers
 app.whenReady().then(async () => {
-  log('INFO', 'Electron app ready');
-  
+  log("INFO", "Electron app ready");
+
   try {
     // Start backend first
     await startBackendServer();
-    
+
     // Create UI
     createMainWindow();
     createTray();
-    
-    log('INFO', 'Luna Voice Agent started successfully');
+
+    log("INFO", "Luna Voice Agent started successfully");
   } catch (error: any) {
-    log('ERROR', 'Failed to start application:', error.message);
+    log("ERROR", "Failed to start application:", error.message);
     app.quit();
   }
 });
 
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
+app.on("window-all-closed", () => {
+  if (process.platform !== "darwin") {
     app.quit();
   }
 });
 
-app.on('activate', () => {
+app.on("activate", () => {
   if (BrowserWindow.getAllWindows().length === 0) {
     createMainWindow();
   }
 });
 
-app.on('before-quit', () => {
+app.on("before-quit", () => {
   isQuitting = true;
-  
+
   // Stop backend process
   if (backendProcess) {
-    log('INFO', 'Stopping backend server...');
-    backendProcess.kill('SIGTERM');
+    log("INFO", "Stopping backend server...");
+    backendProcess.kill("SIGTERM");
   }
-  
+
   // Close log stream
   logStream.end();
 });
 
 // Error handling
-process.on('uncaughtException', (error) => {
-  log('ERROR', 'Uncaught exception:', error.message, error.stack);
+process.on("uncaughtException", (error) => {
+  log("ERROR", "Uncaught exception:", error.message, error.stack);
 });
 
-process.on('unhandledRejection', (reason, promise) => {
-  log('ERROR', 'Unhandled rejection at:', promise, 'reason:', reason);
+process.on("unhandledRejection", (reason, promise) => {
+  log("ERROR", "Unhandled rejection at:", promise, "reason:", reason);
 });
 
 export { app };
 ```
 
 ### FILE: app/main/preload.ts
+
 ```typescript
-import { contextBridge, ipcRenderer } from 'electron';
+import { contextBridge, ipcRenderer } from "electron";
 
 // Expose protected methods that allow the renderer process to use
 // the ipcRenderer without exposing the entire object
-contextBridge.exposeInMainWorld('electronAPI', {
-  getVersion: () => ipcRenderer.invoke('app:getVersion'),
-  getPlatform: () => ipcRenderer.invoke('app:getPlatform'),
-  getBackendUrl: () => ipcRenderer.invoke('app:getBackendUrl'),
-  
+contextBridge.exposeInMainWorld("electronAPI", {
+  getVersion: () => ipcRenderer.invoke("app:getVersion"),
+  getPlatform: () => ipcRenderer.invoke("app:getPlatform"),
+  getBackendUrl: () => ipcRenderer.invoke("app:getBackendUrl"),
+
   // Voice-related APIs
   onVoiceStateChange: (callback: (state: string) => void) => {
-    ipcRenderer.on('voice:stateChange', (_event, state) => callback(state));
+    ipcRenderer.on("voice:stateChange", (_event, state) => callback(state));
   },
-  
+
   // System APIs
-  minimizeWindow: () => ipcRenderer.send('window:minimize'),
-  maximizeWindow: () => ipcRenderer.send('window:maximize'),
-  closeWindow: () => ipcRenderer.send('window:close'),
+  minimizeWindow: () => ipcRenderer.send("window:minimize"),
+  maximizeWindow: () => ipcRenderer.send("window:maximize"),
+  closeWindow: () => ipcRenderer.send("window:close"),
 });
 
 // TypeScript declarations

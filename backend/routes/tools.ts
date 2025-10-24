@@ -1,13 +1,13 @@
-import { Router, Request, Response } from 'express';
-import { executeTool } from '../services/toolExecutor';
+import { Router, Request, Response } from "express";
+import { executeTool } from "../services/toolExecutor";
 
 const router = Router();
 
-router.post('/execute', async (req: Request, res: Response): Promise<void> => {
+router.post("/execute", async (req: Request, res: Response): Promise<void> => {
   try {
     const { tool, input, sessionId } = req.body || {};
-    if (!tool || typeof tool !== 'string') {
-      res.status(400).json({ error: 'tool(string) required' });
+    if (!tool || typeof tool !== "string") {
+      res.status(400).json({ error: "tool(string) required" });
       return;
     }
     const out = await executeTool(tool, input, sessionId);
@@ -17,8 +17,10 @@ router.post('/execute', async (req: Request, res: Response): Promise<void> => {
     }
     res.json(out);
   } catch (e: any) {
-    console.error('[Tools/execute]', e);
-    res.status(500).json({ error: 'execute-failed', details: String(e?.message || e) });
+    console.error("[Tools/execute]", e);
+    res
+      .status(500)
+      .json({ error: "execute-failed", details: String(e?.message || e) });
   }
 });
 

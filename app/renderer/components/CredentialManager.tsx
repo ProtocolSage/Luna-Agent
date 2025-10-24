@@ -1,13 +1,13 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  Shield, 
-  Key, 
-  Eye, 
-  EyeOff, 
-  Check, 
-  X, 
-  AlertTriangle, 
-  RefreshCw, 
+import React, { useState, useEffect, useCallback } from "react";
+import {
+  Shield,
+  Key,
+  Eye,
+  EyeOff,
+  Check,
+  X,
+  AlertTriangle,
+  RefreshCw,
   Plus,
   Trash2,
   Edit,
@@ -16,8 +16,8 @@ import {
   Lock,
   Unlock,
   Settings,
-  Database
-} from 'lucide-react';
+  Database,
+} from "lucide-react";
 
 interface Credential {
   id: string;
@@ -26,7 +26,7 @@ interface Credential {
   metadata: {
     created: string;
     lastUsed?: string;
-    healthStatus: 'active' | 'warning' | 'expired' | 'invalid';
+    healthStatus: "active" | "warning" | "expired" | "invalid";
     validationCount: number;
     failureCount: number;
     expiresAt?: string;
@@ -39,7 +39,7 @@ interface CredentialStatus {
   name: string;
   isActive: boolean;
   isValid: boolean;
-  healthStatus: 'active' | 'warning' | 'expired' | 'invalid';
+  healthStatus: "active" | "warning" | "expired" | "invalid";
   lastChecked: string;
   errorCount: number;
   successCount: number;
@@ -59,7 +59,7 @@ interface HealthReport {
 
 /**
  * Enterprise Credential Management UI
- * 
+ *
  * Features:
  * - Secure credential input with masked display
  * - Real-time validation and health monitoring
@@ -73,56 +73,58 @@ export const CredentialManager: React.FC = () => {
   const [keyStatus, setKeyStatus] = useState<CredentialStatus[]>([]);
   const [healthReport, setHealthReport] = useState<HealthReport | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedService, setSelectedService] = useState('');
+  const [selectedService, setSelectedService] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-  
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
   // Form state
   const [formData, setFormData] = useState({
-    service: '',
-    name: '',
-    value: '',
-    expiresIn: '',
-    rotationInterval: ''
+    service: "",
+    name: "",
+    value: "",
+    expiresIn: "",
+    rotationInterval: "",
   });
   const [showPassword, setShowPassword] = useState<Record<string, boolean>>({});
-  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [validationErrors, setValidationErrors] = useState<
+    Record<string, string>
+  >({});
 
   // Known service configurations
   const serviceConfigs = {
     openai: {
-      name: 'OpenAI',
-      icon: '🤖',
-      pattern: '^sk-[a-zA-Z0-9]{48,}$',
-      description: 'OpenAI API Key (starts with sk-)',
-      placeholder: 'sk-...',
-      testEndpoint: 'https://api.openai.com/v1/models'
+      name: "OpenAI",
+      icon: "🤖",
+      pattern: "^sk-[a-zA-Z0-9]{48,}$",
+      description: "OpenAI API Key (starts with sk-)",
+      placeholder: "sk-...",
+      testEndpoint: "https://api.openai.com/v1/models",
     },
     anthropic: {
-      name: 'Anthropic (Claude)',
-      icon: '🧠',
-      pattern: '^sk-ant-[a-zA-Z0-9\\-_]{95,}$',
-      description: 'Anthropic API Key (starts with sk-ant-)',
-      placeholder: 'sk-ant-...',
-      testEndpoint: 'https://api.anthropic.com/v1/messages'
+      name: "Anthropic (Claude)",
+      icon: "🧠",
+      pattern: "^sk-ant-[a-zA-Z0-9\\-_]{95,}$",
+      description: "Anthropic API Key (starts with sk-ant-)",
+      placeholder: "sk-ant-...",
+      testEndpoint: "https://api.anthropic.com/v1/messages",
     },
     supabase: {
-      name: 'Supabase',
-      icon: '🗄️',
-      pattern: '^https://[a-zA-Z0-9]+\\.supabase\\.co$',
-      description: 'Supabase Project URL',
-      placeholder: 'https://your-project.supabase.co',
-      testEndpoint: null
+      name: "Supabase",
+      icon: "🗄️",
+      pattern: "^https://[a-zA-Z0-9]+\\.supabase\\.co$",
+      description: "Supabase Project URL",
+      placeholder: "https://your-project.supabase.co",
+      testEndpoint: null,
     },
     elevenlabs: {
-      name: 'ElevenLabs',
-      icon: '🎵',
-      pattern: '^[a-zA-Z0-9]+$',
-      description: 'ElevenLabs API Key',
-      placeholder: 'Your ElevenLabs API key',
-      testEndpoint: 'https://api.elevenlabs.io/v1/user'
-    }
+      name: "ElevenLabs",
+      icon: "🎵",
+      pattern: "^[a-zA-Z0-9]+$",
+      description: "ElevenLabs API Key",
+      placeholder: "Your ElevenLabs API key",
+      testEndpoint: "https://api.elevenlabs.io/v1/user",
+    },
   };
 
   // Load credentials and status on component mount
@@ -130,26 +132,26 @@ export const CredentialManager: React.FC = () => {
     loadCredentials();
     loadKeyStatus();
     loadHealthReport();
-    
+
     // Set up periodic refresh
     const interval = setInterval(() => {
       loadKeyStatus();
       loadHealthReport();
     }, 30000); // Every 30 seconds
-    
+
     return () => clearInterval(interval);
   }, []);
 
   const loadCredentials = async () => {
     try {
-      const response = await fetch('/api/security/credentials');
+      const response = await fetch("/api/security/credentials");
       if (response.ok) {
         const data = await response.json();
         setCredentials(data);
       }
     } catch (error) {
-      console.error('Failed to load credentials:', error);
-      setError('Failed to load credentials');
+      console.error("Failed to load credentials:", error);
+      setError("Failed to load credentials");
     } finally {
       setIsLoading(false);
     }
@@ -157,31 +159,34 @@ export const CredentialManager: React.FC = () => {
 
   const loadKeyStatus = async () => {
     try {
-      const response = await fetch('/api/security/key-status');
+      const response = await fetch("/api/security/key-status");
       if (response.ok) {
         const data = await response.json();
         setKeyStatus(data);
       }
     } catch (error) {
-      console.error('Failed to load key status:', error);
+      console.error("Failed to load key status:", error);
     }
   };
 
   const loadHealthReport = async () => {
     try {
-      const response = await fetch('/api/security/health-report');
+      const response = await fetch("/api/security/health-report");
       if (response.ok) {
         const data = await response.json();
         setHealthReport(data);
       }
     } catch (error) {
-      console.error('Failed to load health report:', error);
+      console.error("Failed to load health report:", error);
     }
   };
 
-  const validateCredential = (service: string, value: string): string | null => {
+  const validateCredential = (
+    service: string,
+    value: string,
+  ): string | null => {
     if (!value.trim()) {
-      return 'Credential value is required';
+      return "Credential value is required";
     }
 
     const config = serviceConfigs[service as keyof typeof serviceConfigs];
@@ -197,49 +202,62 @@ export const CredentialManager: React.FC = () => {
 
   const handleAddCredential = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Validate form
     const errors: Record<string, string> = {};
-    
-    if (!formData.service) errors.service = 'Service is required';
-    if (!formData.name) errors.name = 'Name is required';
-    
-    const validationError = validateCredential(formData.service, formData.value);
+
+    if (!formData.service) errors.service = "Service is required";
+    if (!formData.name) errors.name = "Name is required";
+
+    const validationError = validateCredential(
+      formData.service,
+      formData.value,
+    );
     if (validationError) {
       errors.value = validationError;
     }
-    
+
     if (Object.keys(errors).length > 0) {
       setValidationErrors(errors);
       return;
     }
 
     try {
-      const response = await fetch('/api/security/credentials', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/security/credentials", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           service: formData.service,
           name: formData.name,
           value: formData.value,
-          expiresIn: formData.expiresIn ? parseInt(formData.expiresIn) * 24 * 60 * 60 * 1000 : undefined,
-          rotationInterval: formData.rotationInterval ? parseInt(formData.rotationInterval) * 24 * 60 * 60 * 1000 : undefined
-        })
+          expiresIn: formData.expiresIn
+            ? parseInt(formData.expiresIn) * 24 * 60 * 60 * 1000
+            : undefined,
+          rotationInterval: formData.rotationInterval
+            ? parseInt(formData.rotationInterval) * 24 * 60 * 60 * 1000
+            : undefined,
+        }),
       });
 
       if (response.ok) {
-        setSuccess('Credential added successfully');
-        setFormData({ service: '', name: '', value: '', expiresIn: '', rotationInterval: '' });
+        setSuccess("Credential added successfully");
+        setFormData({
+          service: "",
+          name: "",
+          value: "",
+          expiresIn: "",
+          rotationInterval: "",
+        });
         setValidationErrors({});
         setShowAddForm(false);
         loadCredentials();
         loadKeyStatus();
       } else {
         const error = await response.json();
-        setError(error.message || 'Failed to add credential');
+        setError(error.message || "Failed to add credential");
       }
     } catch (error) {
-      setError('Failed to add credential');
+      setError("Failed to add credential");
     }
   };
 
@@ -249,37 +267,44 @@ export const CredentialManager: React.FC = () => {
     }
 
     try {
-      const response = await fetch(`/api/security/credentials/${service}/${name}`, {
-        method: 'DELETE'
-      });
+      const response = await fetch(
+        `/api/security/credentials/${service}/${name}`,
+        {
+          method: "DELETE",
+        },
+      );
 
       if (response.ok) {
-        setSuccess('Credential deleted successfully');
+        setSuccess("Credential deleted successfully");
         loadCredentials();
         loadKeyStatus();
       } else {
-        setError('Failed to delete credential');
+        setError("Failed to delete credential");
       }
     } catch (error) {
-      setError('Failed to delete credential');
+      setError("Failed to delete credential");
     }
   };
 
   const handleRefreshAll = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch('/api/security/refresh-keys', { method: 'POST' });
-      
+      const response = await fetch("/api/security/refresh-keys", {
+        method: "POST",
+      });
+
       if (response.ok) {
         const result = await response.json();
-        setSuccess(`Refreshed all keys: ${result.validated} validated, ${result.failed} failed`);
+        setSuccess(
+          `Refreshed all keys: ${result.validated} validated, ${result.failed} failed`,
+        );
         loadKeyStatus();
         loadHealthReport();
       } else {
-        setError('Failed to refresh keys');
+        setError("Failed to refresh keys");
       }
     } catch (error) {
-      setError('Failed to refresh keys');
+      setError("Failed to refresh keys");
     } finally {
       setIsLoading(false);
     }
@@ -287,21 +312,31 @@ export const CredentialManager: React.FC = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'active': return 'text-green-500';
-      case 'warning': return 'text-yellow-500';
-      case 'expired': return 'text-orange-500';
-      case 'invalid': return 'text-red-500';
-      default: return 'text-gray-500';
+      case "active":
+        return "text-green-500";
+      case "warning":
+        return "text-yellow-500";
+      case "expired":
+        return "text-orange-500";
+      case "invalid":
+        return "text-red-500";
+      default:
+        return "text-gray-500";
     }
   };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'active': return <Check className="w-4 h-4" />;
-      case 'warning': return <AlertTriangle className="w-4 h-4" />;
-      case 'expired': return <X className="w-4 h-4" />;
-      case 'invalid': return <X className="w-4 h-4" />;
-      default: return <AlertTriangle className="w-4 h-4" />;
+      case "active":
+        return <Check className="w-4 h-4" />;
+      case "warning":
+        return <AlertTriangle className="w-4 h-4" />;
+      case "expired":
+        return <X className="w-4 h-4" />;
+      case "invalid":
+        return <X className="w-4 h-4" />;
+      default:
+        return <AlertTriangle className="w-4 h-4" />;
     }
   };
 
@@ -323,8 +358,12 @@ export const CredentialManager: React.FC = () => {
         <div className="flex items-center space-x-3">
           <Shield className="w-8 h-8 text-blue-500" />
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Credential Manager</h1>
-            <p className="text-gray-600">Enterprise security credential management</p>
+            <h1 className="text-2xl font-bold text-gray-900">
+              Credential Manager
+            </h1>
+            <p className="text-gray-600">
+              Enterprise security credential management
+            </p>
           </div>
         </div>
         <div className="flex space-x-2">
@@ -333,7 +372,9 @@ export const CredentialManager: React.FC = () => {
             disabled={isLoading}
             className="flex items-center space-x-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50"
           >
-            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+            <RefreshCw
+              className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`}
+            />
             <span>Refresh All</span>
           </button>
           <button
@@ -351,7 +392,10 @@ export const CredentialManager: React.FC = () => {
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center space-x-2">
           <X className="w-5 h-5 text-red-500" />
           <span className="text-red-700">{error}</span>
-          <button onClick={() => setError('')} className="ml-auto text-red-500 hover:text-red-700">
+          <button
+            onClick={() => setError("")}
+            className="ml-auto text-red-500 hover:text-red-700"
+          >
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -361,7 +405,10 @@ export const CredentialManager: React.FC = () => {
         <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center space-x-2">
           <Check className="w-5 h-5 text-green-500" />
           <span className="text-green-700">{success}</span>
-          <button onClick={() => setSuccess('')} className="ml-auto text-green-500 hover:text-green-700">
+          <button
+            onClick={() => setSuccess("")}
+            className="ml-auto text-green-500 hover:text-green-700"
+          >
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -374,32 +421,46 @@ export const CredentialManager: React.FC = () => {
             <Activity className="w-5 h-5 text-blue-500" />
             <h2 className="text-lg font-semibold">Health Dashboard</h2>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
             <div className="text-center p-4 bg-gray-50 rounded-lg">
-              <div className="text-2xl font-bold text-gray-900">{healthReport.totalCredentials}</div>
+              <div className="text-2xl font-bold text-gray-900">
+                {healthReport.totalCredentials}
+              </div>
               <div className="text-sm text-gray-600">Total Credentials</div>
             </div>
             <div className="text-center p-4 bg-green-50 rounded-lg">
-              <div className="text-2xl font-bold text-green-600">{healthReport.activeCredentials}</div>
+              <div className="text-2xl font-bold text-green-600">
+                {healthReport.activeCredentials}
+              </div>
               <div className="text-sm text-gray-600">Active</div>
             </div>
             <div className="text-center p-4 bg-yellow-50 rounded-lg">
-              <div className="text-2xl font-bold text-yellow-600">{healthReport.credentialsNeedingRotation}</div>
+              <div className="text-2xl font-bold text-yellow-600">
+                {healthReport.credentialsNeedingRotation}
+              </div>
               <div className="text-sm text-gray-600">Need Rotation</div>
             </div>
             <div className="text-center p-4 bg-red-50 rounded-lg">
-              <div className="text-2xl font-bold text-red-600">{healthReport.expiredCredentials + healthReport.invalidCredentials}</div>
+              <div className="text-2xl font-bold text-red-600">
+                {healthReport.expiredCredentials +
+                  healthReport.invalidCredentials}
+              </div>
               <div className="text-sm text-gray-600">Issues</div>
             </div>
           </div>
 
           {healthReport.recommendations.length > 0 && (
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-              <h3 className="font-medium text-yellow-800 mb-2">Recommendations:</h3>
+              <h3 className="font-medium text-yellow-800 mb-2">
+                Recommendations:
+              </h3>
               <ul className="space-y-1">
                 {healthReport.recommendations.map((rec, index) => (
-                  <li key={index} className="text-yellow-700 text-sm flex items-center space-x-2">
+                  <li
+                    key={index}
+                    className="text-yellow-700 text-sm flex items-center space-x-2"
+                  >
                     <AlertTriangle className="w-4 h-4" />
                     <span>{rec}</span>
                   </li>
@@ -418,76 +479,102 @@ export const CredentialManager: React.FC = () => {
             <span>Stored Credentials</span>
           </h2>
         </div>
-        
+
         <div className="divide-y divide-gray-200">
           {credentials.map((credential) => {
-            const status = keyStatus.find(s => s.service === credential.service && s.name === credential.name);
-            const config = serviceConfigs[credential.service as keyof typeof serviceConfigs];
-            
+            const status = keyStatus.find(
+              (s) =>
+                s.service === credential.service && s.name === credential.name,
+            );
+            const config =
+              serviceConfigs[credential.service as keyof typeof serviceConfigs];
+
             return (
               <div key={credential.id} className="p-6 hover:bg-gray-50">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-4">
-                    <div className="text-2xl">{config?.icon || '🔑'}</div>
+                    <div className="text-2xl">{config?.icon || "🔑"}</div>
                     <div>
                       <h3 className="font-medium text-gray-900">
                         {config?.name || credential.service} - {credential.name}
                       </h3>
                       <p className="text-sm text-gray-600">
-                        Created: {new Date(credential.metadata.created).toLocaleDateString()}
+                        Created:{" "}
+                        {new Date(
+                          credential.metadata.created,
+                        ).toLocaleDateString()}
                         {credential.metadata.lastUsed && (
                           <span className="ml-2">
-                            • Last used: {new Date(credential.metadata.lastUsed).toLocaleDateString()}
+                            • Last used:{" "}
+                            {new Date(
+                              credential.metadata.lastUsed,
+                            ).toLocaleDateString()}
                           </span>
                         )}
                       </p>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center space-x-4">
                     {/* Status indicator */}
-                    <div className={`flex items-center space-x-2 ${getStatusColor(credential.metadata.healthStatus)}`}>
+                    <div
+                      className={`flex items-center space-x-2 ${getStatusColor(credential.metadata.healthStatus)}`}
+                    >
                       {getStatusIcon(credential.metadata.healthStatus)}
-                      <span className="text-sm capitalize">{credential.metadata.healthStatus}</span>
+                      <span className="text-sm capitalize">
+                        {credential.metadata.healthStatus}
+                      </span>
                     </div>
-                    
+
                     {/* Performance metrics */}
                     {status && (
                       <div className="text-right text-sm text-gray-600">
-                        <div>✓ {status.successCount} / ❌ {status.errorCount}</div>
+                        <div>
+                          ✓ {status.successCount} / ❌ {status.errorCount}
+                        </div>
                         {status.responseTime && (
                           <div>{status.responseTime}ms</div>
                         )}
                       </div>
                     )}
-                    
+
                     {/* Actions */}
                     <button
-                      onClick={() => handleDeleteCredential(credential.service, credential.name)}
+                      onClick={() =>
+                        handleDeleteCredential(
+                          credential.service,
+                          credential.name,
+                        )
+                      }
                       className="text-red-500 hover:text-red-700"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
-                
+
                 {/* Status details */}
                 {status && status.details && (
                   <div className="mt-2 text-sm text-gray-600">
-                    <span className="font-medium">Status:</span> {status.details}
-                    <span className="ml-4 font-medium">Last checked:</span> {new Date(status.lastChecked).toLocaleString()}
+                    <span className="font-medium">Status:</span>{" "}
+                    {status.details}
+                    <span className="ml-4 font-medium">Last checked:</span>{" "}
+                    {new Date(status.lastChecked).toLocaleString()}
                   </div>
                 )}
               </div>
             );
           })}
         </div>
-        
+
         {credentials.length === 0 && (
           <div className="p-12 text-center text-gray-500">
             <Key className="w-12 h-12 mx-auto mb-4 text-gray-300" />
             <h3 className="text-lg font-medium mb-2">No credentials stored</h3>
-            <p>Add your first credential to get started with secure API key management.</p>
+            <p>
+              Add your first credential to get started with secure API key
+              management.
+            </p>
             <button
               onClick={() => setShowAddForm(true)}
               className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
@@ -508,55 +595,77 @@ export const CredentialManager: React.FC = () => {
                 onClick={() => {
                   setShowAddForm(false);
                   setValidationErrors({});
-                  setFormData({ service: '', name: '', value: '', expiresIn: '', rotationInterval: '' });
+                  setFormData({
+                    service: "",
+                    name: "",
+                    value: "",
+                    expiresIn: "",
+                    rotationInterval: "",
+                  });
                 }}
                 className="text-gray-400 hover:text-gray-600"
               >
                 <X className="w-6 h-6" />
               </button>
             </div>
-            
+
             <form onSubmit={handleAddCredential} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Service</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Service
+                </label>
                 <select
                   value={formData.service}
                   onChange={(e) => {
-                    setFormData({ ...formData, service: e.target.value, name: e.target.value === 'supabase' ? 'url' : 'api_key' });
-                    setValidationErrors({ ...validationErrors, service: '' });
+                    setFormData({
+                      ...formData,
+                      service: e.target.value,
+                      name: e.target.value === "supabase" ? "url" : "api_key",
+                    });
+                    setValidationErrors({ ...validationErrors, service: "" });
                   }}
                   className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                    validationErrors.service ? 'border-red-300' : 'border-gray-300'
+                    validationErrors.service
+                      ? "border-red-300"
+                      : "border-gray-300"
                   }`}
                   required
                 >
                   <option value="">Select a service</option>
                   {Object.entries(serviceConfigs).map(([key, config]) => (
-                    <option key={key} value={key}>{config.icon} {config.name}</option>
+                    <option key={key} value={key}>
+                      {config.icon} {config.name}
+                    </option>
                   ))}
                 </select>
                 {validationErrors.service && (
-                  <p className="text-red-600 text-sm mt-1">{validationErrors.service}</p>
+                  <p className="text-red-600 text-sm mt-1">
+                    {validationErrors.service}
+                  </p>
                 )}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Name
+                </label>
                 <input
                   type="text"
                   value={formData.name}
                   onChange={(e) => {
                     setFormData({ ...formData, name: e.target.value });
-                    setValidationErrors({ ...validationErrors, name: '' });
+                    setValidationErrors({ ...validationErrors, name: "" });
                   }}
                   className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                    validationErrors.name ? 'border-red-300' : 'border-gray-300'
+                    validationErrors.name ? "border-red-300" : "border-gray-300"
                   }`}
                   placeholder="e.g., api_key, url, token"
                   required
                 />
                 {validationErrors.name && (
-                  <p className="text-red-600 text-sm mt-1">{validationErrors.name}</p>
+                  <p className="text-red-600 text-sm mt-1">
+                    {validationErrors.name}
+                  </p>
                 )}
               </div>
 
@@ -566,21 +675,34 @@ export const CredentialManager: React.FC = () => {
                 </label>
                 <div className="relative">
                   <input
-                    type={showPassword.value ? 'text' : 'password'}
+                    type={showPassword.value ? "text" : "password"}
                     value={formData.value}
                     onChange={(e) => {
                       setFormData({ ...formData, value: e.target.value });
-                      setValidationErrors({ ...validationErrors, value: '' });
+                      setValidationErrors({ ...validationErrors, value: "" });
                     }}
                     className={`w-full px-3 py-2 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                      validationErrors.value ? 'border-red-300' : 'border-gray-300'
+                      validationErrors.value
+                        ? "border-red-300"
+                        : "border-gray-300"
                     }`}
-                    placeholder={formData.service ? serviceConfigs[formData.service as keyof typeof serviceConfigs]?.placeholder : 'Enter credential value'}
+                    placeholder={
+                      formData.service
+                        ? serviceConfigs[
+                            formData.service as keyof typeof serviceConfigs
+                          ]?.placeholder
+                        : "Enter credential value"
+                    }
                     required
                   />
                   <button
                     type="button"
-                    onClick={() => setShowPassword({ ...showPassword, value: !showPassword.value })}
+                    onClick={() =>
+                      setShowPassword({
+                        ...showPassword,
+                        value: !showPassword.value,
+                      })
+                    }
                     className="absolute inset-y-0 right-0 pr-3 flex items-center"
                   >
                     {showPassword.value ? (
@@ -591,13 +713,22 @@ export const CredentialManager: React.FC = () => {
                   </button>
                 </div>
                 {validationErrors.value && (
-                  <p className="text-red-600 text-sm mt-1">{validationErrors.value}</p>
-                )}
-                {formData.service && serviceConfigs[formData.service as keyof typeof serviceConfigs] && (
-                  <p className="text-gray-600 text-xs mt-1">
-                    {serviceConfigs[formData.service as keyof typeof serviceConfigs].description}
+                  <p className="text-red-600 text-sm mt-1">
+                    {validationErrors.value}
                   </p>
                 )}
+                {formData.service &&
+                  serviceConfigs[
+                    formData.service as keyof typeof serviceConfigs
+                  ] && (
+                    <p className="text-gray-600 text-xs mt-1">
+                      {
+                        serviceConfigs[
+                          formData.service as keyof typeof serviceConfigs
+                        ].description
+                      }
+                    </p>
+                  )}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -608,13 +739,15 @@ export const CredentialManager: React.FC = () => {
                   <input
                     type="number"
                     value={formData.expiresIn}
-                    onChange={(e) => setFormData({ ...formData, expiresIn: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, expiresIn: e.target.value })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     placeholder="Optional"
                     min="1"
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Rotate (days)
@@ -622,7 +755,12 @@ export const CredentialManager: React.FC = () => {
                   <input
                     type="number"
                     value={formData.rotationInterval}
-                    onChange={(e) => setFormData({ ...formData, rotationInterval: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        rotationInterval: e.target.value,
+                      })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     placeholder="Optional"
                     min="1"
@@ -643,7 +781,13 @@ export const CredentialManager: React.FC = () => {
                   onClick={() => {
                     setShowAddForm(false);
                     setValidationErrors({});
-                    setFormData({ service: '', name: '', value: '', expiresIn: '', rotationInterval: '' });
+                    setFormData({
+                      service: "",
+                      name: "",
+                      value: "",
+                      expiresIn: "",
+                      rotationInterval: "",
+                    });
                   }}
                   className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
                 >

@@ -3,7 +3,7 @@
  * Replaces native speaker module with browser-compatible audio playback
  */
 
-import { errorHandler } from './ErrorHandler';
+import { errorHandler } from "./ErrorHandler";
 
 export class AudioService {
   private audioContext: AudioContext | null = null;
@@ -18,15 +18,16 @@ export class AudioService {
 
   private initializeAudioContext(): void {
     try {
-      this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      this.audioContext = new (window.AudioContext ||
+        (window as any).webkitAudioContext)();
     } catch (error) {
-      console.error('Failed to initialize AudioContext:', error);
+      console.error("Failed to initialize AudioContext:", error);
     }
   }
 
   async playAudioBuffer(arrayBuffer: ArrayBuffer): Promise<void> {
     if (!this.audioContext) {
-      throw new Error('AudioContext not initialized');
+      throw new Error("AudioContext not initialized");
     }
 
     try {
@@ -34,12 +35,13 @@ export class AudioService {
       this.stop();
 
       // Resume AudioContext if suspended
-      if (this.audioContext.state === 'suspended') {
+      if (this.audioContext.state === "suspended") {
         await this.audioContext.resume();
       }
 
       // Decode audio data
-      this.currentAudioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
+      this.currentAudioBuffer =
+        await this.audioContext.decodeAudioData(arrayBuffer);
 
       // Create audio source
       this.currentSource = this.audioContext.createBufferSource();
@@ -54,26 +56,27 @@ export class AudioService {
       gainNode.connect(this.audioContext.destination);
 
       // Set up event listeners
-      this.currentSource.addEventListener('ended', () => {
+      this.currentSource.addEventListener("ended", () => {
         this.isPlaying = false;
         this.currentSource = null;
-        this.emit('playback-ended');
+        this.emit("playback-ended");
       });
 
       // Start playback
       this.currentSource.start(0);
       this.isPlaying = true;
-      this.emit('playback-started');
+      this.emit("playback-started");
 
       return new Promise<void>((resolve, reject) => {
         if (this.currentSource) {
-          this.currentSource.addEventListener('ended', () => resolve());
-          this.currentSource.addEventListener('error', () => reject(new Error('Audio playback error')));
+          this.currentSource.addEventListener("ended", () => resolve());
+          this.currentSource.addEventListener("error", () =>
+            reject(new Error("Audio playback error")),
+          );
         } else {
-          reject(new Error('Audio source not created'));
+          reject(new Error("Audio source not created"));
         }
       });
-
     } catch (error) {
       this.isPlaying = false;
       const voiceError = errorHandler.handleAudioPlaybackError(error as Error);
@@ -87,11 +90,11 @@ export class AudioService {
         this.currentSource.stop();
         this.currentSource.disconnect();
       } catch (error) {
-        console.error('Error stopping audio:', error);
+        console.error("Error stopping audio:", error);
       }
       this.currentSource = null;
       this.isPlaying = false;
-      this.emit('playback-stopped');
+      this.emit("playback-stopped");
     }
   }
 
@@ -108,7 +111,8 @@ export class AudioService {
   }
 
   // Event emitter functionality
-  private eventListeners: Map<string, Array<(...args: any[]) => void>> = new Map();
+  private eventListeners: Map<string, Array<(...args: any[]) => void>> =
+    new Map();
 
   on(event: string, listener: (...args: any[]) => void): void {
     if (!this.eventListeners.has(event)) {
@@ -130,7 +134,7 @@ export class AudioService {
   private emit(event: string, ...args: any[]): void {
     const listeners = this.eventListeners.get(event);
     if (listeners) {
-      listeners.forEach(listener => {
+      listeners.forEach((listener) => {
         try {
           listener(...args);
         } catch (error) {

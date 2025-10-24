@@ -20,6 +20,10 @@ win-unpacked/
 *.log
 *.tmp
 
+# SQLite backups
+.backup/memory/*.db
+.backup/memory/*.db-wal
+.backup/memory/*.bak
 # Platform cruft
 .DS_Store
 Thumbs.db

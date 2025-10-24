@@ -1,6 +1,6 @@
-import React from 'react';
+import React from "react";
 
-type VoiceMode = 'idle' | 'listening' | 'processing' | 'speaking';
+type VoiceMode = "idle" | "listening" | "processing" | "speaking";
 
 interface Props {
   mode: VoiceMode;
@@ -8,17 +8,21 @@ interface Props {
   onStopListening: () => void;
 }
 
-export const VoiceControl: React.FC<Props> = ({ 
-  mode, 
-  onStartListening, 
-  onStopListening 
+export const VoiceControl: React.FC<Props> = ({
+  mode,
+  onStartListening,
+  onStopListening,
 }) => {
   const getStatusText = () => {
     switch (mode) {
-      case 'listening': return 'Listening...';
-      case 'processing': return 'Processing...';
-      case 'speaking': return 'Speaking...';
-      default: return 'Click to speak';
+      case "listening":
+        return "Listening...";
+      case "processing":
+        return "Processing...";
+      case "speaking":
+        return "Speaking...";
+      default:
+        return "Click to speak";
     }
   };
 
@@ -27,14 +31,14 @@ export const VoiceControl: React.FC<Props> = ({
   };
 
   const handleClick = () => {
-    if (mode === 'listening') {
+    if (mode === "listening") {
       onStopListening();
-    } else if (mode === 'idle') {
+    } else if (mode === "idle") {
       onStartListening();
     }
   };
 
-  const isDisabled = mode === 'processing' || mode === 'speaking';
+  const isDisabled = mode === "processing" || mode === "speaking";
 
   return (
     <div className="voice-control">
@@ -45,12 +49,18 @@ export const VoiceControl: React.FC<Props> = ({
         aria-label={getStatusText()}
       >
         <div className="mic-icon">
-          {mode === 'listening' ? '🎤' : mode === 'processing' ? '⚙️' : mode === 'speaking' ? '🔊' : '🎙️'}
+          {mode === "listening"
+            ? "🎤"
+            : mode === "processing"
+              ? "⚙️"
+              : mode === "speaking"
+                ? "🔊"
+                : "🎙️"}
         </div>
         <div className="status-text">{getStatusText()}</div>
       </button>
-      
-      {mode === 'listening' && (
+
+      {mode === "listening" && (
         <div className="voice-indicator">
           <div className="pulse-ring"></div>
           <div className="pulse-ring delay-1"></div>

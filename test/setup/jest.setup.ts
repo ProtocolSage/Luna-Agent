@@ -2,34 +2,34 @@
 // This file runs after the test framework has been installed in the environment
 
 // Import jest-dom matchers for better DOM assertions
-import '@testing-library/jest-dom';
+import "@testing-library/jest-dom";
 
 // Mock the global lunaAPI that would normally be exposed by Electron preload
-Object.defineProperty(window, 'lunaAPI', {
-  value: { 
-    config: { 
-      apiBase: 'http://localhost:3005' 
-    }, 
-    getSomeData: async () => ({ ok: true }), 
-    doAction: () => {} 
+Object.defineProperty(window, "lunaAPI", {
+  value: {
+    config: {
+      apiBase: "http://localhost:3005",
+    },
+    getSomeData: async () => ({ ok: true }),
+    doAction: () => {},
   },
   writable: false,
 });
 
 // Mock Electron APIs that are used in renderer components
-jest.mock('electron', () => ({
-  contextBridge: { 
-    exposeInMainWorld: jest.fn() 
+jest.mock("electron", () => ({
+  contextBridge: {
+    exposeInMainWorld: jest.fn(),
   },
-  ipcRenderer: { 
-    invoke: jest.fn(), 
-    send: jest.fn(), 
-    on: jest.fn() 
+  ipcRenderer: {
+    invoke: jest.fn(),
+    send: jest.fn(),
+    on: jest.fn(),
   },
 }));
 
 // Mock Web Speech API for voice testing
-Object.defineProperty(window, 'SpeechRecognition', {
+Object.defineProperty(window, "SpeechRecognition", {
   value: class MockSpeechRecognition {
     continuous = true;
     interimResults = true;
@@ -37,15 +37,15 @@ Object.defineProperty(window, 'SpeechRecognition', {
     onresult = null;
     onerror = null;
     onend = null;
-    
+
     start() {
       if (this.onstart) this.onstart({} as any);
     }
-    
+
     stop() {
       if (this.onend) this.onend({} as any);
     }
-    
+
     abort() {
       if (this.onend) this.onend({} as any);
     }
@@ -54,13 +54,13 @@ Object.defineProperty(window, 'SpeechRecognition', {
 });
 
 // Mock webkitSpeechRecognition for Safari/Chrome
-Object.defineProperty(window, 'webkitSpeechRecognition', {
+Object.defineProperty(window, "webkitSpeechRecognition", {
   value: window.SpeechRecognition,
   writable: false,
 });
 
 // Mock MediaDevices for audio testing
-Object.defineProperty(navigator, 'mediaDevices', {
+Object.defineProperty(navigator, "mediaDevices", {
   value: {
     getUserMedia: jest.fn().mockResolvedValue({
       getTracks: () => [{ stop: jest.fn() }],
@@ -80,7 +80,7 @@ global.AudioContext = jest.fn().mockImplementation(() => ({
   createMediaStreamSource: jest.fn(),
   destination: {},
   sampleRate: 44100,
-  state: 'running',
+  state: "running",
   suspend: jest.fn(),
   resume: jest.fn(),
   close: jest.fn(),

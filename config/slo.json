@@ -1,9 +1,8 @@
 {
-  "latency": {"lan_p50_ms": 300, "wan_p50_ms": 700},
-  "accuracy": {"golden_pass_rate_min": 0.95},
-  "tooling": {"failure_rate_max": 0.02},
-  "cost": {"usd_per_minute_max": 0.002},
-  "memory": {"retrieval_precision_min": 0.9},
-  "stability": {"electron_crashfree_rate_min": 0.995}
+  "latency": { "lan_p50_ms": 300, "wan_p50_ms": 700 },
+  "accuracy": { "golden_pass_rate_min": 0.95 },
+  "tooling": { "failure_rate_max": 0.02 },
+  "cost": { "usd_per_minute_max": 0.002 },
+  "memory": { "retrieval_precision_min": 0.9 },
+  "stability": { "electron_crashfree_rate_min": 0.995 }
 }
-

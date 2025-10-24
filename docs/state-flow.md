@@ -13,7 +13,7 @@ The renderer keeps the majority of interactive state inside `app/renderer/compon
 ## State Flow Highlights
 
 1. **Initialization**
-   - Security → Database → Session handshake (`initializeSecureSessionWithResilience`)  
+   - Security → Database → Session handshake (`initializeSecureSessionWithResilience`)
    - Voice service boot (`initializeVoiceService`) → registers listeners that dispatch into `voiceState`, `inputValue`, and `handleSendMessage`.
    - Health + heartbeat timers drive `systemHealth` and `connectionStatus`.
 
@@ -23,7 +23,7 @@ The renderer keeps the majority of interactive state inside `app/renderer/compon
    - `finally` block restarts listening when `VOICE_AUTO_LISTEN` env is true.
 
 3. **Cleanup**
-   - Effect teardown cancels recovery/heartbeat intervals and destroys the core voice and security services.  
+   - Effect teardown cancels recovery/heartbeat intervals and destroys the core voice and security services.
    - Enhanced voice ref + panel were removed to avoid duplicate initialisation/state.
 
 ## Simplifications Completed
@@ -44,4 +44,3 @@ The renderer keeps the majority of interactive state inside `app/renderer/compon
 
 - Verify the voice auto-send path after every change by watching the new `[INPUT]` and `[SEND]` logs in DevTools.
 - When adding new state, ensure hooks are memoised; broad dependencies on objects (`securityStatus`) will re-instantiate callbacks every render.
-

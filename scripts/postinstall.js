@@ -13,12 +13,28 @@ function run(cmd, args) {
 
 if (process.platform === "win32") {
   // Use Windows PowerShell
-  if (!run("powershell", ["-ExecutionPolicy", "Bypass", "-File", "scripts/fetch-whisper.ps1"])) {
+  if (
+    !run("powershell", [
+      "-ExecutionPolicy",
+      "Bypass",
+      "-File",
+      "scripts/fetch-whisper.ps1",
+    ])
+  ) {
     process.exit(1);
   }
 } else {
   // Try PowerShell Core (pwsh); if missing, just skip with a notice
-  if (!run("pwsh", ["-NoLogo", "-NoProfile", "-File", "scripts/fetch-whisper.ps1"])) {
-    console.log("postinstall: pwsh not found; skipping model fetch on non-Windows.");
+  if (
+    !run("pwsh", [
+      "-NoLogo",
+      "-NoProfile",
+      "-File",
+      "scripts/fetch-whisper.ps1",
+    ])
+  ) {
+    console.log(
+      "postinstall: pwsh not found; skipping model fetch on non-Windows.",
+    );
   }
 }

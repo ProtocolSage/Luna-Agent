@@ -1,4 +1,4 @@
-import { getDatabase, type DatabaseInstance } from './database.js';
+import { getDatabase, type DatabaseInstance } from "./database.js";
 
 export interface SessionRow {
   id: string;
@@ -31,14 +31,14 @@ export class BackendDatabaseService {
     try {
       // Initialize sessions table
       await this.initSessionsTable();
-      
+
       // Initialize other required tables
       await this.initOtherTables();
-      
+
       this.initialized = true;
-      console.log('[BackendDB] Database initialized successfully');
+      console.log("[BackendDB] Database initialized successfully");
     } catch (error) {
-      console.error('[BackendDB] Failed to initialize:', error);
+      console.error("[BackendDB] Failed to initialize:", error);
       throw error;
     }
   }
@@ -53,9 +53,9 @@ export class BackendDatabaseService {
         data TEXT DEFAULT '{}'
       )
     `;
-    
+
     this.db.exec(createTableSQL);
-    console.log('[BackendDB] Sessions table initialized');
+    console.log("[BackendDB] Sessions table initialized");
   }
 
   private async initOtherTables(): Promise<void> {
@@ -69,7 +69,7 @@ export class BackendDatabaseService {
       )
     `);
 
-    // Initialize messages table  
+    // Initialize messages table
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS messages (
         id TEXT PRIMARY KEY,
@@ -94,7 +94,7 @@ export class BackendDatabaseService {
       )
     `);
 
-    console.log('[BackendDB] Additional tables initialized');
+    console.log("[BackendDB] Additional tables initialized");
   }
 
   async createSession(sessionData: SessionRow): Promise<void> {
@@ -102,16 +102,16 @@ export class BackendDatabaseService {
       INSERT INTO sessions (id, user_id, created_at, last_accessed, data)
       VALUES (?, ?, ?, ?, ?)
     `);
-    
+
     stmt.run(
       sessionData.id,
       sessionData.user_id,
       sessionData.created_at,
       sessionData.last_accessed,
-      sessionData.data
+      sessionData.data,
     );
-    
-    console.log('[BackendDB] Session created:', sessionData.id);
+
+    console.log("[BackendDB] Session created:", sessionData.id);
   }
 
   async getSession(sessionId: string): Promise<DatabaseResult> {
@@ -119,25 +119,25 @@ export class BackendDatabaseService {
       const stmt = this.db.prepare(`
         SELECT * FROM sessions WHERE id = ?
       `);
-      
+
       const session = stmt.get(sessionId);
-      
+
       if (session) {
         return {
           success: true,
-          data: session
+          data: session,
         };
       } else {
         return {
           success: false,
-          error: 'Session not found'
+          error: "Session not found",
         };
       }
     } catch (error) {
-      console.error('[BackendDB] Error getting session:', error);
+      console.error("[BackendDB] Error getting session:", error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : "Unknown error",
       };
     }
   }
@@ -146,9 +146,9 @@ export class BackendDatabaseService {
     const stmt = this.db.prepare(`
       UPDATE sessions SET last_accessed = ? WHERE id = ?
     `);
-    
+
     stmt.run(new Date().toISOString(), sessionId);
-    console.log('[BackendDB] Session access updated:', sessionId);
+    console.log("[BackendDB] Session access updated:", sessionId);
   }
 
   async touchSession(sessionId: string): Promise<void> {
@@ -171,58 +171,61 @@ export class BackendDatabaseService {
       INSERT INTO audit_events (id, event_type, details, ip_address, user_id, severity, created_at)
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `);
-    
+
     const eventId = `audit_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
+
     stmt.run(
       eventId,
       event.eventType,
-      event.details || '',
-      event.ipAddress || '',
-      event.userId || '',
-      event.severity || 'info',
-      new Date().toISOString()
+      event.details || "",
+      event.ipAddress || "",
+      event.userId || "",
+      event.severity || "info",
+      new Date().toISOString(),
     );
-    
-    console.log('[BackendDB] Audit event logged:', event.eventType);
+
+    console.log("[BackendDB] Audit event logged:", event.eventType);
   }
 
-  async createConversation(conversationId: string, title?: string): Promise<void> {
+  async createConversation(
+    conversationId: string,
+    title?: string,
+  ): Promise<void> {
     const stmt = this.db.prepare(`
       INSERT INTO conversations (id, title, created_at, updated_at)
       VALUES (?, ?, ?, ?)
     `);
-    
+
     const now = new Date().toISOString();
-    stmt.run(conversationId, title || 'New Conversation', now, now);
-    console.log('[BackendDB] Conversation created:', conversationId);
+    stmt.run(conversationId, title || "New Conversation", now, now);
+    console.log("[BackendDB] Conversation created:", conversationId);
   }
 
   async storeMessage(message: {
     id: string;
     conversationId: string;
-    role: 'user' | 'assistant' | 'system';
+    role: "user" | "assistant" | "system";
     content: string;
   }): Promise<void> {
     const stmt = this.db.prepare(`
       INSERT INTO messages (id, conversation_id, role, content, created_at)
       VALUES (?, ?, ?, ?, ?)
     `);
-    
+
     stmt.run(
       message.id,
       message.conversationId,
       message.role,
       message.content,
-      new Date().toISOString()
+      new Date().toISOString(),
     );
-    
-    console.log('[BackendDB] Message stored:', message.id);
+
+    console.log("[BackendDB] Message stored:", message.id);
   }
 
   healthCheck(): boolean {
     try {
-      const stmt = this.db.prepare('SELECT 1 as test');
+      const stmt = this.db.prepare("SELECT 1 as test");
       const result = stmt.get() as { test: number } | undefined;
       return !!(result && result.test === 1);
     } catch {
@@ -234,7 +237,7 @@ export class BackendDatabaseService {
     if (this.db) {
       this.db.close();
       this.initialized = false;
-      console.log('[BackendDB] Database closed');
+      console.log("[BackendDB] Database closed");
     }
   }
 }

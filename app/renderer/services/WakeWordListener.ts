@@ -1,5 +1,5 @@
-import { PorcupineWorker } from '@picovoice/porcupine-web';
-import { logger } from '../utils/logger';
+import { PorcupineWorker } from "@picovoice/porcupine-web";
+import { logger } from "../utils/logger";
 
 export class WakeWordListener {
   private porcupine: PorcupineWorker | null = null;
@@ -24,31 +24,31 @@ export class WakeWordListener {
     this.onDetectionCallback = onDetection;
 
     try {
-      const assetsPath = './assets';
+      const assetsPath = "./assets";
 
-      logger.info('Initializing wake word detection', {
-        assetsPath
+      logger.info("Initializing wake word detection", {
+        assetsPath,
       });
 
       this.porcupine = await PorcupineWorker.create(
         accessKey,
-        [{ builtin: 'Picovoice' as any }], // Default wake word
+        [{ builtin: "Picovoice" as any }], // Default wake word
         (detectionIndex) => {
-          logger.info('Wake word detected', { detectionIndex });
+          logger.info("Wake word detected", { detectionIndex });
           this.handleDetection();
         },
         {
           publicPath: assetsPath,
-          forceWrite: true
-        }
+          forceWrite: true,
+        },
       );
 
       this.enabled = true;
-      logger.info('Wake word listener initialized successfully');
+      logger.info("Wake word listener initialized successfully");
     } catch (error) {
-      logger.error('Failed to initialize wake word listener', { 
+      logger.error("Failed to initialize wake word listener", {
         error: error.message,
-        stack: error.stack 
+        stack: error.stack,
       });
       this.enabled = false;
       throw error;
@@ -60,15 +60,17 @@ export class WakeWordListener {
    */
   async start() {
     if (!this.porcupine || !this.enabled) {
-      logger.warn('Cannot start wake word: not initialized or disabled');
+      logger.warn("Cannot start wake word: not initialized or disabled");
       return;
     }
 
     try {
       // await this.porcupine.start(); // Method may not exist
-      logger.info('Wake word listening started');
+      logger.info("Wake word listening started");
     } catch (error) {
-      logger.error('Failed to start wake word listening', { error: error.message });
+      logger.error("Failed to start wake word listening", {
+        error: error.message,
+      });
       throw error;
     }
   }
@@ -79,7 +81,7 @@ export class WakeWordListener {
   stop() {
     if (this.porcupine) {
       // this.porcupine.stop(); // Method may not exist
-      logger.info('Wake word listening stopped');
+      logger.info("Wake word listening stopped");
     }
   }
 
@@ -91,7 +93,7 @@ export class WakeWordListener {
       await this.porcupine.release();
       this.porcupine = null;
       this.enabled = false;
-      logger.info('Wake word listener released');
+      logger.info("Wake word listener released");
     }
   }
 
@@ -116,7 +118,7 @@ export class WakeWordListener {
    */
   toggle(enable: boolean) {
     if (enable && !this.porcupine) {
-      logger.warn('Cannot enable wake word: not initialized');
+      logger.warn("Cannot enable wake word: not initialized");
       return;
     }
 

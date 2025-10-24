@@ -1,0 +1,3 @@
+app/renderer/public/assets/pv_porcupine.wasm
+app/renderer/public/assets/pv_porcupine_simd.wasm
+app/renderer/public/assets/porcupine_worker.js

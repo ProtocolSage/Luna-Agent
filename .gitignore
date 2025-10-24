@@ -79,3 +79,7 @@ Thumbs.db
 # Logs & reports (keep markdown reports)
 *.log
 *.tmp
+# SQLite backups
+.backup/memory/*.db
+.backup/memory/*.db-wal
+.backup/memory/*.bak

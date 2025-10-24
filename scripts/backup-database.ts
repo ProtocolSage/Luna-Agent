@@ -1,10 +1,10 @@
 #!/usr/bin/env tsx
 
-import fs from 'fs/promises';
-import path from 'path';
-import crypto from 'crypto';
-import { execSync } from 'child_process';
-import { getDatabaseService } from '../app/renderer/services/DatabaseService';
+import fs from "fs/promises";
+import path from "path";
+import crypto from "crypto";
+import { execSync } from "child_process";
+import { getDatabaseService } from "../app/renderer/services/DatabaseService";
 
 /**
  * Luna Agent Backup Management System
@@ -28,7 +28,7 @@ interface BackupConfig {
 }
 
 interface BackupDestination {
-  type: 'local' | 's3' | 'ftp' | 'ssh';
+  type: "local" | "s3" | "ftp" | "ssh";
   path: string;
   credentials?: any;
   enabled: boolean;
@@ -37,7 +37,7 @@ interface BackupDestination {
 interface BackupMetadata {
   id: string;
   timestamp: string;
-  type: 'full' | 'incremental';
+  type: "full" | "incremental";
   size: number;
   checksum: string;
   compressed: boolean;
@@ -56,20 +56,21 @@ class BackupManager {
 
   constructor() {
     this.databaseService = getDatabaseService();
-    this.backupDir = path.join(process.cwd(), 'backups');
-    this.tempDir = path.join(process.cwd(), 'temp', 'backup');
-    
+    this.backupDir = path.join(process.cwd(), "backups");
+    this.tempDir = path.join(process.cwd(), "temp", "backup");
+
     this.config = this.loadBackupConfig();
-    this.encryptionKey = process.env.BACKUP_ENCRYPTION_KEY || this.generateEncryptionKey();
+    this.encryptionKey =
+      process.env.BACKUP_ENCRYPTION_KEY || this.generateEncryptionKey();
   }
 
   private loadBackupConfig(): BackupConfig {
     try {
-      const configPath = path.join(process.cwd(), 'config', 'backup.json');
+      const configPath = path.join(process.cwd(), "config", "backup.json");
       const configContent = require(configPath);
       return configContent;
     } catch (error) {
-      console.warn('No backup config found, using defaults');
+      console.warn("No backup config found, using defaults");
       return this.getDefaultConfig();
     }
   }
@@ -77,51 +78,51 @@ class BackupManager {
   private getDefaultConfig(): BackupConfig {
     return {
       enabled: true,
-      schedule: '0 2 * * *', // Daily at 2 AM
+      schedule: "0 2 * * *", // Daily at 2 AM
       retention: {
         daily: 7,
         weekly: 4,
-        monthly: 12
+        monthly: 12,
       },
       compression: true,
-      encryption: process.env.NODE_ENV === 'production',
+      encryption: process.env.NODE_ENV === "production",
       destinations: [
         {
-          type: 'local',
-          path: './backups',
-          enabled: true
-        }
+          type: "local",
+          path: "./backups",
+          enabled: true,
+        },
       ],
       includeConfig: true,
       includeLogs: false,
       excludePatterns: [
-        'node_modules/**',
-        'dist/**',
-        'temp/**',
-        '*.tmp',
-        '*.log'
-      ]
+        "node_modules/**",
+        "dist/**",
+        "temp/**",
+        "*.tmp",
+        "*.log",
+      ],
     };
   }
 
   private generateEncryptionKey(): string {
-    return crypto.randomBytes(32).toString('hex');
+    return crypto.randomBytes(32).toString("hex");
   }
 
   public async initialize(): Promise<void> {
-    console.log('🔧 Initializing backup manager...');
-    
+    console.log("🔧 Initializing backup manager...");
+
     // Create backup directories
     await fs.mkdir(this.backupDir, { recursive: true });
     await fs.mkdir(this.tempDir, { recursive: true });
-    
+
     // Initialize database service
     await this.databaseService.initialize();
-    
+
     // Create backup tracking table
     await this.createBackupTable();
-    
-    console.log('✅ Backup manager initialized');
+
+    console.log("✅ Backup manager initialized");
   }
 
   private async createBackupTable(): Promise<void> {
@@ -144,12 +145,14 @@ class BackupManager {
     `);
   }
 
-  public async createBackup(type: 'full' | 'incremental' = 'full'): Promise<string> {
+  public async createBackup(
+    type: "full" | "incremental" = "full",
+  ): Promise<string> {
     const startTime = Date.now();
     const backupId = `backup_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
+
     console.log(`📦 Creating ${type} backup: ${backupId}`);
-    
+
     try {
       // Create backup metadata
       const metadata: Partial<BackupMetadata> = {
@@ -159,7 +162,7 @@ class BackupManager {
         compressed: this.config.compression,
         encrypted: this.config.encryption,
         version: this.getVersion(),
-        files: []
+        files: [],
       };
 
       // Create temporary backup directory
@@ -192,7 +195,7 @@ class BackupManager {
 
       // Create backup archive
       const archivePath = await this.createArchive(tempBackupDir, backupId);
-      
+
       // Calculate size and checksum
       const stats = await fs.stat(archivePath);
       metadata.size = stats.size;
@@ -211,78 +214,84 @@ class BackupManager {
       // Cleanup old backups
       await this.cleanupOldBackups();
 
-      console.log(`✅ Backup completed: ${backupId} (${this.formatBytes(metadata.size!)})`);
+      console.log(
+        `✅ Backup completed: ${backupId} (${this.formatBytes(metadata.size!)})`,
+      );
       return backupId;
-
     } catch (error) {
-      console.error(`❌ Backup failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      
+      console.error(
+        `❌ Backup failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
+
       // Record failure
-      await this.storeBackupMetadata({
-        id: backupId,
-        timestamp: new Date().toISOString(),
-        type,
-        size: 0,
-        checksum: '',
-        compressed: false,
-        encrypted: false,
-        files: [],
-        version: this.getVersion(),
-        duration: Date.now() - startTime
-      }, 'failed');
-      
+      await this.storeBackupMetadata(
+        {
+          id: backupId,
+          timestamp: new Date().toISOString(),
+          type,
+          size: 0,
+          checksum: "",
+          compressed: false,
+          encrypted: false,
+          files: [],
+          version: this.getVersion(),
+          duration: Date.now() - startTime,
+        },
+        "failed",
+      );
+
       throw error;
     }
   }
 
   private async backupDatabase(backupDir: string): Promise<string> {
-    console.log('🗄️  Backing up database...');
-    
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    console.log("🗄️  Backing up database...");
+
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
     const dbBackupPath = path.join(backupDir, `database_${timestamp}.db`);
-    
+
     // Get database file path
-    const dbPath = path.join(process.cwd(), 'data', 'luna.db');
-    
+    const dbPath = path.join(process.cwd(), "data", "luna.db");
+
     try {
       // Create database backup
       if (await this.fileExists(dbPath)) {
         await fs.copyFile(dbPath, dbBackupPath);
         console.log(`✅ Database backup created: ${dbBackupPath}`);
       } else {
-        console.warn('⚠️  Database file not found, creating empty backup');
-        await fs.writeFile(dbBackupPath, '');
+        console.warn("⚠️  Database file not found, creating empty backup");
+        await fs.writeFile(dbBackupPath, "");
       }
-      
+
       return path.relative(backupDir, dbBackupPath);
     } catch (error) {
-      console.error('❌ Database backup failed:', error);
+      console.error("❌ Database backup failed:", error);
       throw error;
     }
   }
 
   private async backupConfiguration(backupDir: string): Promise<string> {
-    console.log('⚙️  Backing up configuration...');
-    
-    const configBackupDir = path.join(backupDir, 'config');
+    console.log("⚙️  Backing up configuration...");
+
+    const configBackupDir = path.join(backupDir, "config");
     await fs.mkdir(configBackupDir, { recursive: true });
-    
+
     const configFiles = [
-      '.env',
-      '.env.production',
-      'package.json',
-      'tsconfig.json',
-      'config/backup.json',
-      'config/reasoning.json',
-      'config/policy.json'
+      ".env",
+      ".env.production",
+      "package.json",
+      "tsconfig.json",
+      "config/backup.json",
+      "config/reasoning.json",
+      "config/policy.json",
     ];
 
     let copiedFiles = 0;
-    
+
     for (const configFile of configFiles) {
       const sourcePath = path.join(process.cwd(), configFile);
       const destPath = path.join(configBackupDir, path.basename(configFile));
-      
+
       try {
         if (await this.fileExists(sourcePath)) {
           await fs.copyFile(sourcePath, destPath);
@@ -297,176 +306,214 @@ class BackupManager {
     return path.relative(backupDir, configBackupDir);
   }
 
-  private async backupUserData(backupDir: string, type: 'full' | 'incremental'): Promise<string | null> {
-    console.log('📁 Backing up user data...');
-    
-    const userDataDir = path.join(process.cwd(), 'data');
-    const backupUserDataDir = path.join(backupDir, 'data');
-    
+  private async backupUserData(
+    backupDir: string,
+    type: "full" | "incremental",
+  ): Promise<string | null> {
+    console.log("📁 Backing up user data...");
+
+    const userDataDir = path.join(process.cwd(), "data");
+    const backupUserDataDir = path.join(backupDir, "data");
+
     try {
       if (await this.fileExists(userDataDir)) {
         await fs.mkdir(backupUserDataDir, { recursive: true });
-        
-        if (type === 'full') {
+
+        if (type === "full") {
           await this.copyDirectory(userDataDir, backupUserDataDir);
         } else {
           // Incremental backup - only files changed in last 24 hours
-          await this.copyRecentFiles(userDataDir, backupUserDataDir, 24 * 60 * 60 * 1000);
+          await this.copyRecentFiles(
+            userDataDir,
+            backupUserDataDir,
+            24 * 60 * 60 * 1000,
+          );
         }
-        
-        console.log('✅ User data backup completed');
+
+        console.log("✅ User data backup completed");
         return path.relative(backupDir, backupUserDataDir);
       }
     } catch (error) {
-      console.warn('⚠️  User data backup failed:', error);
+      console.warn("⚠️  User data backup failed:", error);
     }
-    
+
     return null;
   }
 
   private async backupLogs(backupDir: string): Promise<string | null> {
-    console.log('📊 Backing up logs...');
-    
-    const logsDir = path.join(process.cwd(), 'logs');
-    const backupLogsDir = path.join(backupDir, 'logs');
-    
+    console.log("📊 Backing up logs...");
+
+    const logsDir = path.join(process.cwd(), "logs");
+    const backupLogsDir = path.join(backupDir, "logs");
+
     try {
       if (await this.fileExists(logsDir)) {
         await fs.mkdir(backupLogsDir, { recursive: true });
-        
+
         // Only backup logs from last 7 days
-        await this.copyRecentFiles(logsDir, backupLogsDir, 7 * 24 * 60 * 60 * 1000);
-        
-        console.log('✅ Logs backup completed');
+        await this.copyRecentFiles(
+          logsDir,
+          backupLogsDir,
+          7 * 24 * 60 * 60 * 1000,
+        );
+
+        console.log("✅ Logs backup completed");
         return path.relative(backupDir, backupLogsDir);
       }
     } catch (error) {
-      console.warn('⚠️  Logs backup failed:', error);
+      console.warn("⚠️  Logs backup failed:", error);
     }
-    
+
     return null;
   }
 
-  private async createArchive(sourceDir: string, backupId: string): Promise<string> {
-    console.log('🗜️  Creating backup archive...');
-    
-    const archiveName = `${backupId}.tar${this.config.compression ? '.gz' : ''}`;
+  private async createArchive(
+    sourceDir: string,
+    backupId: string,
+  ): Promise<string> {
+    console.log("🗜️  Creating backup archive...");
+
+    const archiveName = `${backupId}.tar${this.config.compression ? ".gz" : ""}`;
     const archivePath = path.join(this.backupDir, archiveName);
-    
+
     try {
       if (this.config.compression) {
         // Create compressed tar archive
-        execSync(`tar -czf "${archivePath}" -C "${sourceDir}" .`, { stdio: 'pipe' });
+        execSync(`tar -czf "${archivePath}" -C "${sourceDir}" .`, {
+          stdio: "pipe",
+        });
       } else {
         // Create uncompressed tar archive
-        execSync(`tar -cf "${archivePath}" -C "${sourceDir}" .`, { stdio: 'pipe' });
+        execSync(`tar -cf "${archivePath}" -C "${sourceDir}" .`, {
+          stdio: "pipe",
+        });
       }
-      
+
       // Encrypt if enabled
       if (this.config.encryption) {
         const encryptedPath = `${archivePath}.enc`;
         await this.encryptFile(archivePath, encryptedPath);
         await fs.unlink(archivePath);
-        console.log('🔒 Backup encrypted');
+        console.log("🔒 Backup encrypted");
         return encryptedPath;
       }
-      
+
       console.log(`✅ Archive created: ${archivePath}`);
       return archivePath;
-      
     } catch (error) {
-      console.error('❌ Archive creation failed:', error);
+      console.error("❌ Archive creation failed:", error);
       throw error;
     }
   }
 
-  private async encryptFile(inputPath: string, outputPath: string): Promise<void> {
-    const algorithm = 'aes-256-gcm';
-    const key = Buffer.from(this.encryptionKey, 'hex');
+  private async encryptFile(
+    inputPath: string,
+    outputPath: string,
+  ): Promise<void> {
+    const algorithm = "aes-256-gcm";
+    const key = Buffer.from(this.encryptionKey, "hex");
     const iv = crypto.randomBytes(16);
-    
+
     const cipher = crypto.createCipher(algorithm, key);
-    
+
     const input = await fs.readFile(inputPath);
     const encrypted = Buffer.concat([cipher.update(input), cipher.final()]);
     const authTag = (cipher as any).getAuthTag();
-    
+
     const result = Buffer.concat([iv, authTag, encrypted]);
     await fs.writeFile(outputPath, result);
   }
 
-  private async decryptFile(inputPath: string, outputPath: string): Promise<void> {
-    const algorithm = 'aes-256-gcm';
-    const key = Buffer.from(this.encryptionKey, 'hex');
-    
+  private async decryptFile(
+    inputPath: string,
+    outputPath: string,
+  ): Promise<void> {
+    const algorithm = "aes-256-gcm";
+    const key = Buffer.from(this.encryptionKey, "hex");
+
     const input = await fs.readFile(inputPath);
     const iv = input.slice(0, 16);
     const authTag = input.slice(16, 32);
     const encrypted = input.slice(32);
-    
+
     const decipher = crypto.createDecipher(algorithm, key);
     (decipher as any).setAuthTag(authTag);
-    
-    const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]);
+
+    const decrypted = Buffer.concat([
+      decipher.update(encrypted),
+      decipher.final(),
+    ]);
     await fs.writeFile(outputPath, decrypted);
   }
 
   private async calculateChecksum(filePath: string): Promise<string> {
-    const hash = crypto.createHash('sha256');
+    const hash = crypto.createHash("sha256");
     const data = await fs.readFile(filePath);
     hash.update(data);
-    return hash.digest('hex');
+    return hash.digest("hex");
   }
 
-  private async storeBackupMetadata(metadata: BackupMetadata, status = 'completed'): Promise<void> {
-    await this.databaseService.run(`
+  private async storeBackupMetadata(
+    metadata: BackupMetadata,
+    status = "completed",
+  ): Promise<void> {
+    await this.databaseService.run(
+      `
       INSERT OR REPLACE INTO backup_history 
       (id, timestamp, type, size, checksum, compressed, encrypted, files, version, duration, status, metadata)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [
-      metadata.id,
-      metadata.timestamp,
-      metadata.type,
-      metadata.size,
-      metadata.checksum,
-      metadata.compressed,
-      metadata.encrypted,
-      JSON.stringify(metadata.files),
-      metadata.version,
-      metadata.duration,
-      status,
-      JSON.stringify(metadata)
-    ]);
+    `,
+      [
+        metadata.id,
+        metadata.timestamp,
+        metadata.type,
+        metadata.size,
+        metadata.checksum,
+        metadata.compressed,
+        metadata.encrypted,
+        JSON.stringify(metadata.files),
+        metadata.version,
+        metadata.duration,
+        status,
+        JSON.stringify(metadata),
+      ],
+    );
   }
 
-  private async copyToDestinations(archivePath: string, backupId: string): Promise<void> {
-    console.log('📤 Copying to backup destinations...');
-    
+  private async copyToDestinations(
+    archivePath: string,
+    backupId: string,
+  ): Promise<void> {
+    console.log("📤 Copying to backup destinations...");
+
     for (const destination of this.config.destinations) {
       if (!destination.enabled) continue;
-      
+
       try {
         switch (destination.type) {
-          case 'local':
+          case "local":
             const localPath = path.resolve(destination.path);
             await fs.mkdir(localPath, { recursive: true });
-            await fs.copyFile(archivePath, path.join(localPath, path.basename(archivePath)));
+            await fs.copyFile(
+              archivePath,
+              path.join(localPath, path.basename(archivePath)),
+            );
             console.log(`✅ Copied to local: ${localPath}`);
             break;
-            
-          case 's3':
+
+          case "s3":
             // TODO: Implement S3 upload
-            console.log('📡 S3 upload not implemented yet');
+            console.log("📡 S3 upload not implemented yet");
             break;
-            
-          case 'ftp':
+
+          case "ftp":
             // TODO: Implement FTP upload
-            console.log('📡 FTP upload not implemented yet');
+            console.log("📡 FTP upload not implemented yet");
             break;
-            
-          case 'ssh':
+
+          case "ssh":
             // TODO: Implement SSH/SCP upload
-            console.log('📡 SSH upload not implemented yet');
+            console.log("📡 SSH upload not implemented yet");
             break;
         }
       } catch (error) {
@@ -476,22 +523,23 @@ class BackupManager {
   }
 
   private async cleanupOldBackups(): Promise<void> {
-    console.log('🧹 Cleaning up old backups...');
-    
+    console.log("🧹 Cleaning up old backups...");
+
     try {
       const backups = await this.getBackupHistory();
       const now = new Date();
       const toDelete: string[] = [];
-      
+
       // Group backups by age
       const daily: BackupMetadata[] = [];
       const weekly: BackupMetadata[] = [];
       const monthly: BackupMetadata[] = [];
-      
+
       for (const backup of backups) {
         const backupDate = new Date(backup.timestamp);
-        const ageInDays = (now.getTime() - backupDate.getTime()) / (1000 * 60 * 60 * 24);
-        
+        const ageInDays =
+          (now.getTime() - backupDate.getTime()) / (1000 * 60 * 60 * 24);
+
         if (ageInDays <= 7) {
           daily.push(backup);
         } else if (ageInDays <= 30) {
@@ -500,50 +548,52 @@ class BackupManager {
           monthly.push(backup);
         }
       }
-      
+
       // Keep only the configured number of backups in each category
       if (daily.length > this.config.retention.daily) {
         const excess = daily.slice(this.config.retention.daily);
-        toDelete.push(...excess.map(b => b.id));
+        toDelete.push(...excess.map((b) => b.id));
       }
-      
+
       if (weekly.length > this.config.retention.weekly) {
         const excess = weekly.slice(this.config.retention.weekly);
-        toDelete.push(...excess.map(b => b.id));
+        toDelete.push(...excess.map((b) => b.id));
       }
-      
+
       if (monthly.length > this.config.retention.monthly) {
         const excess = monthly.slice(this.config.retention.monthly);
-        toDelete.push(...excess.map(b => b.id));
+        toDelete.push(...excess.map((b) => b.id));
       }
-      
+
       // Delete old backups
       for (const backupId of toDelete) {
         await this.deleteBackup(backupId);
       }
-      
+
       if (toDelete.length > 0) {
         console.log(`✅ Cleaned up ${toDelete.length} old backups`);
       }
-      
     } catch (error) {
-      console.error('❌ Cleanup failed:', error);
+      console.error("❌ Cleanup failed:", error);
     }
   }
 
   private async deleteBackup(backupId: string): Promise<void> {
     try {
       // Remove from database
-      await this.databaseService.run('DELETE FROM backup_history WHERE id = ?', [backupId]);
-      
+      await this.databaseService.run(
+        "DELETE FROM backup_history WHERE id = ?",
+        [backupId],
+      );
+
       // Remove backup files
       const backupFiles = [
         path.join(this.backupDir, `${backupId}.tar`),
         path.join(this.backupDir, `${backupId}.tar.gz`),
         path.join(this.backupDir, `${backupId}.tar.enc`),
-        path.join(this.backupDir, `${backupId}.tar.gz.enc`)
+        path.join(this.backupDir, `${backupId}.tar.gz.enc`),
       ];
-      
+
       for (const filePath of backupFiles) {
         try {
           if (await this.fileExists(filePath)) {
@@ -553,7 +603,7 @@ class BackupManager {
           // Ignore file not found errors
         }
       }
-      
+
       console.log(`🗑️  Deleted backup: ${backupId}`);
     } catch (error) {
       console.error(`❌ Failed to delete backup ${backupId}:`, error);
@@ -562,59 +612,64 @@ class BackupManager {
 
   public async restoreBackup(backupId: string): Promise<void> {
     console.log(`🔄 Restoring backup: ${backupId}`);
-    
+
     try {
       // Get backup metadata
       const metadata = await this.getBackupMetadata(backupId);
       if (!metadata) {
         throw new Error(`Backup not found: ${backupId}`);
       }
-      
+
       // Find backup file
       const backupFile = await this.findBackupFile(backupId);
       if (!backupFile) {
         throw new Error(`Backup file not found: ${backupId}`);
       }
-      
+
       // Create temporary restore directory
       const restoreDir = path.join(this.tempDir, `restore_${backupId}`);
       await fs.mkdir(restoreDir, { recursive: true });
-      
+
       let archivePath = backupFile;
-      
+
       // Decrypt if encrypted
       if (metadata.encrypted) {
-        const decryptedPath = path.join(restoreDir, 'decrypted.tar');
+        const decryptedPath = path.join(restoreDir, "decrypted.tar");
         await this.decryptFile(backupFile, decryptedPath);
         archivePath = decryptedPath;
       }
-      
+
       // Extract archive
-      const extractDir = path.join(restoreDir, 'extracted');
+      const extractDir = path.join(restoreDir, "extracted");
       await fs.mkdir(extractDir, { recursive: true });
-      
+
       if (metadata.compressed) {
-        execSync(`tar -xzf "${archivePath}" -C "${extractDir}"`, { stdio: 'pipe' });
+        execSync(`tar -xzf "${archivePath}" -C "${extractDir}"`, {
+          stdio: "pipe",
+        });
       } else {
-        execSync(`tar -xf "${archivePath}" -C "${extractDir}"`, { stdio: 'pipe' });
+        execSync(`tar -xf "${archivePath}" -C "${extractDir}"`, {
+          stdio: "pipe",
+        });
       }
-      
+
       // Restore database
       await this.restoreDatabase(extractDir);
-      
+
       // Restore configuration (if requested)
       // await this.restoreConfiguration(extractDir);
-      
+
       // Restore user data
       await this.restoreUserData(extractDir);
-      
+
       // Cleanup
       await fs.rm(restoreDir, { recursive: true, force: true });
-      
+
       console.log(`✅ Backup restored successfully: ${backupId}`);
-      
     } catch (error) {
-      console.error(`❌ Restore failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error(
+        `❌ Restore failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
       throw error;
     }
   }
@@ -624,44 +679,44 @@ class BackupManager {
       path.join(this.backupDir, `${backupId}.tar.gz.enc`),
       path.join(this.backupDir, `${backupId}.tar.enc`),
       path.join(this.backupDir, `${backupId}.tar.gz`),
-      path.join(this.backupDir, `${backupId}.tar`)
+      path.join(this.backupDir, `${backupId}.tar`),
     ];
-    
+
     for (const filePath of possibleFiles) {
       if (await this.fileExists(filePath)) {
         return filePath;
       }
     }
-    
+
     return null;
   }
 
   private async restoreDatabase(extractDir: string): Promise<void> {
-    const dbBackupFiles = await this.findFiles(extractDir, 'database_*.db');
-    
+    const dbBackupFiles = await this.findFiles(extractDir, "database_*.db");
+
     if (dbBackupFiles.length > 0) {
       const latestDb = dbBackupFiles.sort().pop()!;
-      const targetPath = path.join(process.cwd(), 'data', 'luna.db');
-      
+      const targetPath = path.join(process.cwd(), "data", "luna.db");
+
       // Ensure data directory exists
       await fs.mkdir(path.dirname(targetPath), { recursive: true });
-      
+
       // Copy database
       await fs.copyFile(latestDb, targetPath);
-      console.log('✅ Database restored');
+      console.log("✅ Database restored");
     }
   }
 
   private async restoreUserData(extractDir: string): Promise<void> {
-    const dataDir = path.join(extractDir, 'data');
-    
+    const dataDir = path.join(extractDir, "data");
+
     if (await this.fileExists(dataDir)) {
-      const targetDir = path.join(process.cwd(), 'data');
+      const targetDir = path.join(process.cwd(), "data");
       await fs.mkdir(targetDir, { recursive: true });
-      
+
       // Copy user data (excluding database)
-      await this.copyDirectory(dataDir, targetDir, ['*.db']);
-      console.log('✅ User data restored');
+      await this.copyDirectory(dataDir, targetDir, ["*.db"]);
+      console.log("✅ User data restored");
     }
   }
 
@@ -671,7 +726,7 @@ class BackupManager {
       WHERE status = 'completed'
       ORDER BY timestamp DESC
     `);
-    
+
     if (result.success && result.data) {
       return result.data.map((row: any) => ({
         id: row.id,
@@ -683,19 +738,21 @@ class BackupManager {
         encrypted: row.encrypted,
         files: JSON.parse(row.files),
         version: row.version,
-        duration: row.duration
+        duration: row.duration,
       }));
     }
-    
+
     return [];
   }
 
-  private async getBackupMetadata(backupId: string): Promise<BackupMetadata | null> {
+  private async getBackupMetadata(
+    backupId: string,
+  ): Promise<BackupMetadata | null> {
     const result = await this.databaseService.get(
-      'SELECT * FROM backup_history WHERE id = ?',
-      [backupId]
+      "SELECT * FROM backup_history WHERE id = ?",
+      [backupId],
     );
-    
+
     if (result.success && result.data) {
       const row = result.data;
       return {
@@ -708,10 +765,10 @@ class BackupManager {
         encrypted: row.encrypted,
         files: JSON.parse(row.files),
         version: row.version,
-        duration: row.duration
+        duration: row.duration,
       };
     }
-    
+
     return null;
   }
 
@@ -725,20 +782,28 @@ class BackupManager {
     }
   }
 
-  private async copyDirectory(source: string, dest: string, excludePatterns: string[] = []): Promise<void> {
+  private async copyDirectory(
+    source: string,
+    dest: string,
+    excludePatterns: string[] = [],
+  ): Promise<void> {
     await fs.mkdir(dest, { recursive: true });
-    
+
     const entries = await fs.readdir(source, { withFileTypes: true });
-    
+
     for (const entry of entries) {
       const sourcePath = path.join(source, entry.name);
       const destPath = path.join(dest, entry.name);
-      
+
       // Check exclude patterns
-      if (excludePatterns.some(pattern => this.matchPattern(entry.name, pattern))) {
+      if (
+        excludePatterns.some((pattern) =>
+          this.matchPattern(entry.name, pattern),
+        )
+      ) {
         continue;
       }
-      
+
       if (entry.isDirectory()) {
         await this.copyDirectory(sourcePath, destPath, excludePatterns);
       } else {
@@ -747,18 +812,22 @@ class BackupManager {
     }
   }
 
-  private async copyRecentFiles(source: string, dest: string, maxAge: number): Promise<void> {
+  private async copyRecentFiles(
+    source: string,
+    dest: string,
+    maxAge: number,
+  ): Promise<void> {
     await fs.mkdir(dest, { recursive: true });
-    
+
     const entries = await fs.readdir(source, { withFileTypes: true });
     const cutoff = Date.now() - maxAge;
-    
+
     for (const entry of entries) {
       const sourcePath = path.join(source, entry.name);
       const destPath = path.join(dest, entry.name);
-      
+
       const stat = await fs.stat(sourcePath);
-      
+
       if (stat.mtime.getTime() > cutoff) {
         if (entry.isDirectory()) {
           await this.copyRecentFiles(sourcePath, destPath, maxAge);
@@ -772,10 +841,10 @@ class BackupManager {
   private async findFiles(dir: string, pattern: string): Promise<string[]> {
     const files: string[] = [];
     const entries = await fs.readdir(dir, { withFileTypes: true });
-    
+
     for (const entry of entries) {
       const fullPath = path.join(dir, entry.name);
-      
+
       if (entry.isDirectory()) {
         const subFiles = await this.findFiles(fullPath, pattern);
         files.push(...subFiles);
@@ -783,56 +852,60 @@ class BackupManager {
         files.push(fullPath);
       }
     }
-    
+
     return files;
   }
 
   private matchPattern(filename: string, pattern: string): boolean {
-    const regex = new RegExp(pattern.replace(/\*/g, '.*'));
+    const regex = new RegExp(pattern.replace(/\*/g, ".*"));
     return regex.test(filename);
   }
 
   private getVersion(): string {
     try {
-      const packageJson = require(path.join(process.cwd(), 'package.json'));
+      const packageJson = require(path.join(process.cwd(), "package.json"));
       return packageJson.version;
     } catch {
-      return '1.0.0';
+      return "1.0.0";
     }
   }
 
   private formatBytes(bytes: number): string {
-    if (bytes === 0) return '0 Bytes';
-    
+    if (bytes === 0) return "0 Bytes";
+
     const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+    const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
   }
 
   public async displayStatus(): Promise<void> {
-    console.log('\n📊 Backup Manager Status:');
-    console.log('='.repeat(50));
-    
+    console.log("\n📊 Backup Manager Status:");
+    console.log("=".repeat(50));
+
     const backups = await this.getBackupHistory();
-    
+
     console.log(`📦 Total backups: ${backups.length}`);
     console.log(`📁 Backup directory: ${this.backupDir}`);
-    console.log(`🗜️  Compression: ${this.config.compression ? 'Enabled' : 'Disabled'}`);
-    console.log(`🔒 Encryption: ${this.config.encryption ? 'Enabled' : 'Disabled'}`);
-    
+    console.log(
+      `🗜️  Compression: ${this.config.compression ? "Enabled" : "Disabled"}`,
+    );
+    console.log(
+      `🔒 Encryption: ${this.config.encryption ? "Enabled" : "Disabled"}`,
+    );
+
     if (backups.length > 0) {
       const latest = backups[0];
       console.log(`📅 Latest backup: ${latest.timestamp} (${latest.type})`);
       console.log(`📏 Latest size: ${this.formatBytes(latest.size)}`);
-      
+
       const totalSize = backups.reduce((sum, backup) => sum + backup.size, 0);
       console.log(`💾 Total size: ${this.formatBytes(totalSize)}`);
     } else {
-      console.log('📭 No backups found');
+      console.log("📭 No backups found");
     }
-    
+
     console.log(`\n🎯 Retention policy:`);
     console.log(`   Daily: ${this.config.retention.daily} backups`);
     console.log(`   Weekly: ${this.config.retention.weekly} backups`);
@@ -855,60 +928,71 @@ async function main() {
     await backupManager.initialize();
 
     switch (command) {
-      case 'create':
-        const type = (args[1] as 'full' | 'incremental') || 'full';
+      case "create":
+        const type = (args[1] as "full" | "incremental") || "full";
         const backupId = await backupManager.createBackup(type);
         console.log(`📦 Backup created: ${backupId}`);
         break;
 
-      case 'restore':
+      case "restore":
         const restoreId = args[1];
         if (!restoreId) {
-          console.error('❌ Backup ID required for restore');
+          console.error("❌ Backup ID required for restore");
           process.exit(1);
         }
         await backupManager.restoreBackup(restoreId);
         break;
 
-      case 'list':
+      case "list":
         const backups = await backupManager.getBackupHistory();
-        console.log('\n📋 Backup History:');
-        console.log('='.repeat(80));
-        console.log(`${'ID'.padEnd(30)} ${'Date'.padEnd(20)} ${'Type'.padEnd(12)} ${'Size'.padEnd(10)} ${'Duration'.padEnd(10)}`);
-        console.log('-'.repeat(80));
-        
+        console.log("\n📋 Backup History:");
+        console.log("=".repeat(80));
+        console.log(
+          `${"ID".padEnd(30)} ${"Date".padEnd(20)} ${"Type".padEnd(12)} ${"Size".padEnd(10)} ${"Duration".padEnd(10)}`,
+        );
+        console.log("-".repeat(80));
+
         for (const backup of backups) {
           const id = backup.id.padEnd(30);
           const date = new Date(backup.timestamp).toLocaleString().padEnd(20);
           const type = backup.type.padEnd(12);
-          const size = backupManager['formatBytes'](backup.size).padEnd(10);
+          const size = backupManager["formatBytes"](backup.size).padEnd(10);
           const duration = `${backup.duration}ms`.padEnd(10);
-          
+
           console.log(`${id} ${date} ${type} ${size} ${duration}`);
         }
         break;
 
-      case 'status':
+      case "status":
         await backupManager.displayStatus();
         break;
 
       default:
-        console.log('Luna Agent Backup Manager\n');
-        console.log('Usage:');
-        console.log('  tsx scripts/backup-database.ts create [full|incremental] - Create backup');
-        console.log('  tsx scripts/backup-database.ts restore <backup-id>        - Restore backup');
-        console.log('  tsx scripts/backup-database.ts list                       - List backups');
-        console.log('  tsx scripts/backup-database.ts status                     - Show status');
-        console.log('');
-        console.log('Examples:');
-        console.log('  tsx scripts/backup-database.ts create full');
-        console.log('  tsx scripts/backup-database.ts restore backup_1234567890_abc123');
-        console.log('  tsx scripts/backup-database.ts list');
+        console.log("Luna Agent Backup Manager\n");
+        console.log("Usage:");
+        console.log(
+          "  tsx scripts/backup-database.ts create [full|incremental] - Create backup",
+        );
+        console.log(
+          "  tsx scripts/backup-database.ts restore <backup-id>        - Restore backup",
+        );
+        console.log(
+          "  tsx scripts/backup-database.ts list                       - List backups",
+        );
+        console.log(
+          "  tsx scripts/backup-database.ts status                     - Show status",
+        );
+        console.log("");
+        console.log("Examples:");
+        console.log("  tsx scripts/backup-database.ts create full");
+        console.log(
+          "  tsx scripts/backup-database.ts restore backup_1234567890_abc123",
+        );
+        console.log("  tsx scripts/backup-database.ts list");
         break;
     }
-
   } catch (error) {
-    console.error('💥 Backup operation failed:', error);
+    console.error("💥 Backup operation failed:", error);
     process.exit(1);
   } finally {
     await backupManager.close();
@@ -917,8 +1001,8 @@ async function main() {
 
 // Run CLI if this script is executed directly
 if (require.main === module) {
-  main().catch(error => {
-    console.error('Fatal error:', error);
+  main().catch((error) => {
+    console.error("Fatal error:", error);
     process.exit(1);
   });
 }

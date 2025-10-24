@@ -1,4 +1,4 @@
-declare module 'mic' {
+declare module "mic" {
   interface MicInstance {
     start(): void;
     stop(): void;
@@ -14,6 +14,6 @@ declare module 'mic' {
   }
 
   function mic(options: MicOptions): MicInstance;
-  
+
   export = mic;
 }

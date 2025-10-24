@@ -43,6 +43,7 @@ node dist/backend/server.js
 **Problem**: The `ELECTRON_RUN_AS_NODE=1` environment variable was forcing Electron to run in Node.js mode instead of proper Electron browser mode.
 
 **Symptoms**:
+
 - `process.type` was `undefined` instead of `'browser'`
 - `require('electron')` returned a string (path to electron.exe) instead of the Electron API object
 - Application failed with: `TypeError: Cannot read properties of undefined (reading 'whenReady')`
@@ -61,6 +62,7 @@ if ($env:ELECTRON_RUN_AS_NODE) {
 **Problem**: Complex TypeScript compilation in the main process was interfering with Electron's module injection system.
 
 **Solution**: Created a pure JavaScript entry point ([main.js](main.js)) with:
+
 - No TypeScript compilation
 - Lazy loading of Electron modules at the bottom of the file
 - Clean separation of concerns
@@ -73,6 +75,7 @@ if ($env:ELECTRON_RUN_AS_NODE) {
 **Current Status**: Using in-memory database fallback (fully functional)
 
 **For Production**: Rebuild for Windows:
+
 ```powershell
 cd C:\dev\luna-agent-v1.0-production-complete-2
 npm rebuild better-sqlite3 --build-from-source
@@ -83,6 +86,7 @@ npm rebuild better-sqlite3 --build-from-source
 **Problem**: Renderer was calling `stt:get-status` but handler didn't exist
 
 **Solution**: Added complete STT IPC handler suite in [main.js](main.js:153-177):
+
 - `stt:start`
 - `stt:stop`
 - `stt:get-status`
@@ -126,20 +130,21 @@ npm rebuild better-sqlite3 --build-from-source
 
 ### Key Files
 
-| File | Purpose | Status |
-|------|---------|--------|
-| `main.js` | Electron entry point | ✅ Working |
-| `package.json` | Points to main.js | ✅ Updated |
-| `launch-luna.ps1` | Windows launcher | ✅ Working |
-| `dist/backend/server.js` | API backend | ✅ Running |
-| `dist/app/renderer/` | React UI | ✅ Rendering |
-| `dist/app/main/preload.js` | IPC bridge | ✅ Active |
+| File                       | Purpose              | Status       |
+| -------------------------- | -------------------- | ------------ |
+| `main.js`                  | Electron entry point | ✅ Working   |
+| `package.json`             | Points to main.js    | ✅ Updated   |
+| `launch-luna.ps1`          | Windows launcher     | ✅ Working   |
+| `dist/backend/server.js`   | API backend          | ✅ Running   |
+| `dist/app/renderer/`       | React UI             | ✅ Rendering |
+| `dist/app/main/preload.js` | IPC bridge           | ✅ Active    |
 
 ---
 
 ## 🎯 Verified Features
 
 ### Voice Recognition ✅
+
 ```
 User spoke: "Hey Luna, how are you?"
 [VoiceService] Transcription: Hey Luna, how are you?
@@ -147,23 +152,27 @@ User spoke: "Hey Luna, how are you?"
 ```
 
 ### Backend API ✅
+
 ```
 Health check: http://localhost:3001/health
 Response: {"status":"OK","uptime":1798.82} ✓
 ```
 
 ### Voice Modes ✅
+
 - Continuous listening mode ✓
 - Voice Activity Detection (VAD) ✓
 - Enhanced recovery system ✓
 - Audio analysis pipeline ✓
 
 ### Database ✅
+
 ```
 [DatabaseService] Storing message ✓
 ```
 
 ### LLM Integration ✅
+
 ```
 Initialized 2 models:
 - gpt-4o-2024-08-06 ✓
@@ -202,6 +211,7 @@ ANTHROPIC_API_KEY=your-key-here
 ```
 
 Optional:
+
 ```env
 NODE_ENV=development
 LUNA_DISABLE_EMBEDDINGS=1  # For testing without vector embeddings
@@ -213,22 +223,24 @@ LUNA_DISABLE_EMBEDDINGS=1  # For testing without vector embeddings
 
 ### Manual Tests Performed
 
-| Feature | Test | Result |
-|---------|------|--------|
-| Voice Input | "Hey Luna, how are you?" | ✅ Transcribed |
-| Voice Input | "You mean you can hear what I'm saying?" | ✅ Transcribed |
-| Backend Health | GET /health | ✅ 200 OK |
-| Window Opening | Electron launch | ✅ Visible |
-| IPC | STT handlers | ✅ Working |
+| Feature        | Test                                     | Result         |
+| -------------- | ---------------------------------------- | -------------- |
+| Voice Input    | "Hey Luna, how are you?"                 | ✅ Transcribed |
+| Voice Input    | "You mean you can hear what I'm saying?" | ✅ Transcribed |
+| Backend Health | GET /health                              | ✅ 200 OK      |
+| Window Opening | Electron launch                          | ✅ Visible     |
+| IPC            | STT handlers                             | ✅ Working     |
 
 ### Automated Tests
 
 Run test suite:
+
 ```bash
 npm test
 ```
 
 Run with embeddings disabled:
+
 ```bash
 LUNA_DISABLE_EMBEDDINGS=1 npm test
 ```
@@ -268,11 +280,13 @@ LUNA_DISABLE_EMBEDDINGS=1 npm test
 ### Electron Module Loading
 
 **The Problem**: `require('electron')` can return different things depending on execution context:
+
 - **In proper Electron process**: Returns Electron API object
 - **In Node.js process**: Returns string path to electron.exe
 - **Trigger**: `ELECTRON_RUN_AS_NODE=1` environment variable
 
 **The Solution**:
+
 1. Remove `ELECTRON_RUN_AS_NODE` before launch
 2. Use pure JavaScript entry point (no TypeScript)
 3. Load Electron modules at bottom of file (lazy loading)
@@ -281,6 +295,7 @@ LUNA_DISABLE_EMBEDDINGS=1 npm test
 ### Cross-Platform Development
 
 **WSL2 + Windows Hybrid**:
+
 - Backend can run in WSL (Linux native modules)
 - Electron must run in Windows (GUI)
 - PowerShell scripts bridge the gap

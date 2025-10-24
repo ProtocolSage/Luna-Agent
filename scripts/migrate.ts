@@ -1,9 +1,9 @@
 #!/usr/bin/env tsx
 
-import fs from 'fs/promises';
-import path from 'path';
-import crypto from 'crypto';
-import { getDatabaseService } from '../app/renderer/services/DatabaseService';
+import fs from "fs/promises";
+import path from "path";
+import crypto from "crypto";
+import { getDatabaseService } from "../app/renderer/services/DatabaseService";
 
 /**
  * Luna Agent Database Migration Manager
@@ -29,18 +29,18 @@ class MigrationManager {
 
   constructor() {
     this.databaseService = getDatabaseService();
-    this.migrationsDir = path.join(__dirname, '..', 'migrations');
+    this.migrationsDir = path.join(__dirname, "..", "migrations");
   }
 
   public async initialize(): Promise<void> {
-    console.log('🔧 Initializing Migration Manager...');
-    
+    console.log("🔧 Initializing Migration Manager...");
+
     // Initialize database service
     await this.databaseService.initialize();
-    
+
     // Load all migrations
     await this.loadMigrations();
-    
+
     console.log(`✅ Loaded ${this.migrations.length} migrations`);
   }
 
@@ -48,7 +48,7 @@ class MigrationManager {
     try {
       const files = await fs.readdir(this.migrationsDir);
       const migrationFiles = files
-        .filter(file => file.endsWith('.sql'))
+        .filter((file) => file.endsWith(".sql"))
         .sort(); // Ensure chronological order
 
       for (const file of migrationFiles) {
@@ -60,18 +60,19 @@ class MigrationManager {
 
       // Check which migrations have been applied
       await this.checkAppliedMigrations();
-
     } catch (error) {
-      console.error('❌ Failed to load migrations:', error);
+      console.error("❌ Failed to load migrations:", error);
       throw error;
     }
   }
 
-  private async parseMigrationFile(filename: string): Promise<Migration | null> {
+  private async parseMigrationFile(
+    filename: string,
+  ): Promise<Migration | null> {
     try {
       const filePath = path.join(this.migrationsDir, filename);
-      const content = await fs.readFile(filePath, 'utf8');
-      
+      const content = await fs.readFile(filePath, "utf8");
+
       // Parse version and name from filename (e.g., "001_initial_schema.sql")
       const match = filename.match(/^(\d+)_(.+)\.sql$/);
       if (!match) {
@@ -83,12 +84,15 @@ class MigrationManager {
       const name = match[2];
 
       // Split UP and DOWN sections
-      const sections = content.split('-- DOWN');
-      const upSql = sections[0].replace('-- UP', '').trim();
-      const downSql = sections[1] ? sections[1].trim() : '';
+      const sections = content.split("-- DOWN");
+      const upSql = sections[0].replace("-- UP", "").trim();
+      const downSql = sections[1] ? sections[1].trim() : "";
 
       // Generate checksum
-      const checksum = crypto.createHash('sha256').update(content).digest('hex');
+      const checksum = crypto
+        .createHash("sha256")
+        .update(content)
+        .digest("hex");
 
       return {
         version,
@@ -97,9 +101,8 @@ class MigrationManager {
         upSql,
         downSql,
         checksum,
-        applied: false
+        applied: false,
       };
-
     } catch (error) {
       console.error(`❌ Failed to parse migration ${filename}:`, error);
       return null;
@@ -116,7 +119,7 @@ class MigrationManager {
 
       if (result.success && result.data) {
         const appliedMigrations = new Map(
-          result.data.map((row: any) => [row.version, row])
+          result.data.map((row: any) => [row.version, row]),
         );
 
         for (const migration of this.migrations) {
@@ -128,27 +131,30 @@ class MigrationManager {
 
             // Check integrity
             if (applied.checksum && applied.checksum !== migration.checksum) {
-              console.warn(`⚠️  Migration ${migration.version} checksum mismatch - file may have been modified`);
+              console.warn(
+                `⚠️  Migration ${migration.version} checksum mismatch - file may have been modified`,
+              );
             }
           }
         }
       }
-
     } catch (error) {
-      console.error('❌ Failed to check applied migrations:', error);
+      console.error("❌ Failed to check applied migrations:", error);
       throw error;
     }
   }
 
   public async migrate(targetVersion?: number): Promise<void> {
-    console.log('🚀 Running database migrations...');
-    
-    const pendingMigrations = this.migrations.filter(m => 
-      !m.applied && (targetVersion === undefined || m.version <= targetVersion)
+    console.log("🚀 Running database migrations...");
+
+    const pendingMigrations = this.migrations.filter(
+      (m) =>
+        !m.applied &&
+        (targetVersion === undefined || m.version <= targetVersion),
     );
 
     if (pendingMigrations.length === 0) {
-      console.log('✅ No pending migrations');
+      console.log("✅ No pending migrations");
       return;
     }
 
@@ -158,13 +164,15 @@ class MigrationManager {
       await this.runMigration(migration);
     }
 
-    console.log('🎉 All migrations completed successfully!');
+    console.log("🎉 All migrations completed successfully!");
   }
 
   private async runMigration(migration: Migration): Promise<void> {
     const startTime = Date.now();
-    
-    console.log(`⬆️  Applying migration ${migration.version}: ${migration.name}`);
+
+    console.log(
+      `⬆️  Applying migration ${migration.version}: ${migration.name}`,
+    );
 
     try {
       // Run migration in transaction
@@ -174,28 +182,33 @@ class MigrationManager {
 
         // Record migration in schema_migrations table
         const executionTime = Date.now() - startTime;
-        
-        db.prepare(`
+
+        db.prepare(
+          `
           INSERT INTO schema_migrations (version, name, applied_at, checksum, execution_time)
           VALUES (?, ?, ?, ?, ?)
-        `).run(
+        `,
+        ).run(
           migration.version,
           migration.name,
           new Date().toISOString(),
           migration.checksum,
-          executionTime
+          executionTime,
         );
 
-        console.log(`✅ Migration ${migration.version} applied successfully (${executionTime}ms)`);
+        console.log(
+          `✅ Migration ${migration.version} applied successfully (${executionTime}ms)`,
+        );
       });
 
       migration.applied = true;
       migration.appliedAt = new Date().toISOString();
       migration.executionTime = Date.now() - startTime;
-
     } catch (error) {
       console.error(`❌ Migration ${migration.version} failed:`, error);
-      throw new Error(`Migration ${migration.version} failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Migration ${migration.version} failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
     }
   }
 
@@ -203,11 +216,11 @@ class MigrationManager {
     console.log(`⬇️  Rolling back to migration ${targetVersion}...`);
 
     const migrationsToRollback = this.migrations
-      .filter(m => m.applied && m.version > targetVersion)
+      .filter((m) => m.applied && m.version > targetVersion)
       .sort((a, b) => b.version - a.version); // Reverse order for rollback
 
     if (migrationsToRollback.length === 0) {
-      console.log('✅ No migrations to rollback');
+      console.log("✅ No migrations to rollback");
       return;
     }
 
@@ -217,11 +230,13 @@ class MigrationManager {
       await this.rollbackMigration(migration);
     }
 
-    console.log('🎉 Rollback completed successfully!');
+    console.log("🎉 Rollback completed successfully!");
   }
 
   private async rollbackMigration(migration: Migration): Promise<void> {
-    console.log(`⬇️  Rolling back migration ${migration.version}: ${migration.name}`);
+    console.log(
+      `⬇️  Rolling back migration ${migration.version}: ${migration.name}`,
+    );
 
     if (!migration.downSql) {
       throw new Error(`Migration ${migration.version} has no rollback SQL`);
@@ -233,56 +248,74 @@ class MigrationManager {
         db.exec(migration.downSql);
 
         // Remove migration record
-        db.prepare(`
+        db.prepare(
+          `
           DELETE FROM schema_migrations WHERE version = ?
-        `).run(migration.version);
+        `,
+        ).run(migration.version);
 
-        console.log(`✅ Migration ${migration.version} rolled back successfully`);
+        console.log(
+          `✅ Migration ${migration.version} rolled back successfully`,
+        );
       });
 
       migration.applied = false;
       migration.appliedAt = undefined;
       migration.executionTime = undefined;
-
     } catch (error) {
-      console.error(`❌ Rollback of migration ${migration.version} failed:`, error);
-      throw new Error(`Rollback failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error(
+        `❌ Rollback of migration ${migration.version} failed:`,
+        error,
+      );
+      throw new Error(
+        `Rollback failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
     }
   }
 
   public async status(): Promise<void> {
-    console.log('\n📊 Migration Status:');
-    console.log('='.repeat(80));
-    
+    console.log("\n📊 Migration Status:");
+    console.log("=".repeat(80));
+
     if (this.migrations.length === 0) {
-      console.log('No migrations found');
+      console.log("No migrations found");
       return;
     }
 
-    console.log(`${'Version'.padEnd(8)} ${'Name'.padEnd(30)} ${'Status'.padEnd(10)} ${'Applied At'.padEnd(20)} ${'Time (ms)'.padEnd(10)}`);
-    console.log('-'.repeat(80));
+    console.log(
+      `${"Version".padEnd(8)} ${"Name".padEnd(30)} ${"Status".padEnd(10)} ${"Applied At".padEnd(20)} ${"Time (ms)".padEnd(10)}`,
+    );
+    console.log("-".repeat(80));
 
     for (const migration of this.migrations) {
       const version = migration.version.toString().padEnd(8);
       const name = migration.name.padEnd(30).substring(0, 30);
-      const status = (migration.applied ? '✅ Applied' : '❌ Pending').padEnd(10);
-      const appliedAt = (migration.appliedAt || 'N/A').padEnd(20);
-      const execTime = (migration.executionTime?.toString() || 'N/A').padEnd(10);
+      const status = (migration.applied ? "✅ Applied" : "❌ Pending").padEnd(
+        10,
+      );
+      const appliedAt = (migration.appliedAt || "N/A").padEnd(20);
+      const execTime = (migration.executionTime?.toString() || "N/A").padEnd(
+        10,
+      );
 
       console.log(`${version} ${name} ${status} ${appliedAt} ${execTime}`);
     }
 
     // Summary
-    const appliedCount = this.migrations.filter(m => m.applied).length;
+    const appliedCount = this.migrations.filter((m) => m.applied).length;
     const pendingCount = this.migrations.length - appliedCount;
-    
-    console.log('-'.repeat(80));
-    console.log(`Total: ${this.migrations.length} | Applied: ${appliedCount} | Pending: ${pendingCount}`);
-    
+
+    console.log("-".repeat(80));
+    console.log(
+      `Total: ${this.migrations.length} | Applied: ${appliedCount} | Pending: ${pendingCount}`,
+    );
+
     if (pendingCount > 0) {
-      console.log(`\n⚠️  ${pendingCount} pending migrations need to be applied`);
+      console.log(
+        `\n⚠️  ${pendingCount} pending migrations need to be applied`,
+      );
     } else {
-      console.log('\n✅ Database is up to date');
+      console.log("\n✅ Database is up to date");
     }
   }
 
@@ -290,11 +323,14 @@ class MigrationManager {
     console.log(`📝 Creating new migration: ${name}`);
 
     // Find next version number
-    const maxVersion = this.migrations.reduce((max, m) => Math.max(max, m.version), 0);
+    const maxVersion = this.migrations.reduce(
+      (max, m) => Math.max(max, m.version),
+      0,
+    );
     const nextVersion = maxVersion + 1;
 
     // Create migration filename
-    const filename = `${nextVersion.toString().padStart(3, '0')}_${name.toLowerCase().replace(/[^a-z0-9]/g, '_')}.sql`;
+    const filename = `${nextVersion.toString().padStart(3, "0")}_${name.toLowerCase().replace(/[^a-z0-9]/g, "_")}.sql`;
     const filepath = path.join(this.migrationsDir, filename);
 
     // Template migration content
@@ -315,30 +351,30 @@ class MigrationManager {
 `;
 
     try {
-      await fs.writeFile(filepath, template, 'utf8');
+      await fs.writeFile(filepath, template, "utf8");
       console.log(`✅ Migration created: ${filename}`);
       console.log(`📁 Path: ${filepath}`);
-      console.log('\n💡 Next steps:');
-      console.log('   1. Edit the migration file and add your SQL');
-      console.log('   2. Run: npm run migrate');
+      console.log("\n💡 Next steps:");
+      console.log("   1. Edit the migration file and add your SQL");
+      console.log("   2. Run: npm run migrate");
     } catch (error) {
-      console.error('❌ Failed to create migration:', error);
+      console.error("❌ Failed to create migration:", error);
       throw error;
     }
   }
 
   public async validate(): Promise<boolean> {
-    console.log('🔍 Validating migrations...');
+    console.log("🔍 Validating migrations...");
 
     let isValid = true;
     const issues: string[] = [];
 
     // Check for version conflicts
-    const versions = this.migrations.map(m => m.version);
+    const versions = this.migrations.map((m) => m.version);
     const duplicates = versions.filter((v, i) => versions.indexOf(v) !== i);
-    
+
     if (duplicates.length > 0) {
-      issues.push(`Duplicate version numbers: ${duplicates.join(', ')}`);
+      issues.push(`Duplicate version numbers: ${duplicates.join(", ")}`);
       isValid = false;
     }
 
@@ -351,39 +387,45 @@ class MigrationManager {
     }
 
     // Check applied migrations for integrity
-    for (const migration of this.migrations.filter(m => m.applied)) {
+    for (const migration of this.migrations.filter((m) => m.applied)) {
       try {
         const result = await this.databaseService.get(
-          'SELECT checksum FROM schema_migrations WHERE version = ?',
-          [migration.version]
+          "SELECT checksum FROM schema_migrations WHERE version = ?",
+          [migration.version],
         );
 
-        if (result.success && result.data && result.data.checksum !== migration.checksum) {
+        if (
+          result.success &&
+          result.data &&
+          result.data.checksum !== migration.checksum
+        ) {
           issues.push(`Migration ${migration.version} checksum mismatch`);
           isValid = false;
         }
       } catch (error) {
-        issues.push(`Failed to validate migration ${migration.version}: ${error}`);
+        issues.push(
+          `Failed to validate migration ${migration.version}: ${error}`,
+        );
         isValid = false;
       }
     }
 
     // Report results
     if (isValid) {
-      console.log('✅ All migrations are valid');
+      console.log("✅ All migrations are valid");
     } else {
-      console.log('❌ Migration validation failed:');
-      issues.forEach(issue => console.log(`   - ${issue}`));
+      console.log("❌ Migration validation failed:");
+      issues.forEach((issue) => console.log(`   - ${issue}`));
     }
 
     return isValid;
   }
 
   public async reset(): Promise<void> {
-    console.log('⚠️  DANGER: This will reset the entire database!');
-    
+    console.log("⚠️  DANGER: This will reset the entire database!");
+
     // In a real implementation, you might want to add confirmation
-    console.log('🗑️  Dropping all tables...');
+    console.log("🗑️  Dropping all tables...");
 
     try {
       // Get list of all tables
@@ -401,17 +443,16 @@ class MigrationManager {
       }
 
       // Reset migration tracking
-      this.migrations.forEach(m => {
+      this.migrations.forEach((m) => {
         m.applied = false;
         m.appliedAt = undefined;
         m.executionTime = undefined;
       });
 
-      console.log('✅ Database reset complete');
+      console.log("✅ Database reset complete");
       console.log('💡 Run "npm run migrate" to recreate the database');
-
     } catch (error) {
-      console.error('❌ Database reset failed:', error);
+      console.error("❌ Database reset failed:", error);
       throw error;
     }
   }
@@ -432,65 +473,78 @@ async function main() {
     await migrationManager.initialize();
 
     switch (command) {
-      case 'migrate':
-      case 'up':
+      case "migrate":
+      case "up":
         const targetVersion = args[1] ? parseInt(args[1], 10) : undefined;
         await migrationManager.migrate(targetVersion);
         break;
 
-      case 'rollback':
-      case 'down':
+      case "rollback":
+      case "down":
         const rollbackTarget = parseInt(args[1], 10);
         if (isNaN(rollbackTarget)) {
-          console.error('❌ Rollback target version required');
+          console.error("❌ Rollback target version required");
           process.exit(1);
         }
         await migrationManager.rollback(rollbackTarget);
         break;
 
-      case 'status':
+      case "status":
         await migrationManager.status();
         break;
 
-      case 'create':
+      case "create":
         const migrationName = args[1];
         if (!migrationName) {
-          console.error('❌ Migration name required');
+          console.error("❌ Migration name required");
           process.exit(1);
         }
         await migrationManager.create(migrationName);
         break;
 
-      case 'validate':
+      case "validate":
         const isValid = await migrationManager.validate();
         process.exit(isValid ? 0 : 1);
         break;
 
-      case 'reset':
+      case "reset":
         await migrationManager.reset();
         break;
 
       default:
-        console.log('Luna Agent Database Migration Manager\n');
-        console.log('Usage:');
-        console.log('  npm run migrate                    - Run all pending migrations');
-        console.log('  npm run migrate <version>          - Migrate to specific version');
-        console.log('  npm run migrate rollback <version> - Rollback to specific version');
-        console.log('  npm run migrate status             - Show migration status');
-        console.log('  npm run migrate create <name>      - Create new migration');
-        console.log('  npm run migrate validate           - Validate migrations');
-        console.log('  npm run migrate reset              - Reset database (DANGER)');
-        console.log('');
-        console.log('Examples:');
-        console.log('  npm run migrate');
-        console.log('  npm run migrate rollback 1');
-        console.log('  npm run migrate create add_user_preferences');
-        console.log('  npm run migrate status');
+        console.log("Luna Agent Database Migration Manager\n");
+        console.log("Usage:");
+        console.log(
+          "  npm run migrate                    - Run all pending migrations",
+        );
+        console.log(
+          "  npm run migrate <version>          - Migrate to specific version",
+        );
+        console.log(
+          "  npm run migrate rollback <version> - Rollback to specific version",
+        );
+        console.log(
+          "  npm run migrate status             - Show migration status",
+        );
+        console.log(
+          "  npm run migrate create <name>      - Create new migration",
+        );
+        console.log(
+          "  npm run migrate validate           - Validate migrations",
+        );
+        console.log(
+          "  npm run migrate reset              - Reset database (DANGER)",
+        );
+        console.log("");
+        console.log("Examples:");
+        console.log("  npm run migrate");
+        console.log("  npm run migrate rollback 1");
+        console.log("  npm run migrate create add_user_preferences");
+        console.log("  npm run migrate status");
         break;
     }
-
   } catch (error) {
-    console.error('💥 Migration failed:', error);
+    console.error("💥 Migration failed:", error);
     process.exit(1);
   } finally {
     await migrationManager.close();
@@ -499,8 +553,8 @@ async function main() {
 
 // Run CLI if this script is executed directly
 if (require.main === module) {
-  main().catch(error => {
-    console.error('Fatal error:', error);
+  main().catch((error) => {
+    console.error("Fatal error:", error);
     process.exit(1);
   });
 }

@@ -194,21 +194,21 @@ Create PM2 ecosystem file:
 module.exports = {
   apps: [
     {
-      name: 'luna-backend',
-      script: 'src/main.py',
-      cwd: '/opt/luna-agent/luna-backend',
-      interpreter: '/opt/luna-agent/luna-backend/venv/bin/python',
+      name: "luna-backend",
+      script: "src/main.py",
+      cwd: "/opt/luna-agent/luna-backend",
+      interpreter: "/opt/luna-agent/luna-backend/venv/bin/python",
       instances: 2,
-      exec_mode: 'cluster',
+      exec_mode: "cluster",
       env: {
-        NODE_ENV: 'production',
-        PORT: 5000
+        NODE_ENV: "production",
+        PORT: 5000,
       },
-      error_file: '/var/log/luna/backend-error.log',
-      out_file: '/var/log/luna/backend-out.log',
-      log_file: '/var/log/luna/backend.log'
-    }
-  ]
+      error_file: "/var/log/luna/backend-error.log",
+      out_file: "/var/log/luna/backend-out.log",
+      log_file: "/var/log/luna/backend.log",
+    },
+  ],
 };
 ```
 
@@ -287,7 +287,7 @@ sudo crontab -e
 Create `docker-compose.yml`:
 
 ```yaml
-version: '3.8'
+version: "3.8"
 
 services:
   luna-backend:
@@ -487,7 +487,7 @@ az container create \
 
 ```yaml
 # monitoring/docker-compose.yml
-version: '3.8'
+version: "3.8"
 
 services:
   prometheus:
@@ -526,12 +526,12 @@ Configure log shipping to ELK stack or similar:
 ```yaml
 # filebeat.yml
 filebeat.inputs:
-- type: log
-  paths:
-    - /var/log/luna/*.log
-  fields:
-    service: luna-agent
-  fields_under_root: true
+  - type: log
+    paths:
+      - /var/log/luna/*.log
+    fields:
+      service: luna-agent
+    fields_under_root: true
 
 output.elasticsearch:
   hosts: ["elasticsearch:9200"]
@@ -710,4 +710,3 @@ pm2 restart all
 ---
 
 For additional support, consult the [Luna Agent Documentation](https://docs.luna-agent.com) or contact support@luna-agent.com.
-

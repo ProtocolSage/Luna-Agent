@@ -6,13 +6,13 @@ The preload script was exposing API keys directly to the renderer process via `c
 
 ```typescript
 // INSECURE - DO NOT DO THIS
-contextBridge.exposeInMainWorld('__ENV', {
-  AZURE_SPEECH_KEY: process.env.AZURE_SPEECH_KEY,          // ❌ EXPOSED
-  DEEPGRAM_API_KEY: process.env.DEEPGRAM_API_KEY,          // ❌ EXPOSED
-  GOOGLE_CLOUD_API_KEY: process.env.GOOGLE_CLOUD_API_KEY,  // ❌ EXPOSED
-  OPENAI_API_KEY: process.env.OPENAI_API_KEY,              // ❌ EXPOSED
-  ELEVEN_API_KEY: process.env.ELEVEN_API_KEY,              // ❌ EXPOSED
-  PICOVOICE_ACCESS_KEY: process.env.PICOVOICE_ACCESS_KEY   // ❌ EXPOSED
+contextBridge.exposeInMainWorld("__ENV", {
+  AZURE_SPEECH_KEY: process.env.AZURE_SPEECH_KEY, // ❌ EXPOSED
+  DEEPGRAM_API_KEY: process.env.DEEPGRAM_API_KEY, // ❌ EXPOSED
+  GOOGLE_CLOUD_API_KEY: process.env.GOOGLE_CLOUD_API_KEY, // ❌ EXPOSED
+  OPENAI_API_KEY: process.env.OPENAI_API_KEY, // ❌ EXPOSED
+  ELEVEN_API_KEY: process.env.ELEVEN_API_KEY, // ❌ EXPOSED
+  PICOVOICE_ACCESS_KEY: process.env.PICOVOICE_ACCESS_KEY, // ❌ EXPOSED
 });
 ```
 
@@ -40,38 +40,40 @@ contextBridge.exposeInMainWorld('__ENV', {
 
 ```typescript
 // SECURE - Only non-sensitive config
-contextBridge.exposeInMainWorld('__ENV', {
+contextBridge.exposeInMainWorld("__ENV", {
   LUNA_API_BASE: process.env.LUNA_API_BASE,
   API_BASE: process.env.API_BASE,
-  VOICE_AUTO_LISTEN: process.env.VOICE_AUTO_LISTEN === 'true',
-  WAKE_WORD_ENABLED: process.env.WAKE_WORD_ENABLED === 'true',
+  VOICE_AUTO_LISTEN: process.env.VOICE_AUTO_LISTEN === "true",
+  WAKE_WORD_ENABLED: process.env.WAKE_WORD_ENABLED === "true",
   // ... other non-sensitive flags
 
   // Configuration only (NOT keys)
-  STT_PROVIDER: process.env.STT_PROVIDER || 'azure',
-  AZURE_SPEECH_REGION: process.env.AZURE_SPEECH_REGION,  // Region is OK
-  WAKE_WORD: process.env.WAKE_WORD || 'luna'
+  STT_PROVIDER: process.env.STT_PROVIDER || "azure",
+  AZURE_SPEECH_REGION: process.env.AZURE_SPEECH_REGION, // Region is OK
+  WAKE_WORD: process.env.WAKE_WORD || "luna",
 });
 ```
 
 ### 2. Use Backend APIs for Service Calls
 
 **Before (Insecure):**
+
 ```typescript
 // Renderer directly calls OpenAI with key from window.__ENV
-const response = await fetch('https://api.openai.com/v1/chat/completions', {
+const response = await fetch("https://api.openai.com/v1/chat/completions", {
   headers: {
-    'Authorization': `Bearer ${window.__ENV.OPENAI_API_KEY}`  // ❌ KEY EXPOSED
-  }
+    Authorization: `Bearer ${window.__ENV.OPENAI_API_KEY}`, // ❌ KEY EXPOSED
+  },
 });
 ```
 
 **After (Secure):**
+
 ```typescript
 // Renderer calls backend API, backend uses key server-side
-const response = await fetch('http://localhost:3001/api/voice/transcribe', {
-  method: 'POST',
-  body: audioFormData
+const response = await fetch("http://localhost:3001/api/voice/transcribe", {
+  method: "POST",
+  body: audioFormData,
   // No API key in renderer - backend handles it
 });
 ```
@@ -103,46 +105,51 @@ const response = await fetch('http://localhost:3001/api/voice/transcribe', {
 ### For Voice Features
 
 **Old Pattern:**
+
 ```typescript
 // renderer.tsx - INSECURE
 const apiKey = window.__ENV.OPENAI_API_KEY;
 const response = await openai.audio.transcriptions.create(audio, {
-  apiKey
+  apiKey,
 });
 ```
 
 **New Pattern:**
+
 ```typescript
 // renderer.tsx - SECURE
 const formData = new FormData();
-formData.append('audio', audioBlob);
-const response = await fetch('http://localhost:3001/api/voice/transcribe', {
-  method: 'POST',
-  body: formData
+formData.append("audio", audioBlob);
+const response = await fetch("http://localhost:3001/api/voice/transcribe", {
+  method: "POST",
+  body: formData,
 });
 ```
 
 ### For Chat Features
 
 **Old Pattern:**
+
 ```typescript
 // INSECURE
 const chat = new OpenAI({ apiKey: window.__ENV.OPENAI_API_KEY });
 ```
 
 **New Pattern:**
+
 ```typescript
 // SECURE
-const response = await fetch('http://localhost:3001/api/agent/chat', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ message: userInput })
+const response = await fetch("http://localhost:3001/api/agent/chat", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ message: userInput }),
 });
 ```
 
 ## Verification
 
 ### 1. DevTools Check
+
 ```javascript
 // In renderer DevTools console
 console.log(window.__ENV);
@@ -151,21 +158,25 @@ console.log(window.__ENV);
 ```
 
 ### 2. CI Secret Scan
+
 The CI pipeline now runs `scripts/ci/scan-bundles.js` which will:
+
 - Scan `dist/` for API key patterns
 - Fail the build if secrets detected
 - Patterns: `sk-...`, `sk-ant-...`, `/AKIA.../`, etc.
 
 ### 3. TypeScript Check
+
 ```typescript
 // This should cause a type error if keys removed from __ENV
-const key = window.__ENV.OPENAI_API_KEY;  // ❌ Should not exist
+const key = window.__ENV.OPENAI_API_KEY; // ❌ Should not exist
 ```
 
 ## Testing
 
 See `test/unit/preload-security.test.ts` for comprehensive tests covering:
-- ✅ No API keys in exposed __ENV
+
+- ✅ No API keys in exposed \_\_ENV
 - ✅ Only safe config values present
 - ✅ Type definitions match actual exposed values
 - ✅ Regression tests for each removed key
@@ -188,12 +199,14 @@ See `test/unit/preload-security.test.ts` for comprehensive tests covering:
 ## Security Impact
 
 **Before:**
+
 - 🔴 API keys exposed in renderer global scope
 - 🔴 Accessible via DevTools
 - 🔴 Vulnerable to XSS exfiltration
 - 🔴 May leak in bundled artifacts
 
 **After:**
+
 - 🟢 Zero secrets in renderer process
 - 🟢 Keys stay in backend only
 - 🟢 XSS cannot steal keys

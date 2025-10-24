@@ -1,8 +1,8 @@
 // agentClient.ts - Client for agent communication API
-import { API_BASE } from './apiBase';
+import { API_BASE } from "./apiBase";
 
 export interface ChatMessage {
-  role: 'user' | 'assistant' | 'system';
+  role: "user" | "assistant" | "system";
   content: string;
 }
 
@@ -15,12 +15,15 @@ export interface ChatResponse {
 /**
  * Send a chat message to the agent API
  */
-export async function sendChatMessage(message: string, conversationId?: string): Promise<ChatResponse> {
+export async function sendChatMessage(
+  message: string,
+  conversationId?: string,
+): Promise<ChatResponse> {
   try {
     const response = await fetch(`${API_BASE}/api/agent/chat`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
         message,
@@ -34,12 +37,12 @@ export async function sendChatMessage(message: string, conversationId?: string):
 
     const data = await response.json();
     return {
-      response: data.response || data.message || '',
+      response: data.response || data.message || "",
       conversationId: data.conversationId,
       context: data.context,
     };
   } catch (error) {
-    console.error('[agentClient] Error sending chat message:', error);
+    console.error("[agentClient] Error sending chat message:", error);
     throw error;
   }
 }
@@ -47,14 +50,19 @@ export async function sendChatMessage(message: string, conversationId?: string):
 /**
  * Get conversation history
  */
-export async function getConversationHistory(conversationId: string): Promise<ChatMessage[]> {
+export async function getConversationHistory(
+  conversationId: string,
+): Promise<ChatMessage[]> {
   try {
-    const response = await fetch(`${API_BASE}/api/agent/conversation/${conversationId}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
+    const response = await fetch(
+      `${API_BASE}/api/agent/conversation/${conversationId}`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
       },
-    });
+    );
 
     if (!response.ok) {
       throw new Error(`Conversation API error: ${response.status}`);
@@ -63,7 +71,7 @@ export async function getConversationHistory(conversationId: string): Promise<Ch
     const data = await response.json();
     return data.messages || [];
   } catch (error) {
-    console.error('[agentClient] Error fetching conversation history:', error);
+    console.error("[agentClient] Error fetching conversation history:", error);
     throw error;
   }
 }

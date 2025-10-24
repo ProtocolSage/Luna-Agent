@@ -2,11 +2,11 @@
 // Centralized exports for all API clients
 
 // Voice services
-export * from './voiceClient';
-export * from './sttClient';
+export * from "./voiceClient";
+export * from "./sttClient";
 
-// Memory services  
-export * from './memoryClient';
+// Memory services
+export * from "./memoryClient";
 
 // Tools services
-export * from './toolsClient';
+export * from "./toolsClient";

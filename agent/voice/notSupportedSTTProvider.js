@@ -7,10 +7,15 @@ const events_1 = require("events");
  * Emits an error immediately on start, and does nothing on stop.
  */
 class NotSupportedSTTProvider extends events_1.EventEmitter {
-    start() {
-        this.emit('error', new Error('Speech-to-text is not supported in the Electron main process.'));
-    }
-    stop() { }
+  start() {
+    this.emit(
+      "error",
+      new Error(
+        "Speech-to-text is not supported in the Electron main process.",
+      ),
+    );
+  }
+  stop() {}
 }
 exports.NotSupportedSTTProvider = NotSupportedSTTProvider;
 //# sourceMappingURL=notSupportedSTTProvider.js.map

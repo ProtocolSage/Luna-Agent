@@ -1,6 +1,6 @@
 // Fixed tool execution with proper context passing
-import { ToolExecutive } from '@agent/tools/executive';
-import { ReasoningEngine } from '@agent/orchestrator/reasoningEngine';
+import { ToolExecutive } from "@agent/tools/executive";
+import { ReasoningEngine } from "@agent/orchestrator/reasoningEngine";
 
 export class ToolOrchestrator {
   private toolExecutive: ToolExecutive;
@@ -14,7 +14,7 @@ export class ToolOrchestrator {
   private initializeTools() {
     // Register all available tools
     const tools = this.toolExecutive.getToolDefinitions();
-    tools.forEach(tool => {
+    tools.forEach((tool) => {
       this.activeTools.set(tool.name, tool);
       console.log(`Tool registered: ${tool.name}`);
     });
@@ -24,7 +24,7 @@ export class ToolOrchestrator {
     try {
       const result = await this.toolExecutive.executePlan(
         [{ tool: toolName, args }],
-        `${sessionId}_${Date.now()}`
+        `${sessionId}_${Date.now()}`,
       );
       return result[0];
     } catch (error: unknown) {
@@ -33,31 +33,32 @@ export class ToolOrchestrator {
         tool: toolName,
         success: false,
         error: error instanceof Error ? error.message : String(error),
-        latencyMs: 0
+        latencyMs: 0,
       };
     }
   }
 
   async processWithTools(message: string, context: any) {
     // Parse message for tool requests
-    const toolPattern = /(?:use|run|execute|call)\s+(\w+)\s+(?:tool|function|command)?(?:\s+with\s+(.+))?/i;
+    const toolPattern =
+      /(?:use|run|execute|call)\s+(\w+)\s+(?:tool|function|command)?(?:\s+with\s+(.+))?/i;
     const match = message.match(toolPattern);
 
     if (match) {
       const [, toolName, argsString] = match;
-      const args = this.parseArguments(argsString || '');
-      
+      const args = this.parseArguments(argsString || "");
+
       const result = await this.executeToolRequest(
         toolName.toLowerCase(),
         args,
-        context.sessionId
+        context.sessionId,
       );
 
       return {
-        type: 'tool_result',
+        type: "tool_result",
         tool: toolName,
         result: result,
-        message: this.formatToolResult(result)
+        message: this.formatToolResult(result),
       };
     }
 
@@ -66,44 +67,61 @@ export class ToolOrchestrator {
     if (implicitTools.length > 0) {
       const results = [];
       for (const { tool, args } of implicitTools) {
-        const result = await this.executeToolRequest(tool, args, context.sessionId);
+        const result = await this.executeToolRequest(
+          tool,
+          args,
+          context.sessionId,
+        );
         results.push(result);
       }
       return {
-        type: 'tool_results',
+        type: "tool_results",
         results,
-        message: this.formatMultipleResults(results)
+        message: this.formatMultipleResults(results),
       };
     }
 
     return null;
   }
 
-  private detectImplicitTools(message: string): Array<{tool: string, args: any}> {
+  private detectImplicitTools(
+    message: string,
+  ): Array<{ tool: string; args: any }> {
     const tools = [];
 
     // File operations
-    if (message.includes('read') && message.includes('file')) {
+    if (message.includes("read") && message.includes("file")) {
       const fileMatch = message.match(/["']([^"']+)["']/);
       if (fileMatch) {
-        tools.push({ tool: 'read_file', args: { path: fileMatch[1] } });
+        tools.push({ tool: "read_file", args: { path: fileMatch[1] } });
       }
     }
 
     // Web search
-    if (message.includes('search') || message.includes('look up') || message.includes('find information')) {
-      const query = message.replace(/(search|look up|find information about)/i, '').trim();
-      tools.push({ tool: 'search_web', args: { query } });
+    if (
+      message.includes("search") ||
+      message.includes("look up") ||
+      message.includes("find information")
+    ) {
+      const query = message
+        .replace(/(search|look up|find information about)/i, "")
+        .trim();
+      tools.push({ tool: "search_web", args: { query } });
     }
 
     // Memory operations
-    if (message.includes('remember')) {
-      tools.push({ tool: 'remember', args: { content: message } });
+    if (message.includes("remember")) {
+      tools.push({ tool: "remember", args: { content: message } });
     }
 
-    if (message.includes('recall') || message.includes('what did I say about')) {
-      const topic = message.replace(/(recall|what did I say about)/i, '').trim();
-      tools.push({ tool: 'recall', args: { query: topic } });
+    if (
+      message.includes("recall") ||
+      message.includes("what did I say about")
+    ) {
+      const topic = message
+        .replace(/(recall|what did I say about)/i, "")
+        .trim();
+      tools.push({ tool: "recall", args: { query: topic } });
     }
 
     return tools;
@@ -114,17 +132,17 @@ export class ToolOrchestrator {
 
     try {
       // Try parsing as JSON first
-      if (argsString.startsWith('{')) {
+      if (argsString.startsWith("{")) {
         return JSON.parse(argsString);
       }
 
       // Parse key=value pairs
       const args: any = {};
-      const pairs = argsString.split(',').map(s => s.trim());
+      const pairs = argsString.split(",").map((s) => s.trim());
       for (const pair of pairs) {
-        const [key, ...valueParts] = pair.split('=');
+        const [key, ...valueParts] = pair.split("=");
         if (key && valueParts.length > 0) {
-          args[key.trim()] = valueParts.join('=').trim().replace(/["']/g, '');
+          args[key.trim()] = valueParts.join("=").trim().replace(/["']/g, "");
         }
       }
       return args;
@@ -140,20 +158,22 @@ export class ToolOrchestrator {
     }
 
     const output = result.output;
-    if (typeof output === 'string') {
+    if (typeof output === "string") {
       return output;
     } else if (Array.isArray(output)) {
-      return output.map(item => 
-        typeof item === 'object' ? JSON.stringify(item, null, 2) : item
-      ).join('\n');
-    } else if (typeof output === 'object') {
+      return output
+        .map((item) =>
+          typeof item === "object" ? JSON.stringify(item, null, 2) : item,
+        )
+        .join("\n");
+    } else if (typeof output === "object") {
       return JSON.stringify(output, null, 2);
     }
     return String(output);
   }
 
   private formatMultipleResults(results: any[]): string {
-    return results.map(r => this.formatToolResult(r)).join('\n\n');
+    return results.map((r) => this.formatToolResult(r)).join("\n\n");
   }
 
   getAvailableTools(): string[] {
@@ -162,6 +182,6 @@ export class ToolOrchestrator {
 
   getToolDescription(toolName: string): string {
     const tool = this.activeTools.get(toolName);
-    return tool ? tool.description : 'Tool not found';
+    return tool ? tool.description : "Tool not found";
   }
 }

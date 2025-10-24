@@ -1,17 +1,20 @@
 # PR: Platform - Electron Sandbox and Security Hardening
 
 ## Overview
+
 This PR implements critical security fixes for the Electron main process, enabling proper sandboxing and fixing the application boot issue.
 
 ## Problem Statement
 
 ### Critical Issues
+
 1. **Sandbox disabled** (`sandbox: false`) - Major security vulnerability
 2. **Syntax error in app.enableSandbox()** - Misplaced brace preventing sandbox initialization
 3. **Incorrect port configuration** - Backend runs on 3001 but code referenced 3000
 4. **No permission handlers** - Media access not properly configured for sandbox mode
 
 ### Security Impact
+
 - Renderer process could access Node.js APIs directly
 - Potential for arbitrary code execution in renderer
 - No protection against malicious web content
@@ -22,11 +25,13 @@ This PR implements critical security fixes for the Electron main process, enabli
 ### 1. Enable Electron Sandbox (app/main/main.ts)
 
 **Before:**
+
 ```typescript
 sandbox: false, // Changed to allow media access
 ```
 
 **After:**
+
 ```typescript
 sandbox: true,  // SECURITY: Enable sandbox for renderer process
 ```
@@ -36,42 +41,47 @@ sandbox: true,  // SECURITY: Enable sandbox for renderer process
 ### 2. Fix app.enableSandbox() Syntax
 
 **Before:**
+
 ```typescript
-if (app && typeof app.enableSandbox === 'function') {
+if (app && typeof app.enableSandbox === "function") {
   app.enableSandbox();
 
-// Media permissions for voice recording
-app.commandLine.appendSwitch('enable-features', 'WebRTCPipeWireCapturer');
-app.commandLine.appendSwitch('enable-webrtc');
+  // Media permissions for voice recording
+  app.commandLine.appendSwitch("enable-features", "WebRTCPipeWireCapturer");
+  app.commandLine.appendSwitch("enable-webrtc");
 }
 ```
 
 **After:**
+
 ```typescript
-if (app && typeof app.enableSandbox === 'function') {
+if (app && typeof app.enableSandbox === "function") {
   app.enableSandbox();
-  logger.info('Electron sandbox enabled globally', 'main-process');
+  logger.info("Electron sandbox enabled globally", "main-process");
 }
 
 // Media permissions for voice recording
-app.commandLine.appendSwitch('enable-features', 'WebRTCPipeWireCapturer');
-app.commandLine.appendSwitch('enable-webrtc');
+app.commandLine.appendSwitch("enable-features", "WebRTCPipeWireCapturer");
+app.commandLine.appendSwitch("enable-webrtc");
 ```
 
 ### 3. Add Permission Request Handler
 
 **New code:**
+
 ```typescript
 // Handle media permissions for voice in sandbox mode
-contents.session.setPermissionRequestHandler((webContents, permission, callback) => {
-  const allowedPermissions = ['media', 'mediaKeySystem', 'notifications'];
-  if (allowedPermissions.includes(permission)) {
-    callback(true);
-  } else {
-    logger.warn(`Permission denied: ${permission}`, 'main-process');
-    callback(false);
-  }
-});
+contents.session.setPermissionRequestHandler(
+  (webContents, permission, callback) => {
+    const allowedPermissions = ["media", "mediaKeySystem", "notifications"];
+    if (allowedPermissions.includes(permission)) {
+      callback(true);
+    } else {
+      logger.warn(`Permission denied: ${permission}`, "main-process");
+      callback(false);
+    }
+  },
+);
 ```
 
 **Rationale:** Explicitly allow only required permissions. Denies geolocation, clipboard, and other sensitive APIs by default.
@@ -79,18 +89,23 @@ contents.session.setPermissionRequestHandler((webContents, permission, callback)
 ### 4. Add Navigation Protection
 
 **New code:**
+
 ```typescript
 // Block navigation to external URLs
-contents.on('will-navigate', (event, navigationUrl) => {
+contents.on("will-navigate", (event, navigationUrl) => {
   const parsedUrl = new URL(navigationUrl);
-  const isLocal = parsedUrl.protocol === 'file:' ||
-                 parsedUrl.hostname === 'localhost' ||
-                 parsedUrl.hostname === '127.0.0.1';
+  const isLocal =
+    parsedUrl.protocol === "file:" ||
+    parsedUrl.hostname === "localhost" ||
+    parsedUrl.hostname === "127.0.0.1";
 
   if (!isLocal) {
     event.preventDefault();
     shell.openExternal(navigationUrl);
-    logger.warn(`Blocked navigation to external URL: ${navigationUrl}`, 'main-process');
+    logger.warn(
+      `Blocked navigation to external URL: ${navigationUrl}`,
+      "main-process",
+    );
   }
 });
 ```
@@ -100,6 +115,7 @@ contents.on('will-navigate', (event, navigationUrl) => {
 ### 5. Fix Port Configuration
 
 Changed all references from port 3000 to 3001:
+
 - CSP `connect-src` directive
 - `apiBase` default value
 - Backend server spawn PORT environment variable
@@ -108,11 +124,13 @@ Changed all references from port 3000 to 3001:
 ### 6. Update Content Security Policy
 
 **Before:**
+
 ```
 connect-src 'self' http://localhost:3000 http://127.0.0.1:3000 ws://localhost:3000...
 ```
 
 **After:**
+
 ```
 connect-src 'self' http://localhost:3001 http://127.0.0.1:3001 ws://localhost:3001...
 ```
@@ -160,6 +178,7 @@ Comprehensive security regression tests covering:
 ### Manual Testing
 
 Run the test suite:
+
 ```bash
 npm test test/unit/electron-security.test.ts
 ```
@@ -169,12 +188,14 @@ Expected: All tests pass
 ### Smoke Test
 
 Build and run the application:
+
 ```bash
 npm run build
 npm start
 ```
 
 Expected behavior:
+
 1. App starts without errors
 2. Voice input works (microphone access)
 3. Chat functionality works
@@ -183,6 +204,7 @@ Expected behavior:
 ## Security Audit Results
 
 ### Before This PR
+
 - ❌ Sandbox: DISABLED
 - ❌ Context Isolation: Enabled but ineffective without sandbox
 - ❌ Node Integration: Disabled
@@ -193,6 +215,7 @@ Expected behavior:
 **Security Score: 3/10 (Critical Vulnerabilities)**
 
 ### After This PR
+
 - ✅ Sandbox: ENABLED (global + per-window)
 - ✅ Context Isolation: Enabled
 - ✅ Node Integration: Disabled
@@ -205,6 +228,7 @@ Expected behavior:
 ## Breaking Changes
 
 **None.** The sandbox should have been enabled from the start. All features continue to work:
+
 - Voice input (getUserMedia)
 - File dialogs
 - IPC communication
@@ -215,6 +239,7 @@ Expected behavior:
 If issues arise:
 
 1. **Immediate rollback:**
+
    ```bash
    git revert <this-commit-sha>
    npm run build

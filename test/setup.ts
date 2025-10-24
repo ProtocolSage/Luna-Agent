@@ -1,5 +1,5 @@
 // Test setup file
-import { jest } from '@jest/globals';
+import { jest } from "@jest/globals";
 
 // Mock console methods to reduce noise in tests
 global.console = {
@@ -12,10 +12,9 @@ global.console = {
 };
 
 // Mock environment variables
-process.env.NODE_ENV = 'test';
+process.env.NODE_ENV = "test";
 
 // Clean up after each test
 afterEach(() => {
   jest.clearAllMocks();
 });
-

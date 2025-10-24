@@ -22,7 +22,7 @@ export interface STTConfig {
 export interface STTProvider {
   readonly name: string;
   readonly isOnlineService: boolean;
-  
+
   initialize(config: STTConfig): Promise<void>;
   startListening(): Promise<void>;
   stopListening(): Promise<void>;
@@ -30,11 +30,11 @@ export interface STTProvider {
   isInitialized(): boolean;
   setLanguage(language: string): void;
   destroy(): void;
-  
+
   // Event emitter methods
   on(event: string, listener: (...args: any[]) => void): void;
   off(event: string, listener: (...args: any[]) => void): void;
-  
+
   // Provider-specific capabilities
   getCapabilities(): {
     streamingSupport: boolean;
@@ -43,18 +43,26 @@ export interface STTProvider {
     punctuation: boolean;
     profanityFilter: boolean;
   };
-  
+
   // Health check for online services
-  checkHealth(): Promise<{ healthy: boolean; latency?: number; error?: string }>;
+  checkHealth(): Promise<{
+    healthy: boolean;
+    latency?: number;
+    error?: string;
+  }>;
 }
 
 export interface STTEventMap {
-  'transcription': TranscriptionResult;
-  'recording-started': void;
-  'recording-stopped': void;
-  'volume-level': number;
-  'error': string;
-  'network-error': { message: string; canRetry: boolean; fallbackAvailable: boolean };
-  'service-unavailable': string;
-  'service-restored': void;
+  transcription: TranscriptionResult;
+  "recording-started": void;
+  "recording-stopped": void;
+  "volume-level": number;
+  error: string;
+  "network-error": {
+    message: string;
+    canRetry: boolean;
+    fallbackAvailable: boolean;
+  };
+  "service-unavailable": string;
+  "service-restored": void;
 }

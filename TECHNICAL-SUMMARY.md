@@ -23,22 +23,26 @@ Luna Agent is an Electron-based AI voice assistant with multi-LLM support, memor
 ### 1. Electron Module Loading Failure (CRITICAL)
 
 **Problem:**
+
 ```javascript
 TypeError: Cannot read properties of undefined (reading 'whenReady')
 ```
 
 **Root Cause:**
+
 - Environment variable `ELECTRON_RUN_AS_NODE=1` forced Electron into Node.js mode
 - Module injection system failed, `require('electron')` returned STRING path instead of API object
 - TypeScript compilation and webpack bundling interfered with Electron's module replacement
 
 **Solution:**
 Created pure JavaScript entry point (`main.js`) that:
+
 1. Removes `ELECTRON_RUN_AS_NODE` environment variable
 2. Defers `require('electron')` until after all code is defined
 3. Bypasses TypeScript/webpack module resolution issues
 
 **Files Modified:**
+
 - Created: `/mnt/c/dev/luna-agent-v1.0-production-complete-2/main.js`
 - Modified: `package.json` (changed "main" from "dist/bootstrap.cjs" to "main.js")
 - Created: `launch-luna.ps1` (PowerShell launcher that removes problematic env var)
@@ -53,6 +57,7 @@ Created pure JavaScript entry point (`main.js`) that:
 
 **Problem:**
 Voice configuration variables were hardcoded to `false` in preload script:
+
 ```typescript
 VOICE_AUTO_LISTEN: false,  // Always false!
 WAKE_WORD_ENABLED: false,  // Always false!
@@ -63,6 +68,7 @@ Preload script (`app/main/preload.ts`) didn't read from `process.env`, making `.
 
 **Solution:**
 Modified preload.ts to properly expose environment variables:
+
 ```typescript
 // Before:
 VOICE_AUTO_LISTEN: false,
@@ -79,6 +85,7 @@ LUNA_SENTENCE_TTS: process.env.LUNA_SENTENCE_TTS === 'true',
 ```
 
 **Files Modified:**
+
 - `app/main/preload.ts` (lines 15-22)
 - `.env` (added voice configuration section)
 
@@ -93,6 +100,7 @@ LUNA_SENTENCE_TTS: process.env.LUNA_SENTENCE_TTS === 'true',
 
 **Root Cause:**
 `WakeWordListener.tsx` expected WASM files that don't exist:
+
 ```typescript
 customPaths: {
   worker: 'assets/porcupine_worker.js',  // Missing!
@@ -104,16 +112,19 @@ The `@picovoice/porcupine-web` package doesn't include WASM files in npm distrib
 
 **Solution:**
 Temporarily disabled wake word detection in `.env`:
+
 ```env
 WAKE_WORD_ENABLED=false
 ```
 
 **Files Modified:**
+
 - `.env` (set WAKE_WORD_ENABLED=false with explanatory comment)
 
 **Impact:** Error message removed, but wake word functionality unavailable
 
 **Permanent Fix Needed:**
+
 - Option 1: Remove `customPaths` from `WakeWordListener.tsx` to use Picovoice CDN
 - Option 2: Download WASM files manually and add to build assets
 - Option 3: Create webpack plugin to bundle Porcupine assets
@@ -124,10 +135,12 @@ WAKE_WORD_ENABLED=false
 
 **Problem:**
 Two competing voice control implementations running simultaneously:
+
 1. `EnhancedVoiceControls` component (lines 816-824) - "Always On" dropdown UI
 2. Legacy voice button (lines 1111-1139) - Microphone icon
 
 Both systems:
+
 - Listened to same events
 - Modified same state
 - Created conflicting UI elements
@@ -138,6 +151,7 @@ Multiple development iterations layered new features without removing old code.
 
 **Solution:**
 Removed `EnhancedVoiceControls` from render tree:
+
 ```tsx
 // Before:
 <div className="voice-bar">
@@ -148,13 +162,16 @@ Removed `EnhancedVoiceControls` from render tree:
     enableDebugPanel={true}
     className="luna-voice-bar"
   />
-</div>
+</div>;
 
 // After:
-{/* Enhanced Voice Bar removed - using simple voice button */}
+{
+  /* Enhanced Voice Bar removed - using simple voice button */
+}
 ```
 
 **Files Modified:**
+
 - `app/renderer/components/LuxuryApp.tsx` (removed lines 816-824)
 
 **Impact:** Single voice control path, cleaner UI, no conflicting events
@@ -165,6 +182,7 @@ Removed `EnhancedVoiceControls` from render tree:
 
 **Problem:**
 Voice transcriptions appeared in logs as "auto-sending" but messages never actually sent:
+
 ```
 [AUTO-SEND] Transcription received: Hey Luna, how are you?
 [AUTO-SEND] Sending message immediately: Hey Luna, how are you?
@@ -173,6 +191,7 @@ Voice transcriptions appeared in logs as "auto-sending" but messages never actua
 
 **Root Cause:**
 Authentication gate blocking message send:
+
 ```typescript
 const handleSendMessage = useCallback(async () => {
   if (!inputValue.trim() || !securityStatus.authenticated) return; // BLOCKED HERE
@@ -182,18 +201,20 @@ When auto-send fired, `securityStatus.authenticated` was often `false` (still in
 
 **Solution:**
 Removed authentication check from early return, kept security validation later:
+
 ```typescript
 // Before:
 if (!inputValue.trim() || !securityStatus.authenticated) return;
 
 // After:
 if (!inputValue.trim()) return;
-console.log('[SEND] Attempting to send message:', inputValue.substring(0, 50));
-console.log('[SEND] Security authenticated:', securityStatus.authenticated);
+console.log("[SEND] Attempting to send message:", inputValue.substring(0, 50));
+console.log("[SEND] Security authenticated:", securityStatus.authenticated);
 // Security validation happens later at line 579
 ```
 
 **Files Modified:**
+
 - `app/renderer/components/LuxuryApp.tsx` (lines 572-576)
 
 **Impact:** Messages can send even during authentication initialization
@@ -206,6 +227,7 @@ console.log('[SEND] Security authenticated:', securityStatus.authenticated);
 
 **Problem:**
 TWO input text areas in the UI using the same `inputValue` state:
+
 1. Input area inside conversation container (lines 643-678)
 2. Input area in footer (lines 822-906)
 
@@ -216,11 +238,15 @@ Copy-paste development, multiple layout iterations without cleanup.
 
 **Solution:**
 Removed duplicate input field from conversation area:
+
 ```tsx
-{/* Input Area removed - using footer input instead */}
+{
+  /* Input Area removed - using footer input instead */
+}
 ```
 
 **Files Modified:**
+
 - `app/renderer/components/LuxuryApp.tsx` (lines 643-678 replaced with comment)
 
 **Impact:** Single source of truth for input, cleaner state management
@@ -231,6 +257,7 @@ Removed duplicate input field from conversation area:
 
 **Problem:**
 Auto-send used 500ms delay which was unnecessary and caused confusion:
+
 ```typescript
 setTimeout(() => {
   handleSendMessage();
@@ -239,15 +266,17 @@ setTimeout(() => {
 
 **Solution:**
 Call `handleSendMessage()` immediately when transcription received:
+
 ```typescript
 // Auto-send message for continuous conversation - IMMEDIATE
-console.log('[AUTO-SEND] Sending message immediately:', sanitizedTranscript);
+console.log("[AUTO-SEND] Sending message immediately:", sanitizedTranscript);
 if (sanitizedTranscript.trim()) {
   handleSendMessage(); // No delay!
 }
 ```
 
 **Files Modified:**
+
 - `app/renderer/components/LuxuryApp.tsx` (lines 349-354)
 
 **Impact:** Faster response time, more natural conversation flow
@@ -258,6 +287,7 @@ if (sanitizedTranscript.trim()) {
 
 **Problem:**
 Auto-listen after AI response had complex conditional logic that often failed:
+
 ```typescript
 if (autoListenEnabled && !voiceState.isListening && !voiceState.isSpeaking) {
   setTimeout(() => {
@@ -272,18 +302,20 @@ Checking `voiceState` twice caused race conditions.
 
 **Solution:**
 Simplified to direct API call:
+
 ```typescript
 const autoListenEnabled = (window as any).__ENV?.VOICE_AUTO_LISTEN === true;
 if (autoListenEnabled) {
-  console.log('[AUTO-LISTEN] Restarting listening after AI response...');
+  console.log("[AUTO-LISTEN] Restarting listening after AI response...");
   setTimeout(async () => {
     await voiceServiceRef.current.startListening();
-    setVoiceState(prev => ({ ...prev, isListening: true }));
+    setVoiceState((prev) => ({ ...prev, isListening: true }));
   }, 1000);
 }
 ```
 
 **Files Modified:**
+
 - `app/renderer/components/LuxuryApp.tsx` (lines 712-725)
 
 **Impact:** More reliable auto-listen resumption
@@ -297,20 +329,24 @@ User had to manually click voice button to start listening every time app launch
 
 **Solution:**
 Added auto-start listener after voice service initialization:
+
 ```typescript
 // AUTO-START: Start listening immediately if auto-listen is enabled
 const autoListenEnabled = (window as any).__ENV?.VOICE_AUTO_LISTEN === true;
 if (autoListenEnabled) {
-  console.log('[AUTO-START] Auto-listen enabled, starting voice input automatically in 2 seconds...');
+  console.log(
+    "[AUTO-START] Auto-listen enabled, starting voice input automatically in 2 seconds...",
+  );
   setTimeout(async () => {
-    console.log('[AUTO-START] Starting voice listening now...');
+    console.log("[AUTO-START] Starting voice listening now...");
     await voiceServiceRef.current.startListening();
-    setVoiceState(prev => ({ ...prev, isListening: true }));
+    setVoiceState((prev) => ({ ...prev, isListening: true }));
   }, 2000);
 }
 ```
 
 **Files Modified:**
+
 - `app/renderer/components/LuxuryApp.tsx` (lines 381-394)
 
 **Impact:** Hands-free operation - no button press needed to start conversation
@@ -322,6 +358,7 @@ if (autoListenEnabled) {
 ### 1. better-sqlite3 Native Module Platform Mismatch (LOW PRIORITY)
 
 **Error:**
+
 ```
 Error: \\?\C:\dev\luna-agent-v1.0-production-complete-2\node_modules\better-sqlite3\build\Release\better_sqlite3.node is not a valid Win32 application.
 ```
@@ -335,6 +372,7 @@ In-memory database fallback (fully functional, no data persistence)
 **Status:** NOT FIXED - Low priority as in-memory fallback works
 
 **Permanent Fix:**
+
 ```bash
 # Run from Windows PowerShell (not WSL):
 cd C:\dev\luna-agent-v1.0-production-complete-2
@@ -346,6 +384,7 @@ npm rebuild better-sqlite3
 ### 2. Missing IPC Handler for stt:get-status (LOW PRIORITY)
 
 **Error:**
+
 ```
 Error occurred in handler for 'stt:get-status': Error: No handler registered for 'stt:get-status'
 ```
@@ -357,12 +396,13 @@ Renderer calls `ipcRenderer.invoke('stt:get-status')` but main process doesn't h
 
 **Fix Required:**
 Add to `main.js`:
+
 ```javascript
-ipcMain.handle('stt:get-status', async () => ({
+ipcMain.handle("stt:get-status", async () => ({
   isListening: false,
-  currentProvider: 'webSpeech',
-  providers: ['webSpeech', 'whisper'],
-  supported: true
+  currentProvider: "webSpeech",
+  providers: ["webSpeech", "whisper"],
+  supported: true,
 }));
 ```
 
@@ -373,17 +413,20 @@ ipcMain.handle('stt:get-status', async () => ({
 **Status:** PARTIALLY FIXED
 
 From user testing:
+
 - Transcriptions ARE received (logs confirm)
 - Auto-send IS called (logs confirm)
 - Messages DO send to AI (responses appear)
 - BUT input field shows old text or doesn't clear properly
 
 **Remaining Issues:**
+
 1. React state synchronization between `inputValue` and actual input field
 2. Possible timing issue where new transcription overwrites cleared input
 3. Event handler execution order unclear
 
 **Next Steps:**
+
 - Add more detailed logging to track input value changes
 - Verify single source of truth for input field
 - Check if controlled vs uncontrolled input component issue
@@ -399,9 +442,10 @@ First transcription was Korean text ("MBC 뉴스 이덕영입니다") when user 
 Web Speech API auto-detects language based on speech patterns or system locale. No explicit language configuration in code.
 
 **Fix Required:**
+
 ```typescript
 // In VoiceService.ts or STT provider configuration:
-recognition.lang = 'en-US'; // Force English
+recognition.lang = "en-US"; // Force English
 ```
 
 **Status:** NOT FIXED
@@ -410,17 +454,17 @@ recognition.lang = 'en-US'; // Force English
 
 ## Files Modified Summary
 
-| File | Lines Changed | Type | Priority |
-|------|---------------|------|----------|
-| `main.js` | 200+ (new file) | Critical | Electron entry point |
-| `package.json` | 1 | Critical | Main entry changed |
-| `launch-luna.ps1` | 50+ (new file) | High | Launch script |
-| `app/main/preload.ts` | 15 | High | Env var exposure |
-| `.env` | 12 | High | Config values |
-| `app/renderer/components/LuxuryApp.tsx` | 100+ | Critical | Multiple fixes |
-| `SIMPLIFIED.md` | 200+ (new file) | Documentation | User guide |
-| `FIX-SUMMARY.md` | 300+ (new file) | Documentation | Technical summary |
-| `JARVIS-MODE-ACTIVATED.md` | 400+ (new file) | Documentation | Feature guide |
+| File                                    | Lines Changed   | Type          | Priority             |
+| --------------------------------------- | --------------- | ------------- | -------------------- |
+| `main.js`                               | 200+ (new file) | Critical      | Electron entry point |
+| `package.json`                          | 1               | Critical      | Main entry changed   |
+| `launch-luna.ps1`                       | 50+ (new file)  | High          | Launch script        |
+| `app/main/preload.ts`                   | 15              | High          | Env var exposure     |
+| `.env`                                  | 12              | High          | Config values        |
+| `app/renderer/components/LuxuryApp.tsx` | 100+            | Critical      | Multiple fixes       |
+| `SIMPLIFIED.md`                         | 200+ (new file) | Documentation | User guide           |
+| `FIX-SUMMARY.md`                        | 300+ (new file) | Documentation | Technical summary    |
+| `JARVIS-MODE-ACTIVATED.md`              | 400+ (new file) | Documentation | Feature guide        |
 
 **Total:** 8 files modified, 3 new files created, ~1200 lines of documentation added
 
@@ -429,15 +473,18 @@ recognition.lang = 'en-US'; // Force English
 ## Build System Status
 
 ### Successful Builds: 5
+
 All builds completed successfully with no TypeScript errors.
 
 ### Build Performance:
+
 - Backend compilation: ~3-5 seconds (tsc)
 - Renderer bundling: ~900ms (esbuild)
 - Total build time: ~6 seconds
 - Bundle size: 1.5MB (renderer.js) - acceptable for Electron app
 
 ### Build Warnings:
+
 - ⚠️ Large bundle size (1.5MB) - could be optimized with code splitting
 - No critical webpack or esbuild errors
 
@@ -446,6 +493,7 @@ All builds completed successfully with no TypeScript errors.
 ## Testing Summary
 
 ### Manual Testing Performed:
+
 1. ✅ Application launches successfully
 2. ✅ Voice recognition activates
 3. ✅ Transcriptions received correctly (English and Korean)
@@ -456,6 +504,7 @@ All builds completed successfully with no TypeScript errors.
 8. ❌ Auto-listen after response not tested end-to-end
 
 ### Test Results:
+
 - **Startup Success Rate:** 100% (5/5 launches)
 - **Voice Recognition Success:** 100% (captured all speech)
 - **Auto-Send Success:** ~50% (triggers but UI state issues)
@@ -466,12 +515,14 @@ All builds completed successfully with no TypeScript errors.
 ## Performance Metrics
 
 ### Application Startup:
+
 - Cold start: ~3-5 seconds
 - Backend initialization: ~1-2 seconds
 - Voice service ready: ~1 second after window load
 - Total time to first interaction: ~5 seconds
 
 ### Voice Processing:
+
 - Microphone activation: Instant
 - Speech-to-text latency: ~500ms (Web Speech API)
 - Auto-send delay: 0ms (immediate)
@@ -479,6 +530,7 @@ All builds completed successfully with no TypeScript errors.
 - Text-to-speech latency: Real-time streaming
 
 ### Memory Usage:
+
 - Initial memory: ~150MB
 - With voice active: ~200MB
 - After 10 messages: ~220MB
@@ -489,6 +541,7 @@ All builds completed successfully with no TypeScript errors.
 ## Code Quality Assessment
 
 ### Positive Aspects:
+
 1. ✅ Modern TypeScript codebase
 2. ✅ React with hooks (functional components)
 3. ✅ Security service abstraction
@@ -497,6 +550,7 @@ All builds completed successfully with no TypeScript errors.
 6. ✅ Good error handling in backend
 
 ### Negative Aspects:
+
 1. ❌ Duplicate implementations (2 voice systems, 2 input fields)
 2. ❌ Over-engineered security gates blocking functionality
 3. ❌ Inconsistent state management (React state + ref state)
@@ -508,6 +562,7 @@ All builds completed successfully with no TypeScript errors.
 ### Technical Debt Score: 7/10 (High)
 
 **Debt Categories:**
+
 - Architecture: 8/10 (over-engineered)
 - Code duplication: 9/10 (severe)
 - Testing: 10/10 (no tests)
@@ -519,6 +574,7 @@ All builds completed successfully with no TypeScript errors.
 ## Dependencies Analysis
 
 ### Core Dependencies (Used & Working):
+
 - `electron`: 28.3.2 ✅
 - `react`: 18.x ✅
 - `typescript`: 5.x ✅
@@ -527,15 +583,18 @@ All builds completed successfully with no TypeScript errors.
 - `openai`: Latest ✅
 
 ### Problematic Dependencies:
+
 - `better-sqlite3`: ❌ Platform mismatch
 - `@picovoice/porcupine-web`: ⚠️ Missing WASM assets
 
 ### Potentially Unused Dependencies:
+
 - `@picovoice/porcupine-node`: Not used (web version is used)
 - Multiple webpack loaders for unused build system
 - Various CSS preprocessors (using vanilla CSS)
 
 ### Missing Dependencies:
+
 - Testing framework (Jest/Vitest not configured)
 - E2E testing (Playwright/Cypress not present)
 - Code quality tools (ESLint config incomplete)
@@ -545,16 +604,19 @@ All builds completed successfully with no TypeScript errors.
 ## Configuration Files Status
 
 ### Working:
+
 - ✅ `package.json` - Scripts work, dependencies resolve
 - ✅ `tsconfig.json` - TypeScript compiles successfully
 - ✅ `.env` - Environment variables now properly exposed
 - ✅ `main.js` - Custom Electron entry point working
 
 ### Partially Working:
+
 - ⚠️ `webpack.config.js` - Not actively used (esbuild is used instead)
 - ⚠️ `.eslintrc` - Exists but linting not enforced in build
 
 ### Missing:
+
 - ❌ `jest.config.js` - No test configuration
 - ❌ `.prettierrc` - Code formatting not standardized
 - ❌ `electron-builder.yml` - Packaging configuration incomplete
@@ -564,6 +626,7 @@ All builds completed successfully with no TypeScript errors.
 ## Security Assessment
 
 ### Security Features Implemented:
+
 1. ✅ Input validation (PII detection, prompt injection filtering)
 2. ✅ Content sanitization
 3. ✅ CORS configuration on backend
@@ -571,6 +634,7 @@ All builds completed successfully with no TypeScript errors.
 5. ✅ Audit logging
 
 ### Security Issues Found:
+
 1. ⚠️ Authentication gate too strict (blocked legitimate functionality)
 2. ⚠️ No rate limiting on voice input (could spam API)
 3. ⚠️ API keys in `.env` (should use secure vault in production)
@@ -584,7 +648,9 @@ All builds completed successfully with no TypeScript errors.
 ## Architectural Problems Identified
 
 ### 1. Monolithic Component Design
+
 `LuxuryApp.tsx` is 1400+ lines containing:
+
 - UI rendering
 - Voice service initialization
 - Security service management
@@ -596,16 +662,20 @@ All builds completed successfully with no TypeScript errors.
 **Recommendation:** Split into smaller components with single responsibilities.
 
 ### 2. State Management Chaos
+
 Multiple state management approaches used simultaneously:
+
 - React useState (messages, input, voice state)
 - Refs (voiceServiceRef, securityServiceRef)
-- Window globals (window.__ENV)
+- Window globals (window.\_\_ENV)
 - IPC state synchronization
 
 **Recommendation:** Standardize on Redux/Zustand or React Context + useReducer.
 
 ### 3. Event Handler Spaghetti
+
 Voice events flow through multiple layers:
+
 ```
 Browser API → VoiceService → Event Emitter →
 LuxuryApp handler → State update → React re-render →
@@ -615,6 +685,7 @@ Input field update → IPC → Main process
 **Recommendation:** Implement unidirectional data flow with clear event boundaries.
 
 ### 4. Tight Coupling
+
 - VoiceService tightly coupled to SecurityService
 - UI components directly call backend services
 - Database layer mixed with business logic
@@ -626,6 +697,7 @@ Input field update → IPC → Main process
 ## Comparison with Modern Best Practices
 
 ### What Luna Does Well:
+
 1. ✅ Uses TypeScript (type safety)
 2. ✅ Modern React patterns (hooks, functional components)
 3. ✅ Electron for cross-platform desktop
@@ -633,6 +705,7 @@ Input field update → IPC → Main process
 5. ✅ Environment-based configuration
 
 ### What Luna Lacks:
+
 1. ❌ No state management library (Redux/MobX/Zustand)
 2. ❌ No component library (Material-UI/Ant Design)
 3. ❌ No testing strategy (unit/integration/e2e)
@@ -646,6 +719,7 @@ Input field update → IPC → Main process
 ## Next Session Recommendations
 
 ### Critical (Do First):
+
 1. **Fix auto-send/input clearing issue completely**
    - Add comprehensive logging
    - Verify React state flow
@@ -662,12 +736,14 @@ Input field update → IPC → Main process
    - Consolidate related state
 
 ### High Priority:
+
 4. **Add basic error boundaries**
 5. **Implement proper logging system**
 6. **Fix better-sqlite3 for Windows**
 7. **Enable wake word with proper WASM files**
 
 ### Medium Priority:
+
 8. **Refactor LuxuryApp.tsx into smaller components**
 9. **Add unit tests for core functions**
 10. **Optimize bundle size**
@@ -677,17 +753,20 @@ Input field update → IPC → Main process
 ## Lessons Learned
 
 ### What Worked:
+
 1. ✅ Pure JavaScript entry point bypassed Electron module issues
 2. ✅ Removing duplicate systems simplified debugging
 3. ✅ Direct API calls more reliable than complex state checks
 4. ✅ Immediate auto-send better than delayed
 
 ### What Didn't Work:
+
 1. ❌ Trying to fix authentication gate while keeping it in place
 2. ❌ Assuming environment variables were properly exposed
 3. ❌ Working around duplicate input fields instead of removing one
 
 ### Best Practices Validated:
+
 1. **Simplicity over complexity** - Removing code often better than adding
 2. **Single source of truth** - One input field, one voice system
 3. **Fail fast** - Don't gate functionality with authentication checks
@@ -716,4 +795,3 @@ Luna Agent has solid foundational architecture but suffered from **severe over-e
 **Biggest Win:** Cutting through complexity to achieve basic functionality. Sometimes the best code is the code you delete.
 
 **Biggest Challenge:** Convincing architecture to get out of its own way. Security and features are important, but not if they prevent the core use case from working.
-

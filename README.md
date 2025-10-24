@@ -47,6 +47,7 @@ cd C:\dev\luna-agent-v1.0-production-complete-2
 ```
 
 This will:
+
 - ✅ Backup your existing files
 - ✅ Deploy all new components
 - ✅ Update package.json
@@ -59,27 +60,28 @@ This will:
 Add to your `webpack.config.js`:
 
 ```javascript
-const optimization = require('./webpack.optimization.js');
+const optimization = require("./webpack.optimization.js");
 
 module.exports = {
   ...existingConfig,
   optimization: optimization.optimization,
-  performance: optimization.performance
+  performance: optimization.performance,
 };
 ```
 
 ### 3. Replace Console Logs
 
 Find and replace in your codebase:
+
 ```javascript
 // Before
-console.log('Something happened');
-console.error('Error occurred');
+console.log("Something happened");
+console.error("Error occurred");
 
 // After
-import { logger } from './utils/logger';
-logger.info('Something happened');
-logger.error('Error occurred');
+import { logger } from "./utils/logger";
+logger.info("Something happened");
+logger.error("Error occurred");
 ```
 
 ### 4. Test the Application
@@ -95,6 +97,7 @@ Check `logs/luna.log` for detailed application logs.
 ### State Management
 
 **Before:**
+
 ```typescript
 const [isListening, setIsListening] = useState(false);
 const [isProcessing, setIsProcessing] = useState(false);
@@ -103,18 +106,21 @@ const [isRecovering, setIsRecovering] = useState(false);
 ```
 
 **After:**
+
 ```typescript
-type VoiceMode = 'idle' | 'listening' | 'processing' | 'speaking';
-const [voiceMode, setVoiceMode] = useState<VoiceMode>('idle');
+type VoiceMode = "idle" | "listening" | "processing" | "speaking";
+const [voiceMode, setVoiceMode] = useState<VoiceMode>("idle");
 // Single source of truth, no race conditions
 ```
 
 ### Component Structure
 
 **Before:**
+
 - 800+ line LuxuryApp.tsx with everything mixed together
 
 **After:**
+
 - LuxuryApp.tsx: 150 lines - orchestration only
 - ConversationView.tsx: Message display logic
 - VoiceControl.tsx: Voice interaction UI
@@ -123,17 +129,19 @@ const [voiceMode, setVoiceMode] = useState<VoiceMode>('idle');
 ### Wake Word Assets
 
 **Before:**
+
 ```typescript
 // ❌ Doesn't work in production
-import workerPath from '@picovoice/porcupine-web/porcupine_worker.js'
+import workerPath from "@picovoice/porcupine-web/porcupine_worker.js";
 ```
 
 **After:**
+
 ```typescript
 // ✅ Works in dev and production
 private getAssetPath(filename: string): string {
   const isDev = process.env.NODE_ENV === 'development';
-  return isDev 
+  return isDev
     ? path.join(__dirname, '../../dist/app/renderer/assets', filename)
     : path.join(process.resourcesPath, 'assets', filename);
 }
@@ -152,16 +160,19 @@ This rebuilds better-sqlite3 for your Electron version.
 ### Wake Word Not Detecting
 
 1. Check assets were copied:
+
 ```bash
 dir dist\app\renderer\assets
 ```
 
 2. Verify Picovoice access key in `.env`:
+
 ```
 PICOVOICE_ACCESS_KEY=your_key_here
 ```
 
 3. Check logs:
+
 ```bash
 type logs\luna.log | findstr "wake"
 ```
@@ -171,6 +182,7 @@ type logs\luna.log | findstr "wake"
 1. Check the error in `logs/luna.log`
 2. Error boundary should show friendly error screen
 3. Restore from backup if needed:
+
 ```bash
 $BackupDir = "backup_YYYYMMDD_HHMMSS"
 Copy-Item $BackupDir\* src\ -Recurse -Force
@@ -178,24 +190,26 @@ Copy-Item $BackupDir\* src\ -Recurse -Force
 
 ## 📊 Performance Improvements
 
-| Metric | Before | After | Improvement |
-|--------|--------|-------|-------------|
-| First Load | ~3000ms | ~1500ms | 50% faster |
-| Bundle Size | ~8MB | ~4MB | 50% smaller |
-| Memory Usage | ~200MB | ~120MB | 40% less |
+| Metric       | Before  | After   | Improvement |
+| ------------ | ------- | ------- | ----------- |
+| First Load   | ~3000ms | ~1500ms | 50% faster  |
+| Bundle Size  | ~8MB    | ~4MB    | 50% smaller |
+| Memory Usage | ~200MB  | ~120MB  | 40% less    |
 
 ## 🎓 What Each File Does
 
 ### `src/utils/logger.ts`
+
 Simple logging to both console and file. No rotation, no complexity.
 
 ```typescript
-import { logger } from './utils/logger';
-logger.info('App started');
-logger.error('Something failed', { error: error.message });
+import { logger } from "./utils/logger";
+logger.info("App started");
+logger.error("Something failed", { error: error.message });
 ```
 
 ### `src/components/ErrorBoundary.tsx`
+
 Catches React errors and shows friendly UI instead of white screen.
 
 ```typescript
@@ -205,15 +219,19 @@ Catches React errors and shows friendly UI instead of white screen.
 ```
 
 ### `src/components/ConversationView.tsx`
+
 Displays messages with auto-scroll. Shows typing indicator when processing.
 
 ### `src/components/VoiceControl.tsx`
+
 Microphone button with visual states (idle/listening/processing/speaking).
 
 ### `scripts/rebuild.js`
+
 Rebuilds better-sqlite3 for your Electron version. Runs automatically on `npm install`.
 
 ### `scripts/copy-assets.js`
+
 Copies wake word WASM files to dist folder. Runs before `npm start` and `npm build`.
 
 ## 📝 Available npm Scripts
@@ -266,6 +284,7 @@ If you encounter issues:
 ## 🎉 You're Done!
 
 Your voice agent is now:
+
 - ✅ More maintainable
 - ✅ Better organized
 - ✅ Properly logged

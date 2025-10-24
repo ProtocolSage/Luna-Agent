@@ -1,4 +1,4 @@
-import fetch, { Headers, Request, Response } from 'node-fetch';
+import fetch, { Headers, Request, Response } from "node-fetch";
 
 // @ts-ignore
 global.fetch = fetch;

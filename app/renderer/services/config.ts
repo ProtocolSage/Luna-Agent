@@ -5,7 +5,10 @@
 
 function safeGetQueryParam(name: string): string | null {
   try {
-    if (typeof window !== 'undefined' && typeof window.location !== 'undefined') {
+    if (
+      typeof window !== "undefined" &&
+      typeof window.location !== "undefined"
+    ) {
       return new URLSearchParams(window.location.search).get(name);
     }
   } catch {}
@@ -14,12 +17,15 @@ function safeGetQueryParam(name: string): string | null {
 
 function computeApiBase(): string {
   // 1) Main process injects apiBase via BrowserWindow.loadFile(..., { query: { apiBase } })
-  const fromQuery = safeGetQueryParam('apiBase');
+  const fromQuery = safeGetQueryParam("apiBase");
   if (fromQuery) return fromQuery;
 
   // 2) Remembered override
   try {
-    const stored = typeof localStorage !== 'undefined' ? localStorage.getItem('luna-api-base') : null;
+    const stored =
+      typeof localStorage !== "undefined"
+        ? localStorage.getItem("luna-api-base")
+        : null;
     if (stored) return stored;
   } catch {}
 
@@ -29,35 +35,41 @@ function computeApiBase(): string {
   if (ENV?.API_BASE) return ENV.API_BASE as string;
 
   // 4) Build-time env (if DefinePlugin provided)
-  if (typeof process !== 'undefined' && (process as any).env) {
+  if (typeof process !== "undefined" && (process as any).env) {
     const penv = (process as any).env as Record<string, string | undefined>;
     if (penv.LUNA_API_BASE) return penv.LUNA_API_BASE;
     if (penv.API_BASE) return penv.API_BASE;
   }
 
   // 5) Safe fallback
-  return 'http://localhost:3000';
+  return "http://localhost:3000";
 }
 
 export const API_BASE = computeApiBase();
 
-console.log('API_BASE =', API_BASE);
+console.log("API_BASE =", API_BASE);
 
 /**
  * Session management functions for bulletproof session handling
  */
 export function saveSessionId(id: string) {
-  try { localStorage.setItem('luna-session-id', id); } catch {}
+  try {
+    localStorage.setItem("luna-session-id", id);
+  } catch {}
 }
 
 export function getSessionId(): string | null {
-  try { return localStorage.getItem('luna-session-id'); } catch { return null; }
+  try {
+    return localStorage.getItem("luna-session-id");
+  } catch {
+    return null;
+  }
 }
 
 /**
  * Helper function for making API calls with proper base URL and credentials
  */
-type ApiFetchInit = Omit<RequestInit, 'body'> & { body?: any };
+type ApiFetchInit = Omit<RequestInit, "body"> & { body?: any };
 
 export async function apiFetch(path: string, init: ApiFetchInit = {}) {
   const url = `${API_BASE}${path}`;
@@ -65,32 +77,46 @@ export async function apiFetch(path: string, init: ApiFetchInit = {}) {
   const headers = new Headers(init.headers as HeadersInit | undefined);
   const body = init.body;
 
-  const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
-  const isBlob = typeof Blob !== 'undefined' && body instanceof Blob;
-  const isArrayBuffer = typeof ArrayBuffer !== 'undefined' && (body instanceof ArrayBuffer || ArrayBuffer.isView(body as any));
-  const isReadableStream = typeof ReadableStream !== 'undefined' && body instanceof ReadableStream;
-  const isURLSearchParams = typeof URLSearchParams !== 'undefined' && body instanceof URLSearchParams;
-  const isPlainObject = !!body && typeof body === 'object' && body.constructor === Object;
-  const shouldJsonify = isPlainObject && !isFormData && !isBlob && !isArrayBuffer && !isReadableStream && !isURLSearchParams;
+  const isFormData =
+    typeof FormData !== "undefined" && body instanceof FormData;
+  const isBlob = typeof Blob !== "undefined" && body instanceof Blob;
+  const isArrayBuffer =
+    typeof ArrayBuffer !== "undefined" &&
+    (body instanceof ArrayBuffer || ArrayBuffer.isView(body as any));
+  const isReadableStream =
+    typeof ReadableStream !== "undefined" && body instanceof ReadableStream;
+  const isURLSearchParams =
+    typeof URLSearchParams !== "undefined" && body instanceof URLSearchParams;
+  const isPlainObject =
+    !!body && typeof body === "object" && body.constructor === Object;
+  const shouldJsonify =
+    isPlainObject &&
+    !isFormData &&
+    !isBlob &&
+    !isArrayBuffer &&
+    !isReadableStream &&
+    !isURLSearchParams;
 
   if (isFormData) {
-    headers.delete('Content-Type');
+    headers.delete("Content-Type");
   } else if (shouldJsonify) {
-    headers.set('Content-Type', 'application/json');
+    headers.set("Content-Type", "application/json");
     finalInit.body = JSON.stringify(body);
   }
 
-  const isDev = typeof process !== 'undefined' && (process as any).env?.NODE_ENV === 'development';
-  if (isDev && path.startsWith('/api/voice/')) {
-    headers.set('x-api-key', 'dev-local');
+  const isDev =
+    typeof process !== "undefined" &&
+    (process as any).env?.NODE_ENV === "development";
+  if (isDev && path.startsWith("/api/voice/")) {
+    headers.set("x-api-key", "dev-local");
   }
 
-  if (path !== '/api/voice/tts/check') {
+  if (path !== "/api/voice/tts/check") {
     const sid = getSessionId();
-    if (sid) headers.set('x-session-id', sid);
+    if (sid) headers.set("x-session-id", sid);
   }
 
-  finalInit.credentials = finalInit.credentials ?? 'include';
+  finalInit.credentials = finalInit.credentials ?? "include";
   finalInit.headers = headers;
 
   return fetch(url, finalInit);
@@ -101,14 +127,20 @@ export async function apiFetch(path: string, init: ApiFetchInit = {}) {
  */
 export async function createSession() {
   const deviceInfo = {
-    platform: (typeof navigator !== 'undefined' && navigator.platform) ? navigator.platform : 'unknown',
-    userAgent: (typeof navigator !== 'undefined' && navigator.userAgent) ? navigator.userAgent : 'unknown'
+    platform:
+      typeof navigator !== "undefined" && navigator.platform
+        ? navigator.platform
+        : "unknown",
+    userAgent:
+      typeof navigator !== "undefined" && navigator.userAgent
+        ? navigator.userAgent
+        : "unknown",
   };
 
-  const res = await apiFetch('/api/auth/session', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ deviceInfo })
+  const res = await apiFetch("/api/auth/session", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ deviceInfo }),
   });
   if (!res.ok) throw new Error(`session create failed: ${res.status}`);
   const data = await res.json().catch(() => ({}));
@@ -117,7 +149,7 @@ export async function createSession() {
 }
 
 export async function validateSession(): Promise<boolean> {
-  const res = await apiFetch('/api/auth/validate', { method: 'GET' });
+  const res = await apiFetch("/api/auth/validate", { method: "GET" });
   if (res.status === 200) return true;
   if (res.status === 401) return false;
   throw new Error(`validate error ${res.status}`);
@@ -131,9 +163,9 @@ export async function initializeSecureSession() {
 
     // 401 or invalid → get new session and retry
     await createSession();
-    await new Promise(r => setTimeout(r, 2 ** (attempt - 1) * 1000));
+    await new Promise((r) => setTimeout(r, 2 ** (attempt - 1) * 1000));
   }
-  throw new Error('Session validation failed after multiple attempts');
+  throw new Error("Session validation failed after multiple attempts");
 }
 
 /**

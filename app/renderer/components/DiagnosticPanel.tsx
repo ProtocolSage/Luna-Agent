@@ -1,9 +1,15 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import './DiagnosticPanel.css';
-import { apiFetch } from '../services/config';
-import { API } from '../config/endpoints';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import "./DiagnosticPanel.css";
+import { apiFetch } from "../services/config";
+import { API } from "../config/endpoints";
 
-type StatusTone = 'positive' | 'negative' | 'warning' | 'neutral';
+type StatusTone = "positive" | "negative" | "warning" | "neutral";
 
 type MemoryUsage = {
   rss?: number;
@@ -36,7 +42,7 @@ interface VoiceStatus {
   };
   availableProviders: string[];
   streaming?: { available?: boolean };
-recommended: string;
+  recommended: string;
   timestamp: string;
 }
 
@@ -50,7 +56,7 @@ interface ModelMetric {
 }
 
 interface CircuitBreakerInfo {
-  state: 'CLOSED' | 'OPEN' | 'HALF_OPEN';
+  state: "CLOSED" | "OPEN" | "HALF_OPEN";
   failures?: number;
   lastFailureTime?: number;
   nextAttemptTime?: number;
@@ -84,49 +90,55 @@ interface SummaryCard {
 
 const REFRESH_INTERVAL = 10_000;
 
-const formatNumber = (value?: number, options: Intl.NumberFormatOptions = { maximumFractionDigits: 0 }): string => {
-  if (typeof value !== 'number' || Number.isNaN(value)) {
-    return '?';
+const formatNumber = (
+  value?: number,
+  options: Intl.NumberFormatOptions = { maximumFractionDigits: 0 },
+): string => {
+  if (typeof value !== "number" || Number.isNaN(value)) {
+    return "?";
   }
-  return new Intl.NumberFormat('en-US', options).format(value);
+  return new Intl.NumberFormat("en-US", options).format(value);
 };
 
 const formatPercent = (value?: number): string => {
-  if (typeof value !== 'number' || Number.isNaN(value)) {
-    return '?';
+  if (typeof value !== "number" || Number.isNaN(value)) {
+    return "?";
   }
   const precision = value >= 100 || value === 0 ? 0 : 1;
   return `${value.toFixed(precision)}%`;
 };
 
 const formatCurrency = (value?: number): string => {
-  if (typeof value !== 'number' || Number.isNaN(value)) {
-    return '$0.00';
+  if (typeof value !== "number" || Number.isNaN(value)) {
+    return "$0.00";
   }
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
     maximumFractionDigits: 2,
   }).format(value);
 };
 
 const formatBytes = (bytes?: number): string => {
-  if (typeof bytes !== 'number' || Number.isNaN(bytes)) {
-    return '?';
+  if (typeof bytes !== "number" || Number.isNaN(bytes)) {
+    return "?";
   }
   if (bytes === 0) {
-    return '0 B';
+    return "0 B";
   }
-  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-  const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  const index = Math.min(
+    Math.floor(Math.log(bytes) / Math.log(1024)),
+    units.length - 1,
+  );
   const value = bytes / Math.pow(1024, index);
   const precision = value >= 100 ? 0 : value >= 10 ? 1 : 2;
   return `${value.toFixed(precision)} ${units[index]}`;
 };
 
 const formatDuration = (seconds?: number): string => {
-  if (typeof seconds !== 'number' || Number.isNaN(seconds)) {
-    return '?';
+  if (typeof seconds !== "number" || Number.isNaN(seconds)) {
+    return "?";
   }
   const totalSeconds = Math.floor(seconds);
   if (totalSeconds < 60) {
@@ -140,14 +152,18 @@ const formatDuration = (seconds?: number): string => {
   if (hours) parts.push(`${hours}h`);
   if (!days && minutes) parts.push(`${minutes}m`);
   if (!parts.length) parts.push(`${totalSeconds % 60}s`);
-  return parts.slice(0, 2).join(' ');
+  return parts.slice(0, 2).join(" ");
 };
 
 const formatTime = (date: Date | null): string => {
   if (!date) {
-    return '?';
+    return "?";
   }
-  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  return date.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
 };
 
 export function DiagnosticPanel() {
@@ -169,35 +185,39 @@ export function DiagnosticPanel() {
     return response.json();
   }, []);
 
-  const refreshData = useCallback(async (options: { silent?: boolean } = {}) => {
-    if (inFlightRef.current) {
-      return;
-    }
-    inFlightRef.current = true;
-    if (!options.silent) {
-      setIsLoading(true);
-    }
-    setError(null);
-    try {
-      const [healthData, metricsData, voiceData] = await Promise.all([
-        fetchJson('/health'),
-        fetchJson('/api/metrics'),
-        fetchJson(API.TTS_CHECK),
-      ]);
-      setHealth(healthData);
-      setMetrics(metricsData);
-      setVoice(voiceData);
-      setLastUpdated(new Date());
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load metrics';
-      setError(message);
-    } finally {
-      if (!options.silent) {
-        setIsLoading(false);
+  const refreshData = useCallback(
+    async (options: { silent?: boolean } = {}) => {
+      if (inFlightRef.current) {
+        return;
       }
-      inFlightRef.current = false;
-    }
-  }, [fetchJson]);
+      inFlightRef.current = true;
+      if (!options.silent) {
+        setIsLoading(true);
+      }
+      setError(null);
+      try {
+        const [healthData, metricsData, voiceData] = await Promise.all([
+          fetchJson("/health"),
+          fetchJson("/api/metrics"),
+          fetchJson(API.TTS_CHECK),
+        ]);
+        setHealth(healthData);
+        setMetrics(metricsData);
+        setVoice(voiceData);
+        setLastUpdated(new Date());
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : "Failed to load metrics";
+        setError(message);
+      } finally {
+        if (!options.silent) {
+          setIsLoading(false);
+        }
+        inFlightRef.current = false;
+      }
+    },
+    [fetchJson],
+  );
 
   useEffect(() => {
     refreshData();
@@ -215,31 +235,34 @@ export function DiagnosticPanel() {
 
   const summaryCards = useMemo<SummaryCard[]>(() => {
     const uptimeSeconds = metrics?.server?.uptime ?? health?.uptime;
-    const statusTone: StatusTone = health?.status === 'OK' ? 'positive' : health ? 'warning' : 'neutral';
+    const statusTone: StatusTone =
+      health?.status === "OK" ? "positive" : health ? "warning" : "neutral";
     return [
       {
-        title: 'Server',
-        value: health?.status ?? 'Unknown',
-        description: health?.version ? `v${health.version}` : 'Version unavailable',
+        title: "Server",
+        value: health?.status ?? "Unknown",
+        description: health?.version
+          ? `v${health.version}`
+          : "Version unavailable",
         tone: statusTone,
       },
       {
-        title: 'Uptime',
+        title: "Uptime",
         value: formatDuration(uptimeSeconds),
-        description: 'Process uptime',
-        tone: 'neutral',
+        description: "Process uptime",
+        tone: "neutral",
       },
       {
-        title: 'Memory (RSS)',
+        title: "Memory (RSS)",
         value: formatBytes(metrics?.server?.memory?.rss ?? health?.memory?.rss),
-        description: 'Resident set size',
-        tone: 'neutral',
+        description: "Resident set size",
+        tone: "neutral",
       },
       {
-        title: 'Model Cost',
+        title: "Model Cost",
         value: formatCurrency(metrics?.totalCost ?? 0),
-        description: 'Cumulative usage',
-        tone: 'neutral',
+        description: "Cumulative usage",
+        tone: "neutral",
       },
     ];
   }, [metrics, health]);
@@ -251,25 +274,28 @@ export function DiagnosticPanel() {
     const cpuUser = metrics?.server?.cpu?.user ?? 0;
     const cpuSystem = metrics?.server?.cpu?.system ?? 0;
     const cpuSeconds = (cpuUser + cpuSystem) / 1_000_000;
-    const cpuLabel = typeof cpuSeconds === 'number' && !Number.isNaN(cpuSeconds) && cpuSeconds > 0
-      ? `${formatNumber(cpuSeconds, { maximumFractionDigits: 2 })}s`
-      : '0s';
+    const cpuLabel =
+      typeof cpuSeconds === "number" &&
+      !Number.isNaN(cpuSeconds) &&
+      cpuSeconds > 0
+        ? `${formatNumber(cpuSeconds, { maximumFractionDigits: 2 })}s`
+        : "0s";
 
     return {
       database: {
-        label: dbOk ? 'Connected' : 'Offline',
-        tone: dbOk ? 'positive' : 'negative',
-        detail: dbOk ? 'Health check passed' : 'Health check failed',
+        label: dbOk ? "Connected" : "Offline",
+        tone: dbOk ? "positive" : "negative",
+        detail: dbOk ? "Health check passed" : "Health check failed",
       },
       security: {
         label: `${bannedIPs} banned`,
-        tone: bannedIPs > 0 ? 'warning' : 'neutral',
+        tone: bannedIPs > 0 ? "warning" : "neutral",
         detail: `${rateLimits} active rate limits`,
       },
       cpu: {
         label: cpuLabel,
-        tone: 'neutral' as StatusTone,
-        detail: 'CPU time (user + system)',
+        tone: "neutral" as StatusTone,
+        detail: "CPU time (user + system)",
       },
     };
   }, [metrics]);
@@ -290,8 +316,10 @@ export function DiagnosticPanel() {
     return Object.entries(metrics.models)
       .map(([name, stats]) => {
         const total = stats.totalRequests || 0;
-        const successRate = total > 0 ? (stats.successfulRequests / total) * 100 : 0;
-        const failureRate = total > 0 ? (stats.failedRequests / total) * 100 : 0;
+        const successRate =
+          total > 0 ? (stats.successfulRequests / total) * 100 : 0;
+        const failureRate =
+          total > 0 ? (stats.failedRequests / total) * 100 : 0;
         return {
           name,
           total,
@@ -309,7 +337,7 @@ export function DiagnosticPanel() {
     if (!metrics?.circuitBreakers) {
       return [] as Array<{
         name: string;
-        state: CircuitBreakerInfo['state'];
+        state: CircuitBreakerInfo["state"];
         failures: number;
         halfOpenCalls?: number;
         nextAttemptTime?: number;
@@ -331,52 +359,54 @@ export function DiagnosticPanel() {
     }
 
     return [
-      { name: 'ElevenLabs', available: !!voice.providers?.elevenlabs },
-      { name: 'OpenAI TTS', available: !!voice.providers?.openai },
-      { name: 'Web Speech', available: !!voice.providers?.webSpeech },
+      { name: "ElevenLabs", available: !!voice.providers?.elevenlabs },
+      { name: "OpenAI TTS", available: !!voice.providers?.openai },
+      { name: "Web Speech", available: !!voice.providers?.webSpeech },
       {
-        name: 'Streaming',
+        name: "Streaming",
         available: !!voice.streaming?.available,
-        badge: voice.streaming?.available ? 'Experimental' : 'Experimental/Unavailable',
+        badge: voice.streaming?.available
+          ? "Experimental"
+          : "Experimental/Unavailable",
       },
     ];
   }, [voice]);
 
   const overallStatus = useMemo(() => {
     if (error) {
-      return 'error';
+      return "error";
     }
-    if (health?.status === 'OK' && metrics?.database !== false) {
-      return 'ok';
+    if (health?.status === "OK" && metrics?.database !== false) {
+      return "ok";
     }
     if (health || metrics) {
-      return 'warn';
+      return "warn";
     }
-    return 'idle';
+    return "idle";
   }, [error, health, metrics]);
 
   const totalRequests = useMemo(() => {
     if (!modelStats.length) {
-      return '0';
+      return "0";
     }
     const sum = modelStats.reduce((acc, stat) => acc + stat.total, 0);
     return formatNumber(sum);
   }, [modelStats]);
 
   return (
-    <div className={`metrics-drawer ${isOpen ? 'open' : ''}`}>
+    <div className={`metrics-drawer ${isOpen ? "open" : ""}`}>
       <button
         type="button"
         className={`metrics-toggle metrics-toggle--${overallStatus}`}
-        onClick={() => setIsOpen(prev => !prev)}
+        onClick={() => setIsOpen((prev) => !prev)}
         aria-expanded={isOpen}
       >
         <span className="metrics-indicator" />
         <span className="metrics-toggle-label">Metrics</span>
         <span className="metrics-toggle-time">
-          {lastUpdated ? `Updated ${formatTime(lastUpdated)}` : 'Awaiting data'}
+          {lastUpdated ? `Updated ${formatTime(lastUpdated)}` : "Awaiting data"}
         </span>
-        <span className="metrics-toggle-caret">{isOpen ? '?' : '?'}</span>
+        <span className="metrics-toggle-caret">{isOpen ? "?" : "?"}</span>
       </button>
 
       {isOpen && (
@@ -401,7 +431,7 @@ export function DiagnosticPanel() {
                 className="metrics-refresh"
                 disabled={isLoading}
               >
-                {isLoading ? 'Refreshing?' : 'Refresh'}
+                {isLoading ? "Refreshing?" : "Refresh"}
               </button>
             </div>
           </header>
@@ -409,8 +439,11 @@ export function DiagnosticPanel() {
           {error && <div className="metrics-error">{error}</div>}
 
           <section className="metrics-summary">
-            {summaryCards.map(card => (
-              <article key={card.title} className={`metrics-card metrics-card--${card.tone ?? 'neutral'}`}>
+            {summaryCards.map((card) => (
+              <article
+                key={card.title}
+                className={`metrics-card metrics-card--${card.tone ?? "neutral"}`}
+              >
                 <h3>{card.title}</h3>
                 <strong>{card.value}</strong>
                 {card.description && <span>{card.description}</span>}
@@ -421,19 +454,31 @@ export function DiagnosticPanel() {
           <section className="metrics-ops">
             <h3>Operational Snapshot</h3>
             <div className="metrics-ops-grid">
-              <div className={`metrics-chip metrics-chip--${operational.database.tone}`}>
+              <div
+                className={`metrics-chip metrics-chip--${operational.database.tone}`}
+              >
                 <span className="metrics-chip-label">Database</span>
-                <span className="metrics-chip-value">{operational.database.label}</span>
+                <span className="metrics-chip-value">
+                  {operational.database.label}
+                </span>
                 <small>{operational.database.detail}</small>
               </div>
-              <div className={`metrics-chip metrics-chip--${operational.security.tone}`}>
+              <div
+                className={`metrics-chip metrics-chip--${operational.security.tone}`}
+              >
                 <span className="metrics-chip-label">Security</span>
-                <span className="metrics-chip-value">{operational.security.label}</span>
+                <span className="metrics-chip-value">
+                  {operational.security.label}
+                </span>
                 <small>{operational.security.detail}</small>
               </div>
-              <div className={`metrics-chip metrics-chip--${operational.cpu.tone}`}>
+              <div
+                className={`metrics-chip metrics-chip--${operational.cpu.tone}`}
+              >
                 <span className="metrics-chip-label">CPU</span>
-                <span className="metrics-chip-value">{operational.cpu.label}</span>
+                <span className="metrics-chip-value">
+                  {operational.cpu.label}
+                </span>
                 <small>{operational.cpu.detail}</small>
               </div>
             </div>
@@ -443,7 +488,9 @@ export function DiagnosticPanel() {
             <div className="metrics-section-heading">
               <h3>Model Performance</h3>
               <span className="metrics-section-meta">
-                {modelStats.length ? `${totalRequests} total requests` : 'No usage yet'}
+                {modelStats.length
+                  ? `${totalRequests} total requests`
+                  : "No usage yet"}
               </span>
             </div>
             {modelStats.length ? (
@@ -461,7 +508,7 @@ export function DiagnosticPanel() {
                     </tr>
                   </thead>
                   <tbody>
-                    {modelStats.map(stat => (
+                    {modelStats.map((stat) => (
                       <tr key={stat.name}>
                         <td>{stat.name}</td>
                         <td>{formatNumber(stat.total)}</td>
@@ -476,7 +523,9 @@ export function DiagnosticPanel() {
                 </table>
               </div>
             ) : (
-              <div className="metrics-placeholder">Model metrics will appear once requests are processed.</div>
+              <div className="metrics-placeholder">
+                Model metrics will appear once requests are processed.
+              </div>
             )}
           </section>
 
@@ -486,7 +535,7 @@ export function DiagnosticPanel() {
             </div>
             {circuitBreakers.length ? (
               <div className="metrics-list">
-                {circuitBreakers.map(item => (
+                {circuitBreakers.map((item) => (
                   <div
                     key={item.name}
                     className={`metrics-list-item metrics-list-item--${item.state.toLowerCase()}`}
@@ -497,18 +546,23 @@ export function DiagnosticPanel() {
                     </div>
                     <div className="metrics-list-detail">
                       <span>{item.failures} failures</span>
-                      {item.state === 'HALF_OPEN' && (
+                      {item.state === "HALF_OPEN" && (
                         <span>{item.halfOpenCalls ?? 0} test calls</span>
                       )}
                       {item.nextAttemptTime && (
-                        <span>Retry at {new Date(item.nextAttemptTime).toLocaleTimeString()}</span>
+                        <span>
+                          Retry at{" "}
+                          {new Date(item.nextAttemptTime).toLocaleTimeString()}
+                        </span>
                       )}
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="metrics-placeholder">Circuit breakers are idle.</div>
+              <div className="metrics-placeholder">
+                Circuit breakers are idle.
+              </div>
             )}
           </section>
 
@@ -516,20 +570,24 @@ export function DiagnosticPanel() {
             <div className="metrics-section-heading">
               <h3>Voice Providers</h3>
               {voice?.recommended && (
-                <span className="metrics-section-meta">Recommended: {voice.recommended}</span>
+                <span className="metrics-section-meta">
+                  Recommended: {voice.recommended}
+                </span>
               )}
             </div>
             {voiceProviders.length ? (
               <div className="metrics-voice-grid">
-                {voiceProviders.map(provider => (
+                {voiceProviders.map((provider) => (
                   <div
                     key={provider.name}
-                    className={`metrics-voice-card ${provider.available ? 'available' : 'unavailable'}`}
+                    className={`metrics-voice-card ${provider.available ? "available" : "unavailable"}`}
                   >
                     <span>{provider.name}</span>
-                    <strong>{provider.available ? 'Online' : 'Offline'}</strong>
+                    <strong>{provider.available ? "Online" : "Offline"}</strong>
                     {provider.badge && (
-                      <span className={`metrics-voice-badge ${provider.available ? 'badge-available' : 'badge-unavailable'}`}>
+                      <span
+                        className={`metrics-voice-badge ${provider.available ? "badge-available" : "badge-unavailable"}`}
+                      >
                         {provider.badge}
                       </span>
                     )}
@@ -537,14 +595,21 @@ export function DiagnosticPanel() {
                 ))}
               </div>
             ) : (
-              <div className="metrics-placeholder">Voice system status unavailable.</div>
+              <div className="metrics-placeholder">
+                Voice system status unavailable.
+              </div>
             )}
           </section>
 
           <footer className="metrics-footer">
-            <span>Last updated {lastUpdated ? formatTime(lastUpdated) : '?'}</span>
             <span>
-              Metrics timestamp {metrics?.timestamp ? new Date(metrics.timestamp).toLocaleTimeString() : '?'}
+              Last updated {lastUpdated ? formatTime(lastUpdated) : "?"}
+            </span>
+            <span>
+              Metrics timestamp{" "}
+              {metrics?.timestamp
+                ? new Date(metrics.timestamp).toLocaleTimeString()
+                : "?"}
             </span>
           </footer>
         </div>
@@ -552,8 +617,3 @@ export function DiagnosticPanel() {
     </div>
   );
 }
-
-
-
-
-

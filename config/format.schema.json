@@ -1,9 +1,39 @@
 {
-  "$schema":"https://json-schema.org/draft/2020-12/schema",
-  "oneOf":[
-    {"type":"object","required":["type","content"],"properties":{"type":{"const":"answer"},"content":{"type":"string"}}},
-    {"type":"object","required":["type","steps"],"properties":{"type":{"const":"plan"},"steps":{"type":"array","items":{"type":"object","required":["tool","args"],"properties":{"tool":{"type":"string"},"args":{"type":"object"}}}}}},
-    {"type":"object","required":["type","question"],"properties":{"type":{"const":"ask"},"question":{"type":"string"}}}
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": ["type", "content"],
+      "properties": {
+        "type": { "const": "answer" },
+        "content": { "type": "string" }
+      }
+    },
+    {
+      "type": "object",
+      "required": ["type", "steps"],
+      "properties": {
+        "type": { "const": "plan" },
+        "steps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["tool", "args"],
+            "properties": {
+              "tool": { "type": "string" },
+              "args": { "type": "object" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": ["type", "question"],
+      "properties": {
+        "type": { "const": "ask" },
+        "question": { "type": "string" }
+      }
+    }
   ]
 }
-

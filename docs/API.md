@@ -21,6 +21,7 @@ Process a user request with the Luna agent.
 **Endpoint:** `POST /api/agent/process`
 
 **Request Body:**
+
 ```json
 {
   "input": "Help me debug this TypeScript error",
@@ -35,6 +36,7 @@ Process a user request with the Luna agent.
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -56,6 +58,7 @@ Check the health status of the Luna agent.
 **Endpoint:** `GET /api/agent/health`
 
 **Response:**
+
 ```json
 {
   "status": "healthy",
@@ -81,6 +84,7 @@ Retrieve the current agent configuration.
 **Endpoint:** `GET /api/agent/config`
 
 **Response:**
+
 ```json
 {
   "taskProfile": {
@@ -96,7 +100,7 @@ Retrieve the current agent configuration.
     "maxSteps": 10
   },
   "policy": {
-    "pii": {"enabled": true},
+    "pii": { "enabled": true },
     "allowlist": ["https://api.github.com"]
   }
 }
@@ -109,6 +113,7 @@ Retrieve agent usage statistics.
 **Endpoint:** `GET /api/agent/stats`
 
 **Response:**
+
 ```json
 {
   "uptime": 1640995200,
@@ -117,8 +122,8 @@ Retrieve agent usage statistics.
   "success_rate": 0.95,
   "active_sessions": 12,
   "memory_usage": {
-    "vector_store": {"documents": 5678},
-    "kv_store": {"sessions": 89}
+    "vector_store": { "documents": 5678 },
+    "kv_store": { "sessions": 89 }
   },
   "cost_metrics": {
     "total_cost_usd": 12.34,
@@ -134,6 +139,7 @@ Retrieve active sessions.
 **Endpoint:** `GET /api/agent/sessions`
 
 **Response:**
+
 ```json
 {
   "sessions": [
@@ -156,6 +162,7 @@ Clear a specific session from memory.
 **Endpoint:** `DELETE /api/agent/sessions/{session_id}`
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -170,11 +177,13 @@ Export telemetry data for analysis.
 **Endpoint:** `GET /api/agent/telemetry/export`
 
 **Query Parameters:**
+
 - `format`: `json` or `csv` (default: `json`)
 - `start_date`: ISO 8601 date string
 - `end_date`: ISO 8601 date string
 
 **Response:**
+
 ```json
 {
   "exported_at": 1640995200000,
@@ -206,6 +215,7 @@ Execute the golden task test suite.
 **Endpoint:** `POST /api/agent/test/golden`
 
 **Request Body:**
+
 ```json
 {
   "task_ids": ["G001", "G002"],
@@ -214,6 +224,7 @@ Execute the golden task test suite.
 ```
 
 **Response:**
+
 ```json
 {
   "run_id": "test_1640995200",
@@ -248,10 +259,12 @@ Handle Slack events (mentions, messages).
 **Endpoint:** `POST /slack/events`
 
 **Headers:**
+
 - `X-Slack-Request-Timestamp`: Request timestamp
 - `X-Slack-Signature`: Request signature
 
 **Request Body:**
+
 ```json
 {
   "type": "event_callback",
@@ -271,12 +284,14 @@ Handle Slack slash commands.
 **Endpoint:** `POST /slack/commands`
 
 **Form Data:**
+
 - `command`: The slash command (e.g., `/luna`)
 - `text`: Command arguments
 - `user_id`: Slack user ID
 - `channel_id`: Slack channel ID
 
 **Response:**
+
 ```json
 {
   "response_type": "in_channel",
@@ -291,6 +306,7 @@ Handle Slack interactive components (buttons, modals).
 **Endpoint:** `POST /slack/interactive`
 
 **Form Data:**
+
 - `payload`: JSON payload with interaction data
 
 ## Error Responses
@@ -327,6 +343,7 @@ API endpoints are rate limited to prevent abuse:
 - **Telemetry endpoints**: 10 requests per minute per IP
 
 Rate limit headers are included in responses:
+
 - `X-RateLimit-Limit`: Request limit per window
 - `X-RateLimit-Remaining`: Remaining requests in window
 - `X-RateLimit-Reset`: Window reset time (Unix timestamp)
@@ -338,6 +355,7 @@ Rate limit headers are included in responses:
 Configure a webhook to receive real-time telemetry events.
 
 **Configuration:**
+
 ```json
 {
   "webhook_url": "https://your-app.com/webhooks/telemetry",
@@ -347,6 +365,7 @@ Configure a webhook to receive real-time telemetry events.
 ```
 
 **Webhook Payload:**
+
 ```json
 {
   "event_type": "request_completed",
@@ -365,18 +384,18 @@ Configure a webhook to receive real-time telemetry events.
 ### JavaScript/TypeScript
 
 ```typescript
-import { LunaAgentClient } from '@luna/agent-sdk';
+import { LunaAgentClient } from "@luna/agent-sdk";
 
 const client = new LunaAgentClient({
-  baseUrl: 'http://localhost:5000',
-  apiKey: 'your-api-key'
+  baseUrl: "http://localhost:5000",
+  apiKey: "your-api-key",
 });
 
 // Process a request
 const response = await client.process({
-  input: 'Help me debug this code',
-  sessionId: 'user_123',
-  language: 'en'
+  input: "Help me debug this code",
+  sessionId: "user_123",
+  language: "en",
 });
 
 console.log(response.content);
@@ -427,21 +446,22 @@ For real-time communication, Luna Agent supports WebSocket connections.
 ### Connection
 
 ```javascript
-const ws = new WebSocket('ws://localhost:5000/ws');
+const ws = new WebSocket("ws://localhost:5000/ws");
 
 ws.onopen = () => {
-  console.log('Connected to Luna Agent');
+  console.log("Connected to Luna Agent");
 };
 
 ws.onmessage = (event) => {
   const data = JSON.parse(event.data);
-  console.log('Received:', data);
+  console.log("Received:", data);
 };
 ```
 
 ### Message Format
 
 **Client to Server:**
+
 ```json
 {
   "type": "process_request",
@@ -453,6 +473,7 @@ ws.onmessage = (event) => {
 ```
 
 **Server to Client:**
+
 ```json
 {
   "type": "response",
@@ -467,6 +488,7 @@ ws.onmessage = (event) => {
 ## Changelog
 
 ### v1.0.0 (2024-01-01)
+
 - Initial API release
 - Agent processing endpoints
 - Slack integration
@@ -476,4 +498,3 @@ ws.onmessage = (event) => {
 ---
 
 For more information, visit the [Luna Agent Documentation](https://docs.luna-agent.com).
-

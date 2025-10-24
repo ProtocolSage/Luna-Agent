@@ -5,13 +5,13 @@ export interface MemoryDocument {
   embedding?: number[]; // Changed from vector to embedding
   metadata?: Record<string, any>;
   timestamp: string;
-  type: 'conversation' | 'document' | 'goal' | 'reminder' | 'journal';
+  type: "conversation" | "document" | "goal" | "reminder" | "journal";
   sessionId?: string;
 }
 
 export interface Vector {
   id: string;
-  embedding: number[]; // Changed from vector to embedding  
+  embedding: number[]; // Changed from vector to embedding
 }
 
 export interface SearchResult {
@@ -73,7 +73,7 @@ export interface ModelConfig {
 
 export interface CircuitBreakerState {
   /** "CLOSED" normal, "OPEN" tripped, "HALF_OPEN" probing */
-  state: 'CLOSED' | 'OPEN' | 'HALF_OPEN';
+  state: "CLOSED" | "OPEN" | "HALF_OPEN";
   failures: number;
   lastFailureTime?: number;
   nextAttemptTime?: number;

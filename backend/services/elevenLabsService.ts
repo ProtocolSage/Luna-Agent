@@ -1,13 +1,12 @@
-
-import axios, { AxiosError } from 'axios';
-import { AbortController } from 'abort-controller';
-import { PhraseCache, AudioBuf } from '../../agent/voice/cache';
-import { Voices, VoiceName } from '../../agent/voice/voices';
+import axios, { AxiosError } from "axios";
+import { AbortController } from "abort-controller";
+import { PhraseCache, AudioBuf } from "../../agent/voice/cache";
+import { Voices, VoiceName } from "../../agent/voice/voices";
 
 // Configuration from environment variables
 const API_KEY = process.env.ELEVEN_API_KEY;
 const DEFAULT_VOICE_ID = process.env.ELEVEN_DEFAULT_VOICE_ID || Voices.Nova;
-const MODEL_ID = process.env.ELEVEN_MODEL_ID || 'eleven_monolingual_v1';
+const MODEL_ID = process.env.ELEVEN_MODEL_ID || "eleven_monolingual_v1";
 const MAX_CHARS_PER_REQUEST = 4500;
 
 // Circuit Breaker states
@@ -56,7 +55,7 @@ export class ElevenLabsService {
   async playText(text: string): Promise<void> {
     const cached = this.cache.get(text);
     if (cached) {
-      console.log('🎯 Cache hit - instant playback');
+      console.log("🎯 Cache hit - instant playback");
       return this.pipeBufferToSpeaker(cached);
     }
 
@@ -85,13 +84,17 @@ export class ElevenLabsService {
         await this.playing;
       } catch (err) {
         if (signal.aborted) return;
-        console.error('ElevenLabsService error:', err);
+        console.error("ElevenLabsService error:", err);
       }
     }
   }
 
   /** Fetch audio stream for a given text */
-  async fetchAudioStream(text: string, voiceId?: string, options?: { stability?: number; similarityBoost?: number }): Promise<any> {
+  async fetchAudioStream(
+    text: string,
+    voiceId?: string,
+    options?: { stability?: number; similarityBoost?: number },
+  ): Promise<any> {
     return this.executeApiRequest(async () => {
       const response = await axios.post(
         `https://api.elevenlabs.io/v1/text-to-speech/${voiceId || this.currentVoiceId}/stream`,
@@ -105,13 +108,13 @@ export class ElevenLabsService {
         },
         {
           headers: {
-            'xi-api-key': API_KEY,
-            'Accept': 'audio/mpeg',
-            'Content-Type': 'application/json',
+            "xi-api-key": API_KEY,
+            Accept: "audio/mpeg",
+            "Content-Type": "application/json",
           },
-          responseType: 'stream',
+          responseType: "stream",
           timeout: 30000,
-        }
+        },
       );
       return response.data;
     });
@@ -133,13 +136,13 @@ export class ElevenLabsService {
         },
         {
           headers: {
-            'xi-api-key': API_KEY,
-            'Accept': 'audio/mpeg',
-            'Content-Type': 'application/json',
+            "xi-api-key": API_KEY,
+            Accept: "audio/mpeg",
+            "Content-Type": "application/json",
           },
-          responseType: 'arraybuffer',
+          responseType: "arraybuffer",
           timeout: 30000,
-        }
+        },
       );
       return Buffer.from(response.data);
     });
@@ -156,39 +159,47 @@ export class ElevenLabsService {
         },
         {
           headers: {
-            'xi-api-key': API_KEY,
-            'Accept': 'audio/mpeg',
-            'Content-Type': 'application/json',
+            "xi-api-key": API_KEY,
+            Accept: "audio/mpeg",
+            "Content-Type": "application/json",
           },
-          responseType: 'arraybuffer',
+          responseType: "arraybuffer",
           timeout: 30000,
           signal: signal,
-        }
+        },
       );
 
       const audioData = response.data;
       const duration = Date.now() - startTime;
-      console.log(`🎯 Voice metrics: Total ${duration}ms, ${audioData.byteLength} bytes`);
+      console.log(
+        `🎯 Voice metrics: Total ${duration}ms, ${audioData.byteLength} bytes`,
+      );
 
       // In a real implementation, this would be sent to renderer via IPC
-      const estimatedDuration = audioData.byteLength / (128 * 1000 / 8);
-      await new Promise(resolve => setTimeout(resolve, estimatedDuration * 1000));
+      const estimatedDuration = audioData.byteLength / ((128 * 1000) / 8);
+      await new Promise((resolve) =>
+        setTimeout(resolve, estimatedDuration * 1000),
+      );
     });
   }
 
   private async pipeBufferToSpeaker(buffer: AudioBuf): Promise<void> {
     // Simulate playing cached audio buffer
     // In a real implementation, this would send the buffer to the audio output
-    const estimatedDuration = buffer.byteLength / (128 * 1000 / 8);
-    console.log(`🔊 Playing cached audio: ${buffer.byteLength} bytes, ~${estimatedDuration.toFixed(1)}s`);
-    await new Promise(resolve => setTimeout(resolve, estimatedDuration * 1000));
+    const estimatedDuration = buffer.byteLength / ((128 * 1000) / 8);
+    console.log(
+      `🔊 Playing cached audio: ${buffer.byteLength} bytes, ~${estimatedDuration.toFixed(1)}s`,
+    );
+    await new Promise((resolve) =>
+      setTimeout(resolve, estimatedDuration * 1000),
+    );
   }
 
   private chunkText(text: string): string[] {
     if (text.length <= MAX_CHARS_PER_REQUEST) return [text];
     const chunks: string[] = [];
     const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
-    let currentChunk = '';
+    let currentChunk = "";
 
     for (const sentence of sentences) {
       if (currentChunk.length + sentence.length <= MAX_CHARS_PER_REQUEST) {
@@ -205,7 +216,7 @@ export class ElevenLabsService {
 
   private async executeApiRequest<T>(requestFn: () => Promise<T>): Promise<T> {
     if (this.circuitBreakerState === CircuitBreakerState.OPEN) {
-      throw new Error('Circuit breaker is open. Skipping API request.');
+      throw new Error("Circuit breaker is open. Skipping API request.");
     }
 
     let retries = 0;
@@ -221,13 +232,16 @@ export class ElevenLabsService {
           throw error;
         }
         this.handleFailure();
-        if (retries >= maxRetries || !this.isRetryableError(error as AxiosError)) {
+        if (
+          retries >= maxRetries ||
+          !this.isRetryableError(error as AxiosError)
+        ) {
           throw error;
         }
         retries++;
         const delay = this.getRetryDelay(retries);
         console.log(`Retrying API request in ${delay}ms...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
+        await new Promise((resolve) => setTimeout(resolve, delay));
       }
     }
   }
@@ -236,7 +250,7 @@ export class ElevenLabsService {
     if (error.response) {
       return error.response.status >= 500;
     }
-    return ['ECONNRESET', 'ETIMEDOUT'].includes(error.code || '');
+    return ["ECONNRESET", "ETIMEDOUT"].includes(error.code || "");
   }
 
   private getRetryDelay(retryCount: number): number {
@@ -250,7 +264,7 @@ export class ElevenLabsService {
     this.failures = 0;
     if (this.circuitBreakerState === CircuitBreakerState.HALF_OPEN) {
       this.circuitBreakerState = CircuitBreakerState.CLOSED;
-      console.log('Circuit breaker is now closed.');
+      console.log("Circuit breaker is now closed.");
     }
   }
 
@@ -258,10 +272,10 @@ export class ElevenLabsService {
     this.failures++;
     if (this.failures >= this.failureThreshold) {
       this.circuitBreakerState = CircuitBreakerState.OPEN;
-      console.error('Circuit breaker is now open.');
+      console.error("Circuit breaker is now open.");
       setTimeout(() => {
         this.circuitBreakerState = CircuitBreakerState.HALF_OPEN;
-        console.log('Circuit breaker is now half-open.');
+        console.log("Circuit breaker is now half-open.");
       }, this.resetTimeout);
     }
   }

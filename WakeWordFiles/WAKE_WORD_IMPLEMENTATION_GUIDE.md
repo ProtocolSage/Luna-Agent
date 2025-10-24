@@ -16,13 +16,15 @@ This solution provides a robust wake word detection system with automatic fallba
 ### Option A: Simple Web Speech API Solution (Fastest)
 
 1. **Copy the WakeWordService.ts to your project:**
+
 ```powershell
 Copy-Item -Path "WakeWordService.ts" -Destination "app\renderer\services\WakeWordService.ts"
 ```
 
 2. **Update your LuxuryApp.tsx to use the simple service:**
+
 ```typescript
-import { WakeWordService } from '../services/WakeWordService';
+import { WakeWordService } from "../services/WakeWordService";
 
 // In your component
 const initializeServices = async () => {
@@ -34,19 +36,20 @@ const initializeServices = async () => {
         // Trigger your voice assistant here
         handleWakeWord();
       },
-      keywords: ['hey luna', 'luna']
+      keywords: ["hey luna", "luna"],
     });
-    
+
     await wakeWordService.start();
-    logger.info('Wake word service started (Web Speech API)');
+    logger.info("Wake word service started (Web Speech API)");
   } catch (error) {
-    logger.warn('Wake word not available:', error);
+    logger.warn("Wake word not available:", error);
     // App works fine without it
   }
 };
 ```
 
 3. **Test it:**
+
 ```powershell
 npm start
 ```
@@ -56,6 +59,7 @@ Say "Hey Luna" and watch the console!
 ### Option B: Full Porcupine Integration (Better Accuracy)
 
 1. **Create the directory structure:**
+
 ```powershell
 # Create directories
 New-Item -ItemType Directory -Path "app\renderer\services\wakeWord" -Force
@@ -63,6 +67,7 @@ New-Item -ItemType Directory -Path "app\renderer\public\assets" -Force
 ```
 
 2. **Copy the files:**
+
 ```powershell
 # Copy service files
 Copy-Item "PorcupineClient.ts" "app\renderer\services\wakeWord\PorcupineClient.ts"
@@ -80,6 +85,7 @@ node extract-porcupine-assets.js
    - Place files in: `app\renderer\public\assets\`
 
 4. **Update your main component:**
+
 ```typescript
 import WakeWordListener from '../components/WakeWordListener';
 
@@ -97,6 +103,7 @@ import WakeWordListener from '../components/WakeWordListener';
 ## 🏗️ Build Process Integration
 
 Add to your `package.json` scripts:
+
 ```json
 {
   "scripts": {
@@ -110,11 +117,13 @@ Add to your `package.json` scripts:
 ## 🔍 How It Works
 
 ### Automatic Fallback Chain
+
 1. **First Try**: Porcupine (if access key + assets available)
 2. **Fallback**: Web Speech API (works in Chrome/Edge)
 3. **Final**: No wake word (app works normally)
 
 ### Web Speech API Advantages
+
 - ✅ No external dependencies
 - ✅ Works immediately in Chrome/Edge
 - ✅ No API keys required
@@ -122,6 +131,7 @@ Add to your `package.json` scripts:
 - ✅ Zero configuration
 
 ### Porcupine Advantages
+
 - ✅ Works offline
 - ✅ Better accuracy
 - ✅ Custom wake words
@@ -131,20 +141,25 @@ Add to your `package.json` scripts:
 ## 🐛 Troubleshooting
 
 ### Issue: "EBADPLATFORM error"
+
 **Solution**: Already handled! The improved scripts skip platform-specific dependencies.
 
 ### Issue: "Wake word assets not found"
+
 **Solution**: App automatically uses Web Speech API - no action needed!
 
 ### Issue: "Microphone permission denied"
+
 **Solution**: Browser will prompt for permission. User must click "Allow".
 
 ### Issue: "Web Speech API not supported"
+
 **Solution**: Wake word will be disabled. App works normally without it.
 
 ## 📝 Environment Variables
 
 Optional - only needed for Porcupine:
+
 ```env
 # .env file
 PICOVOICE_ACCESS_KEY=your_key_here  # Get from https://console.picovoice.ai/
@@ -177,7 +192,7 @@ PICOVOICE_ACCESS_KEY=your_key_here  # Get from https://console.picovoice.ai/
 ## 💡 Quick Decision Tree
 
 ```
-Need wake word immediately? 
+Need wake word immediately?
   → Use WakeWordService.ts with Web Speech API ✅
 
 Want best accuracy?

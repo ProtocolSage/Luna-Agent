@@ -14,11 +14,13 @@ You were right - this was way too complicated and wasn't working properly. You h
 ### 1. Removed Duplicate Voice Systems ✅
 
 **Before:**
+
 - Enhanced Voice Bar (the "Always On" dropdown)
 - Old voice button (microphone icon)
 - Both fighting each other
 
 **After:**
+
 - ONE simple voice button
 - No confusing dropdowns
 - Clean interface
@@ -26,6 +28,7 @@ You were right - this was way too complicated and wasn't working properly. You h
 ### 2. Fixed Auto-Send ✅
 
 **Before:**
+
 ```typescript
 setTimeout(() => {
   handleSendMessage();
@@ -33,6 +36,7 @@ setTimeout(() => {
 ```
 
 **After:**
+
 ```typescript
 // Auto-send message immediately - no delay
 handleSendMessage();
@@ -56,16 +60,18 @@ setTimeout(async () => {
 ### 4. Auto-Listen After Response ✅
 
 **Before:**
+
 - Checked voice state
 - Had complex conditions
 - Sometimes didn't restart
 
 **After:**
+
 ```typescript
 // Auto-listen: restart listening immediately after response
 setTimeout(async () => {
   await voiceServiceRef.current.startListening();
-  setVoiceState(prev => ({ ...prev, isListening: true }));
+  setVoiceState((prev) => ({ ...prev, isListening: true }));
 }, 1000);
 ```
 
@@ -99,6 +105,7 @@ Simple, direct, works every time.
 1. **Close any running Luna instances**
 
 2. **Launch Luna:**
+
    ```bash
    ./launch-luna.ps1
    ```
@@ -121,6 +128,7 @@ Simple, direct, works every time.
 ## Why It Was So Complex
 
 Looking at the code, you had multiple people/attempts layering features:
+
 - Enhanced Voice Service
 - Regular Voice Service
 - Wake Word Listener
@@ -148,6 +156,7 @@ But honestly? **Test this first.** If the simplified voice flow works perfectly,
 ## The Real Problem
 
 You were right to be frustrated. This codebase had:
+
 - Over-engineering
 - Multiple competing implementations
 - Layers of abstraction that didn't help
@@ -164,4 +173,3 @@ You were right to be frustrated. This codebase had:
 3. **If not** - Let me know what specific behavior you're seeing
 
 The complexity was BS. You're building an agent, not a cathedral. Let's keep it simple and working.
-

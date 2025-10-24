@@ -5,7 +5,9 @@ class InMemoryDatabase {
   constructor() {
     this.messages = [];
     this.settings = {};
-    console.log('[Database] Using in-memory database (no compilation required)');
+    console.log(
+      "[Database] Using in-memory database (no compilation required)",
+    );
   }
 
   // Messages
@@ -19,7 +21,7 @@ class InMemoryDatabase {
       role,
       content,
       timestamp: new Date().toISOString(),
-      ...metadata
+      ...metadata,
     };
     this.messages.push(message);
     return message;
@@ -45,7 +47,7 @@ class InMemoryDatabase {
     return {
       run: () => ({ changes: 1 }),
       get: () => null,
-      all: () => []
+      all: () => [],
     };
   }
 }

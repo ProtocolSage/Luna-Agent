@@ -1,6 +1,6 @@
-import { ElevenLabsService } from '../../backend/services/elevenLabsService';
-import { PriorityQueue } from '../voice/priorityQueue';
-import { Voices, VoiceName } from '../voice/voices';
+import { ElevenLabsService } from "../../backend/services/elevenLabsService";
+import { PriorityQueue } from "../voice/priorityQueue";
+import { Voices, VoiceName } from "../voice/voices";
 
 export interface SpeakOptions {
   interrupt?: boolean;
@@ -13,11 +13,13 @@ export class VoiceService {
 
   constructor() {
     this.elevenLabsService = new ElevenLabsService();
-    this.queue = new PriorityQueue((text: string) => this.elevenLabsService.playText(text));
+    this.queue = new PriorityQueue((text: string) =>
+      this.elevenLabsService.playText(text),
+    );
   }
 
   async initialize(): Promise<void> {
-    console.log('🎤 Voice service initialized');
+    console.log("🎤 Voice service initialized");
   }
 
   async speak(text: string, options: SpeakOptions = {}): Promise<void> {
@@ -67,7 +69,9 @@ export function initializeVoiceService(): VoiceService {
 
 export function getVoiceService(): VoiceService {
   if (!voiceService) {
-    throw new Error('VoiceService not initialized. Call initializeVoiceService first.');
+    throw new Error(
+      "VoiceService not initialized. Call initializeVoiceService first.",
+    );
   }
   return voiceService;
 }

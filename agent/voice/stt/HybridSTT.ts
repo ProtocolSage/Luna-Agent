@@ -1,7 +1,7 @@
-import { EventEmitter } from 'events';
-import { CloudSTT } from './CloudSTT';
-import { WhisperSTT } from './WhisperSTT';
-import type { STTEngine, STTTranscript } from './STTEngine';
+import { EventEmitter } from "events";
+import { CloudSTT } from "./CloudSTT";
+import { WhisperSTT } from "./WhisperSTT";
+import type { STTEngine, STTTranscript } from "./STTEngine";
 
 export class HybridSTT extends EventEmitter implements STTEngine {
   #engine: STTEngine;
@@ -15,16 +15,16 @@ export class HybridSTT extends EventEmitter implements STTEngine {
     this.#wire(this.#engine);
   }
 
-  async start() { 
+  async start() {
     if (this.#isStarted) return;
     this.#isStarted = true;
     console.log(`[HybridSTT] Starting with ${this.#engine.constructor.name}`);
-    await this.#engine.start(); 
+    await this.#engine.start();
   }
 
-  async stop() { 
+  async stop() {
     this.#isStarted = false;
-    await this.#engine.stop();  
+    await this.#engine.stop();
   }
 
   getCurrentEngine(): string {
@@ -53,12 +53,12 @@ export class HybridSTT extends EventEmitter implements STTEngine {
   /* ---------- internal ---------- */
 
   #wire(engine: STTEngine) {
-    engine.on('transcript', (t) => {
+    engine.on("transcript", (t) => {
       // Forward transcript events with engine info
-      this.emit('transcript', t);
+      this.emit("transcript", t);
     });
-    
-    engine.on('fatal', (e) => {
+
+    engine.on("fatal", (e) => {
       console.warn(`[HybridSTT] ${engine.constructor.name} failed:`, e.message);
       this.#swap(e);
     });
@@ -66,22 +66,34 @@ export class HybridSTT extends EventEmitter implements STTEngine {
 
   async #swap(err: Error) {
     const currentEngine = this.#engine.constructor.name;
-    
+
     // PREVENT ENDLESS LOOP: If both engines fail with the same error, stop switching
-    if (err.message.includes('getUserMedia')) {
-      console.error('[HybridSTT] CRITICAL: getUserMedia not available in main process context');
-      console.error('[HybridSTT] STT system must run in renderer process where browser APIs exist');
+    if (err.message.includes("getUserMedia")) {
+      console.error(
+        "[HybridSTT] CRITICAL: getUserMedia not available in main process context",
+      );
+      console.error(
+        "[HybridSTT] STT system must run in renderer process where browser APIs exist",
+      );
       this.#isStarted = false;
-      this.emit('fatal', new Error('STT system incompatible with main process - needs renderer process'));
+      this.emit(
+        "fatal",
+        new Error(
+          "STT system incompatible with main process - needs renderer process",
+        ),
+      );
       return;
     }
-    
-    const next = this.#engine instanceof CloudSTT
-      ? new WhisperSTT()           // cloud → whisper
-      : new CloudSTT();            // whisper → cloud (we'll retry)
 
-    console.log(`[HybridSTT] Switching from ${currentEngine} to ${next.constructor.name} due to: ${err.message}`);
-    
+    const next =
+      this.#engine instanceof CloudSTT
+        ? new WhisperSTT() // cloud → whisper
+        : new CloudSTT(); // whisper → cloud (we'll retry)
+
+    console.log(
+      `[HybridSTT] Switching from ${currentEngine} to ${next.constructor.name} due to: ${err.message}`,
+    );
+
     await this.#switchEngine(next);
   }
 
@@ -90,7 +102,7 @@ export class HybridSTT extends EventEmitter implements STTEngine {
     try {
       await this.#engine.stop();
     } catch (err) {
-      console.warn('[HybridSTT] Error stopping previous engine:', err);
+      console.warn("[HybridSTT] Error stopping previous engine:", err);
     }
 
     // Switch to new engine
@@ -101,13 +113,18 @@ export class HybridSTT extends EventEmitter implements STTEngine {
     if (this.#isStarted) {
       try {
         await newEngine.start();
-        console.log(`[HybridSTT] Successfully switched to ${newEngine.constructor.name}`);
-        this.emit('engine-switched', {
+        console.log(
+          `[HybridSTT] Successfully switched to ${newEngine.constructor.name}`,
+        );
+        this.emit("engine-switched", {
           engine: newEngine.constructor.name,
-          isCloud: newEngine instanceof CloudSTT
+          isCloud: newEngine instanceof CloudSTT,
         });
       } catch (startErr) {
-        console.error(`[HybridSTT] Failed to start ${newEngine.constructor.name}:`, startErr);
+        console.error(
+          `[HybridSTT] Failed to start ${newEngine.constructor.name}:`,
+          startErr,
+        );
         // This will emit fatal and trigger another swap
       }
     }
@@ -120,19 +137,19 @@ export class HybridSTT extends EventEmitter implements STTEngine {
     error?: string;
   }> {
     const engineName = this.#engine.constructor.name;
-    
+
     try {
       // For CloudSTT, we could add a health check method
       // For now, we assume it's healthy if it's not throwing errors
       return {
         currentEngine: engineName,
-        isHealthy: true
+        isHealthy: true,
       };
     } catch (error: any) {
       return {
         currentEngine: engineName,
         isHealthy: false,
-        error: error.message
+        error: error.message,
       };
     }
   }
@@ -150,7 +167,7 @@ export class HybridSTT extends EventEmitter implements STTEngine {
       isCloud: this.#engine instanceof CloudSTT,
       isLocal: this.#engine instanceof WhisperSTT,
       isStarted: this.#isStarted,
-      preferLocal: this.#preferLocal
+      preferLocal: this.#preferLocal,
     };
   }
 }

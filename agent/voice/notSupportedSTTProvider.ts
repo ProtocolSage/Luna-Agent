@@ -1,4 +1,4 @@
-import { EventEmitter } from 'events';
+import { EventEmitter } from "events";
 
 /**
  * Fallback STT provider for environments where speech-to-text is not available.
@@ -6,7 +6,12 @@ import { EventEmitter } from 'events';
  */
 export class NotSupportedSTTProvider extends EventEmitter {
   start(): void {
-    this.emit('error', new Error('Speech-to-text is not supported in the Electron main process.'));
+    this.emit(
+      "error",
+      new Error(
+        "Speech-to-text is not supported in the Electron main process.",
+      ),
+    );
   }
   stop(): void {}
 }

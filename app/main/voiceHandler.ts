@@ -1,10 +1,13 @@
-import { ipcMain, BrowserWindow } from 'electron';
-import { EventEmitter } from 'events';
-import path from 'path';
-import { initializeConversationManager, getConversationManager } from '../../agent/voice/conversationManager';
-import { initializeVoiceService } from '../../agent/services/voiceService';
+import { ipcMain, BrowserWindow } from "electron";
+import { EventEmitter } from "events";
+import path from "path";
+import {
+  initializeConversationManager,
+  getConversationManager,
+} from "../../agent/voice/conversationManager";
+import { initializeVoiceService } from "../../agent/services/voiceService";
 // HybridSTT removed - using renderer-based STT instead
-import axios from 'axios';
+import axios from "axios";
 
 export class VoiceHandler extends EventEmitter {
   private mainWindow: BrowserWindow | null = null;
@@ -12,7 +15,7 @@ export class VoiceHandler extends EventEmitter {
   private isInitialized: boolean = false;
   private backendUrl: string;
   private isListening: boolean = false;
-  private currentMode: 'auto' | 'push' | 'manual' = 'manual';
+  private currentMode: "auto" | "push" | "manual" = "manual";
   private pushToTalkActive: boolean = false;
   private elevenLabsAvailable: boolean = false;
   // hybridSTT removed - using renderer-based STT
@@ -26,21 +29,30 @@ export class VoiceHandler extends EventEmitter {
     super();
     this.mainWindow = window;
     // Prefer constructor-provided URL over default
-    this.backendUrl = backendUrl || process.env.BACKEND_URL || 'http://localhost:3000';
-    console.log('[VoiceHandler] Initialized with backend URL:', this.backendUrl);
+    this.backendUrl =
+      backendUrl || process.env.BACKEND_URL || "http://localhost:3000";
+    console.log(
+      "[VoiceHandler] Initialized with backend URL:",
+      this.backendUrl,
+    );
     this.setupIPCHandlers();
     // STT handlers removed - using renderer-based STT
-    
+
     // VoiceService must be initialized before conversationManager when ElevenLabs is available
     this.elevenLabsAvailable = !!process.env.ELEVEN_API_KEY;
     if (!this.elevenLabsAvailable) {
-      console.warn('[VoiceHandler] ELEVEN_API_KEY not configured; ElevenLabs TTS disabled. Falling back to browser speech.');
+      console.warn(
+        "[VoiceHandler] ELEVEN_API_KEY not configured; ElevenLabs TTS disabled. Falling back to browser speech.",
+      );
     } else {
       try {
         initializeVoiceService();
       } catch (error) {
         this.elevenLabsAvailable = false;
-        console.warn('[VoiceHandler] Failed to initialize ElevenLabs voice service:', error);
+        console.warn(
+          "[VoiceHandler] Failed to initialize ElevenLabs voice service:",
+          error,
+        );
       }
     }
     this.initializeConversationManager();
@@ -59,182 +71,199 @@ export class VoiceHandler extends EventEmitter {
 
   private setupIPCHandlers(): void {
     // Initialize voice system
-    ipcMain.on('voice:initialize', async (event) => {
+    ipcMain.on("voice:initialize", async (event) => {
       try {
         await this.initialize();
-        event.reply('voice:initialized');
+        event.reply("voice:initialized");
       } catch (error: any) {
-        console.error('Voice initialization error:', error);
-        event.reply('voice:error', error.message);
+        console.error("Voice initialization error:", error);
+        event.reply("voice:error", error.message);
       }
     });
 
     // STT status handler (was missing)
-    ipcMain.handle('stt:get-status', async () => {
+    ipcMain.handle("stt:get-status", async () => {
       return {
-        currentEngine: 'RendererHybridSTT',
+        currentEngine: "RendererHybridSTT",
         isCloud: false,
         isLocal: true,
         isStarted: this.isListening,
-        error: null
+        error: null,
       };
     });
 
     // TTS Handlers - Using ElevenLabs API with browser fallback
 
-ipcMain.handle('voice:tts-speak', async (event, text: string, options?: any) => {
-  try {
-    if (this.elevenLabsAvailable) {
-      try {
-        const audioData = await this.getElevenLabsAudio(text);
-        this.sendToRenderer('voice:tts-audio-data', audioData);
-        this.sendToRenderer('voice:tts-started');
-        return { success: true, provider: 'elevenlabs' };
-      } catch (elevenLabsError: any) {
-        console.warn('ElevenLabs TTS failed, falling back to browser TTS:', elevenLabsError);
-      }
-    }
+    ipcMain.handle(
+      "voice:tts-speak",
+      async (event, text: string, options?: any) => {
+        try {
+          if (this.elevenLabsAvailable) {
+            try {
+              const audioData = await this.getElevenLabsAudio(text);
+              this.sendToRenderer("voice:tts-audio-data", audioData);
+              this.sendToRenderer("voice:tts-started");
+              return { success: true, provider: "elevenlabs" };
+            } catch (elevenLabsError: any) {
+              console.warn(
+                "ElevenLabs TTS failed, falling back to browser TTS:",
+                elevenLabsError,
+              );
+            }
+          }
 
-    this.sendToRenderer('voice:tts-browser-speak', { text, options });
-    this.sendToRenderer('voice:tts-started');
-    return { success: true, provider: this.elevenLabsAvailable ? 'browser-fallback' : 'browser' };
-  } catch (error: any) {
-    console.error('voice:tts-speak fatal error:', error);
-    this.sendToRenderer('voice:tts-error', error?.message ?? 'All TTS providers failed');
-    return { success: false, error: error?.message ?? 'All TTS providers failed' };
-  }
-});
+          this.sendToRenderer("voice:tts-browser-speak", { text, options });
+          this.sendToRenderer("voice:tts-started");
+          return {
+            success: true,
+            provider: this.elevenLabsAvailable ? "browser-fallback" : "browser",
+          };
+        } catch (error: any) {
+          console.error("voice:tts-speak fatal error:", error);
+          this.sendToRenderer(
+            "voice:tts-error",
+            error?.message ?? "All TTS providers failed",
+          );
+          return {
+            success: false,
+            error: error?.message ?? "All TTS providers failed",
+          };
+        }
+      },
+    );
 
-    ipcMain.on('voice:tts-stop', async (event) => {
+    ipcMain.on("voice:tts-stop", async (event) => {
       try {
         // Signal renderer to stop audio playback
-        this.sendToRenderer('voice:tts-stop-playback');
-        event.reply('voice:tts-stopped');
+        this.sendToRenderer("voice:tts-stop-playback");
+        event.reply("voice:tts-stopped");
       } catch (error: any) {
-        event.reply('voice:tts-error', error.message);
+        event.reply("voice:tts-error", error.message);
       }
     });
 
-    ipcMain.on('voice:tts-switch-voice', (event, voiceName: string) => {
+    ipcMain.on("voice:tts-switch-voice", (event, voiceName: string) => {
       try {
         // Store voice preference (can be used when calling ElevenLabs)
-        event.reply('voice:tts-voice-changed', voiceName);
+        event.reply("voice:tts-voice-changed", voiceName);
       } catch (error: any) {
-        event.reply('voice:tts-error', error.message);
+        event.reply("voice:tts-error", error.message);
       }
     });
 
     // Start listening - NOW USES HYBRID STT
-    ipcMain.on('voice:start-listening', async (event) => {
+    ipcMain.on("voice:start-listening", async (event) => {
       try {
         await this.startListening();
-        event.reply('voice:listening-started');
+        event.reply("voice:listening-started");
       } catch (error: any) {
-        console.error('Start listening error:', error);
-        event.reply('voice:error', error.message);
+        console.error("Start listening error:", error);
+        event.reply("voice:error", error.message);
       }
     });
 
     // Stop listening - NOW USES HYBRID STT
-    ipcMain.on('voice:stop-listening', async (event) => {
+    ipcMain.on("voice:stop-listening", async (event) => {
       try {
         await this.stopListening();
-        event.reply('voice:listening-stopped');
+        event.reply("voice:listening-stopped");
       } catch (error: any) {
-        console.error('Stop listening error:', error);
-        event.reply('voice:error', error.message);
+        console.error("Stop listening error:", error);
+        event.reply("voice:error", error.message);
       }
     });
 
     // Push-to-talk - REAL implementation
-    ipcMain.on('voice:push-to-talk', async (event, pressed: boolean) => {
+    ipcMain.on("voice:push-to-talk", async (event, pressed: boolean) => {
       try {
         await this.handlePushToTalk(pressed);
-        event.reply('voice:push-to-talk-' + (pressed ? 'pressed' : 'released'));
+        event.reply("voice:push-to-talk-" + (pressed ? "pressed" : "released"));
       } catch (error: any) {
-        console.error('Push-to-talk error:', error);
-        event.reply('voice:error', error.message);
+        console.error("Push-to-talk error:", error);
+        event.reply("voice:error", error.message);
       }
     });
 
-    ipcMain.on('voice:set-mode', (event, mode: 'auto' | 'push' | 'manual') => {
+    ipcMain.on("voice:set-mode", (event, mode: "auto" | "push" | "manual") => {
       try {
         this.currentMode = mode;
         console.log(`Voice mode changed to: ${mode}`);
-        
+
         // Stop current listening if changing modes
         if (this.isListening) {
           this.stopListening();
         }
-        
+
         // Auto-start listening in auto mode
-        if (mode === 'auto' && this.conversationManager) {
+        if (mode === "auto" && this.conversationManager) {
           this.conversationManager.config.autoListen = true;
           this.startListening();
         }
-        
-        event.reply('voice:mode-changed', mode);
+
+        event.reply("voice:mode-changed", mode);
       } catch (error: any) {
-        console.error('Set mode error:', error);
-        event.reply('voice:error', error.message);
+        console.error("Set mode error:", error);
+        event.reply("voice:error", error.message);
       }
     });
 
-    ipcMain.handle('voice:get-state', async () => {
+    ipcMain.handle("voice:get-state", async () => {
       return {
         isListening: this.isListening,
         isInitialized: this.isInitialized,
         currentMode: this.currentMode,
         pushToTalkActive: this.pushToTalkActive,
         conversationState: this.conversationManager?.getState() || null,
-        sttStatus: null // STT status now managed by renderer
+        sttStatus: null, // STT status now managed by renderer
       };
     });
 
-    ipcMain.handle('voice:get-history', async () => {
+    ipcMain.handle("voice:get-history", async () => {
       if (this.conversationManager) {
         return this.conversationManager.getConversationHistory();
       }
       return [];
     });
 
-    ipcMain.on('voice:clear-history', (event) => {
+    ipcMain.on("voice:clear-history", (event) => {
       try {
         if (this.conversationManager) {
           this.conversationManager.clearHistory();
         }
-        event.reply('voice:history-cleared');
+        event.reply("voice:history-cleared");
       } catch (error: any) {
-        console.error('Clear history error:', error);
-        event.reply('voice:error', error.message);
+        console.error("Clear history error:", error);
+        event.reply("voice:error", error.message);
       }
     });
 
-    ipcMain.on('voice:command', async (event, command: string) => {
+    ipcMain.on("voice:command", async (event, command: string) => {
       try {
         await this.processVoiceCommand(command);
-        event.reply('voice:command-processed', command);
+        event.reply("voice:command-processed", command);
       } catch (error: any) {
-        console.error('Voice command error:', error);
-        event.reply('voice:error', error.message);
+        console.error("Voice command error:", error);
+        event.reply("voice:error", error.message);
       }
     });
 
     // Handle chat messages
-    ipcMain.handle('voice:chat-with-tts', async (event, message: string) => {
+    ipcMain.handle("voice:chat-with-tts", async (event, message: string) => {
       try {
         const response = await this.sendToAgent(message);
         return { success: true, response };
       } catch (error: any) {
-        console.error('Chat error:', error);
+        console.error("Chat error:", error);
         return { success: false, error: error.message };
       }
     });
 
     // Handle VAD (Voice Activity Detection) events from renderer
-    ipcMain.on('vad', (event, data) => {
-      if (data.status === 'stt-failed') {
-        console.log('[VoiceHandler] Renderer STT failed, hybrid STT will handle this');
+    ipcMain.on("vad", (event, data) => {
+      if (data.status === "stt-failed") {
+        console.log(
+          "[VoiceHandler] Renderer STT failed, hybrid STT will handle this",
+        );
         // The hybrid STT system will automatically handle failover
       }
     });
@@ -242,75 +271,79 @@ ipcMain.handle('voice:tts-speak', async (event, text: string, options?: any) => 
 
   private async getElevenLabsAudio(text: string): Promise<Buffer> {
     const ELEVEN_API_KEY = process.env.ELEVEN_API_KEY;
-    
+
     if (!this.elevenLabsAvailable || !ELEVEN_API_KEY) {
-      throw new Error('ElevenLabs TTS not available');
+      throw new Error("ElevenLabs TTS not available");
     }
 
     try {
-      const voiceId = 'rSZFtT0J8GtnLqoDoFAp'; // Nova Westbrook voice
-      
+      const voiceId = "rSZFtT0J8GtnLqoDoFAp"; // Nova Westbrook voice
+
       const response = await axios.post(
         `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream`,
         {
           text,
-          model_id: 'eleven_monolingual_v1',
+          model_id: "eleven_monolingual_v1",
           voice_settings: {
             stability: 0.5,
             similarity_boost: 0.75,
             style: 0.0,
-            use_speaker_boost: true
-          }
+            use_speaker_boost: true,
+          },
         },
         {
           headers: {
-            'xi-api-key': ELEVEN_API_KEY,
-            'Content-Type': 'application/json',
-            'Accept': 'audio/mpeg'
+            "xi-api-key": ELEVEN_API_KEY,
+            "Content-Type": "application/json",
+            Accept: "audio/mpeg",
           },
-          responseType: 'arraybuffer',
-          timeout: 10000 // 10 second timeout
-        }
+          responseType: "arraybuffer",
+          timeout: 10000, // 10 second timeout
+        },
       );
 
       return Buffer.from(response.data);
     } catch (error: any) {
-      console.error('ElevenLabs API error:', error.message);
-      
+      console.error("ElevenLabs API error:", error.message);
+
       // Provide more specific error messages
-      if (error.code === 'ECONNREFUSED') {
-        throw new Error('Cannot connect to ElevenLabs API');
+      if (error.code === "ECONNREFUSED") {
+        throw new Error("Cannot connect to ElevenLabs API");
       } else if (error.response?.status === 401) {
-        throw new Error('Invalid ElevenLabs API key');
+        throw new Error("Invalid ElevenLabs API key");
       } else if (error.response?.status === 429) {
-        throw new Error('ElevenLabs API rate limit exceeded');
+        throw new Error("ElevenLabs API rate limit exceeded");
       }
-      
+
       throw error;
     }
   }
 
   private async sendToAgent(text: string): Promise<string> {
     try {
-      const response = await axios.post(`${this.backendUrl}/api/agent/chat`, {
-        message: text,
-        sessionId: this.getSessionId(),
-        mode: 'voice',
-        useTools: true
-      }, {
-        headers: {
-          'Content-Type': 'application/json'
+      const response = await axios.post(
+        `${this.backendUrl}/api/agent/chat`,
+        {
+          message: text,
+          sessionId: this.getSessionId(),
+          mode: "voice",
+          useTools: true,
         },
-        timeout: 30000
-      });
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+          timeout: 30000,
+        },
+      );
 
       // Handle different response types from agent
       if (response.data) {
-        if (response.data.type === 'tool_results' && response.data.results) {
+        if (response.data.type === "tool_results" && response.data.results) {
           // Handle tool execution results
           const toolResults = response.data.results;
           if (Array.isArray(toolResults) && toolResults.length > 0) {
-            return toolResults.map(r => r.result || r.toString()).join('\n');
+            return toolResults.map((r) => r.result || r.toString()).join("\n");
           }
         } else if (response.data.response) {
           // Handle direct response
@@ -318,20 +351,20 @@ ipcMain.handle('voice:tts-speak', async (event, text: string, options?: any) => 
         } else if (response.data.content) {
           // Handle content-based response
           return response.data.content;
-        } else if (typeof response.data === 'string') {
+        } else if (typeof response.data === "string") {
           // Handle plain string response
           return response.data;
         }
       }
-      
-      throw new Error('Invalid response from agent');
+
+      throw new Error("Invalid response from agent");
     } catch (error: any) {
-      console.error('Failed to send to agent:', error);
-      
-      if (error.code === 'ECONNREFUSED') {
+      console.error("Failed to send to agent:", error);
+
+      if (error.code === "ECONNREFUSED") {
         return "I'm sorry, I cannot connect to the backend service right now.";
       }
-      
+
       throw error;
     }
   }
@@ -348,18 +381,18 @@ ipcMain.handle('voice:tts-speak', async (event, text: string, options?: any) => 
 
   private async initialize(): Promise<void> {
     try {
-      console.log('Initializing voice handler...');
-      
+      console.log("Initializing voice handler...");
+
       // Initialize conversation manager if not already done
       if (!this.conversationManager) {
         await this.initializeConversationManager();
       }
-      
+
       this.isInitialized = true;
-      console.log('Voice handler initialized successfully');
-      this.emit('initialized');
+      console.log("Voice handler initialized successfully");
+      this.emit("initialized");
     } catch (error: any) {
-      console.error('Voice handler initialization failed:', error);
+      console.error("Voice handler initialization failed:", error);
       throw error;
     }
   }
@@ -369,27 +402,29 @@ ipcMain.handle('voice:tts-speak', async (event, text: string, options?: any) => 
       if (this.conversationManager) {
         return; // Already initialized
       }
-      
-      console.log('Conversation manager initialization skipped - voice input handled by hybrid STT');
-      
+
+      console.log(
+        "Conversation manager initialization skipped - voice input handled by hybrid STT",
+      );
+
       // Set up a simple state manager instead of full conversation manager
       this.conversationManager = {
         getState: () => ({
           isListening: this.isListening,
           isSpeaking: false,
           isProcessing: false,
-          currentTranscript: '',
+          currentTranscript: "",
           conversationHistory: [],
-          lastInteractionTime: Date.now()
+          lastInteractionTime: Date.now(),
         }),
         getConversationHistory: () => [],
         clearHistory: () => {},
-        destroy: () => {}
+        destroy: () => {},
       };
-      
-      console.log('Simple conversation state manager initialized');
+
+      console.log("Simple conversation state manager initialized");
     } catch (error: any) {
-      console.error('Failed to initialize conversation state manager:', error);
+      console.error("Failed to initialize conversation state manager:", error);
       throw error;
     }
   }
@@ -397,94 +432,104 @@ ipcMain.handle('voice:tts-speak', async (event, text: string, options?: any) => 
   private async startListening(): Promise<void> {
     try {
       // STT start is now handled by renderer process
-      console.log('[VoiceHandler] STT start requested - handled by renderer');
+      console.log("[VoiceHandler] STT start requested - handled by renderer");
       this.isListening = true;
-      this.sendToRenderer('voice:listening-started');
-      console.log('[VoiceHandler] Voice listening started (renderer-based STT)');
+      this.sendToRenderer("voice:listening-started");
+      console.log(
+        "[VoiceHandler] Voice listening started (renderer-based STT)",
+      );
     } catch (error: any) {
-      console.error('[VoiceHandler] Failed to start listening:', error);
+      console.error("[VoiceHandler] Failed to start listening:", error);
       this.isListening = false;
       throw error;
     }
   }
-  
+
   private async stopListening(): Promise<void> {
     try {
       // STT stop is now handled by renderer process
-      console.log('[VoiceHandler] STT stop requested - handled by renderer');
+      console.log("[VoiceHandler] STT stop requested - handled by renderer");
       this.isListening = false;
-      this.sendToRenderer('voice:listening-stopped');
-      console.log('[VoiceHandler] Voice listening stopped');
+      this.sendToRenderer("voice:listening-stopped");
+      console.log("[VoiceHandler] Voice listening stopped");
     } catch (error: any) {
-      console.error('[VoiceHandler] Error stopping listening:', error);
+      console.error("[VoiceHandler] Error stopping listening:", error);
     }
   }
-  
+
   private async handlePushToTalk(pressed: boolean): Promise<void> {
-    if (this.currentMode !== 'push') {
+    if (this.currentMode !== "push") {
       return; // Only handle push-to-talk in push mode
     }
-    
+
     if (pressed && !this.pushToTalkActive) {
       this.pushToTalkActive = true;
-      console.log('Push-to-talk activated');
+      console.log("Push-to-talk activated");
       await this.startListening();
     } else if (!pressed && this.pushToTalkActive) {
       this.pushToTalkActive = false;
-      console.log('Push-to-talk released');
+      console.log("Push-to-talk released");
       await this.stopListening();
     }
   }
-  
 
-private async processVoiceCommand(command: string): Promise<void> {
-  try {
-    // Process voice command by sending to agent and speaking response
-    const response = await this.sendToAgent(command);
+  private async processVoiceCommand(command: string): Promise<void> {
+    try {
+      // Process voice command by sending to agent and speaking response
+      const response = await this.sendToAgent(command);
 
-    // Generate TTS for the response
-    if (this.elevenLabsAvailable) {
-      try {
-        const audioData = await this.getElevenLabsAudio(response);
-        this.sendToRenderer('voice:tts-audio-data', audioData);
-      } catch (error: any) {
-        console.warn('ElevenLabs TTS failed during processVoiceCommand:', error);
-        this.sendToRenderer('voice:tts-browser-speak', { text: response });
+      // Generate TTS for the response
+      if (this.elevenLabsAvailable) {
+        try {
+          const audioData = await this.getElevenLabsAudio(response);
+          this.sendToRenderer("voice:tts-audio-data", audioData);
+        } catch (error: any) {
+          console.warn(
+            "ElevenLabs TTS failed during processVoiceCommand:",
+            error,
+          );
+          this.sendToRenderer("voice:tts-browser-speak", { text: response });
+        }
+      } else {
+        this.sendToRenderer("voice:tts-browser-speak", { text: response });
       }
-    } else {
-      this.sendToRenderer('voice:tts-browser-speak', { text: response });
-    }
 
-    console.log('Voice command processed successfully');
-  } catch (error: any) {
-    console.error('Failed to process voice command:', error);
-    throw error;
+      console.log("Voice command processed successfully");
+    } catch (error: any) {
+      console.error("Failed to process voice command:", error);
+      throw error;
+    }
   }
-}
 
   // Public methods
 
-async speak(text: string): Promise<void> {
-  try {
-    if (this.elevenLabsAvailable) {
-      try {
-        const audioData = await this.getElevenLabsAudio(text);
-        this.sendToRenderer('voice:tts-audio-data', audioData);
-        return;
-      } catch (error: any) {
-        console.warn('ElevenLabs TTS failed in speak(), falling back to browser TTS:', error);
+  async speak(text: string): Promise<void> {
+    try {
+      if (this.elevenLabsAvailable) {
+        try {
+          const audioData = await this.getElevenLabsAudio(text);
+          this.sendToRenderer("voice:tts-audio-data", audioData);
+          return;
+        } catch (error: any) {
+          console.warn(
+            "ElevenLabs TTS failed in speak(), falling back to browser TTS:",
+            error,
+          );
+        }
       }
-    }
 
-    this.sendToRenderer('voice:tts-browser-speak', { text });
-  } catch (error: any) {
-    console.warn('ElevenLabs TTS failed in speak(), falling back to browser TTS:', error);
-    this.sendToRenderer('voice:tts-browser-speak', { text });
+      this.sendToRenderer("voice:tts-browser-speak", { text });
+    } catch (error: any) {
+      console.warn(
+        "ElevenLabs TTS failed in speak(), falling back to browser TTS:",
+        error,
+      );
+      this.sendToRenderer("voice:tts-browser-speak", { text });
+    }
   }
-}
 
   async interrupt(): Promise<void> {
-    this.sendToRenderer('voice:tts-stop-playback');
+    this.sendToRenderer("voice:tts-stop-playback");
   }
 
   getState(): any {
@@ -494,7 +539,7 @@ async speak(text: string): Promise<void> {
       currentMode: this.currentMode,
       pushToTalkActive: this.pushToTalkActive,
       conversationState: this.conversationManager?.getState() || null,
-      sttStatus: null // STT status now managed by renderer
+      sttStatus: null, // STT status now managed by renderer
     };
   }
 
@@ -509,45 +554,45 @@ async speak(text: string): Promise<void> {
       if (this.isListening) {
         await this.stopListening();
       }
-      
+
       // Clean up hybrid STT
       // STT cleanup now handled by renderer process
-      console.log('[VoiceHandler] Cleanup - STT managed by renderer');
-      
+      console.log("[VoiceHandler] Cleanup - STT managed by renderer");
+
       // Clean up conversation manager
       if (this.conversationManager) {
         this.conversationManager.destroy();
         this.conversationManager = null;
       }
-      
+
       // Remove all IPC handlers
-      ipcMain.removeAllListeners('voice:initialize');
-      ipcMain.removeAllListeners('voice:start-listening');
-      ipcMain.removeAllListeners('voice:stop-listening');
-      ipcMain.removeAllListeners('voice:push-to-talk');
-      ipcMain.removeAllListeners('voice:set-mode');
-      ipcMain.removeAllListeners('voice:command');
-      ipcMain.removeAllListeners('voice:clear-history');
-      ipcMain.removeAllListeners('voice:tts-speak');
-      ipcMain.removeAllListeners('voice:tts-stop');
-      ipcMain.removeAllListeners('voice:tts-switch-voice');
-      ipcMain.removeAllListeners('vad');
-      
+      ipcMain.removeAllListeners("voice:initialize");
+      ipcMain.removeAllListeners("voice:start-listening");
+      ipcMain.removeAllListeners("voice:stop-listening");
+      ipcMain.removeAllListeners("voice:push-to-talk");
+      ipcMain.removeAllListeners("voice:set-mode");
+      ipcMain.removeAllListeners("voice:command");
+      ipcMain.removeAllListeners("voice:clear-history");
+      ipcMain.removeAllListeners("voice:tts-speak");
+      ipcMain.removeAllListeners("voice:tts-stop");
+      ipcMain.removeAllListeners("voice:tts-switch-voice");
+      ipcMain.removeAllListeners("vad");
+
       // Remove handle-based IPC handlers
-      ipcMain.removeHandler('voice:get-state');
-      ipcMain.removeHandler('voice:get-history');
-      ipcMain.removeHandler('voice:chat-with-tts');
+      ipcMain.removeHandler("voice:get-state");
+      ipcMain.removeHandler("voice:get-history");
+      ipcMain.removeHandler("voice:chat-with-tts");
       // Only remove the STT handler that is actually registered
-      ipcMain.removeHandler('stt:get-status');
-      
+      ipcMain.removeHandler("stt:get-status");
+
       this.isInitialized = false;
       this.isListening = false;
       this.pushToTalkActive = false;
       this.removeAllListeners();
-      
-      console.log('Voice handler destroyed successfully');
+
+      console.log("Voice handler destroyed successfully");
     } catch (error: any) {
-      console.error('Error during voice handler cleanup:', error);
+      console.error("Error during voice handler cleanup:", error);
     }
   }
 }

@@ -17,7 +17,7 @@ export class PriorityQueue {
   enqueue(text: string, priority = 0): Promise<void> {
     return new Promise<void>((res, rej) => {
       this.list.push({ text, priority, resolve: res, reject: rej });
-      this.list.sort((a, b) => b.priority - a.priority);   // high → low
+      this.list.sort((a, b) => b.priority - a.priority); // high → low
       this.drain();
     });
   }
@@ -42,7 +42,7 @@ export class PriorityQueue {
     // Reject all pending jobs
     while (this.list.length) {
       const job = this.list.shift()!;
-      job.reject(new Error('Queue cleared'));
+      job.reject(new Error("Queue cleared"));
     }
   }
 

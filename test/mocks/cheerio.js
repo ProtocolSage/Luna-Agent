@@ -2,22 +2,22 @@
 // This provides a basic implementation for testing
 
 const cheerioMock = {
-  load: function(html) {
+  load: function (html) {
     return function $(selector) {
       // Mock jQuery-like object
       const mockElement = {
-        text: () => '',
-        html: () => '',
+        text: () => "",
+        html: () => "",
         attr: () => undefined,
         find: () => mockElement,
         each: () => mockElement,
         map: () => [],
         toArray: () => [],
-        length: 0
+        length: 0,
       };
       return mockElement;
     };
-  }
+  },
 };
 
 module.exports = cheerioMock;

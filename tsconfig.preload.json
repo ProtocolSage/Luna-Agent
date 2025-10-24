@@ -12,12 +12,6 @@
     "types": ["node", "electron"],
     "skipLibCheck": true
   },
-  "include": [
-    "app/main/preload.ts"
-  ],
-  "exclude": [
-    "app/renderer/**/*",
-    "backend/**/*",
-    "node_modules"
-  ]
+  "include": ["app/main/preload.ts"],
+  "exclude": ["app/renderer/**/*", "backend/**/*", "node_modules"]
 }

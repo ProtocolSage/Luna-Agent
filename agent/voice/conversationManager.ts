@@ -1,7 +1,7 @@
-import { EventEmitter } from 'events';
-import { VoiceInput, initializeVoiceInput } from './voiceInput';
-import { VoiceEngine } from './voiceEngine';
-import { getVoiceService } from '../services/voiceService';
+import { EventEmitter } from "events";
+import { VoiceInput, initializeVoiceInput } from "./voiceInput";
+import { VoiceEngine } from "./voiceEngine";
+import { getVoiceService } from "../services/voiceService";
 
 interface ConversationConfig {
   wakeWord?: string;
@@ -10,7 +10,7 @@ interface ConversationConfig {
   interruptionEnabled?: boolean;
   maxSilenceDuration?: number;
   responseTimeout?: number;
-  sttProvider?: 'webSpeech' | 'whisper' | 'azure' | 'google' | 'dummy';
+  sttProvider?: "webSpeech" | "whisper" | "azure" | "google" | "dummy";
   apiKey?: string;
 }
 
@@ -20,7 +20,7 @@ interface ConversationState {
   isProcessing: boolean;
   currentTranscript: string;
   conversationHistory: Array<{
-    role: 'user' | 'assistant';
+    role: "user" | "assistant";
     content: string;
     timestamp: number;
   }>;
@@ -41,24 +41,24 @@ export class ConversationManager extends EventEmitter {
   constructor(config: ConversationConfig = {}) {
     super();
     this.config = {
-      wakeWord: process.env.WAKE_WORD || 'luna',
-      autoListen: process.env.VOICE_AUTO_LISTEN === 'true',
-      voiceActivityDetection: process.env.VOICE_ACTIVITY_DETECTION === 'true',
+      wakeWord: process.env.WAKE_WORD || "luna",
+      autoListen: process.env.VOICE_AUTO_LISTEN === "true",
+      voiceActivityDetection: process.env.VOICE_ACTIVITY_DETECTION === "true",
       interruptionEnabled: true,
       maxSilenceDuration: 2000,
       responseTimeout: 30000,
-      sttProvider: (process.env.STT_PROVIDER as any) || 'webSpeech',
+      sttProvider: (process.env.STT_PROVIDER as any) || "webSpeech",
       apiKey: process.env.OPENAI_API_KEY,
-      ...config
+      ...config,
     };
 
     this.state = {
       isListening: false,
       isSpeaking: false,
       isProcessing: false,
-      currentTranscript: '',
+      currentTranscript: "",
       conversationHistory: [],
-      lastInteractionTime: Date.now()
+      lastInteractionTime: Date.now(),
     };
 
     this.voiceEngine = getVoiceService();
@@ -68,11 +68,15 @@ export class ConversationManager extends EventEmitter {
     try {
       // Initialize voice input
       this.voiceInput = initializeVoiceInput({
-        provider: this.config.sttProvider! as 'webSpeech' | 'whisper' | 'azure' | 'google',
+        provider: this.config.sttProvider! as
+          | "webSpeech"
+          | "whisper"
+          | "azure"
+          | "google",
         apiKey: this.config.apiKey,
-        language: 'en-US',
+        language: "en-US",
         continuous: true,
-        interimResults: true
+        interimResults: true,
       });
 
       await this.voiceInput.initialize();
@@ -83,7 +87,7 @@ export class ConversationManager extends EventEmitter {
         await this.initializeWakeWord();
       }
 
-      // Initialize voice activity detection if enabled  
+      // Initialize voice activity detection if enabled
       if (this.config.voiceActivityDetection) {
         await this.initializeVAD();
       }
@@ -93,9 +97,9 @@ export class ConversationManager extends EventEmitter {
         await this.startListening();
       }
 
-      this.emit('initialized');
+      this.emit("initialized");
     } catch (error) {
-      this.emit('error', error);
+      this.emit("error", error);
       throw error;
     }
   }
@@ -103,31 +107,31 @@ export class ConversationManager extends EventEmitter {
   private setupVoiceInputListeners(): void {
     if (!this.voiceInput) return;
 
-    this.voiceInput.on('transcription', async (result) => {
+    this.voiceInput.on("transcription", async (result) => {
       if (result.isFinal) {
         this.state.currentTranscript = result.text;
-        this.emit('transcription', result);
-        
+        this.emit("transcription", result);
+
         // Process the transcription
         await this.processUserInput(result.text);
       } else {
         // Handle interim results
-        this.emit('interim-transcription', result);
+        this.emit("interim-transcription", result);
       }
     });
 
-    this.voiceInput.on('recording-started', () => {
+    this.voiceInput.on("recording-started", () => {
       this.state.isListening = true;
-      this.emit('listening-started');
+      this.emit("listening-started");
     });
 
-    this.voiceInput.on('recording-stopped', () => {
+    this.voiceInput.on("recording-stopped", () => {
       this.state.isListening = false;
-      this.emit('listening-stopped');
+      this.emit("listening-stopped");
     });
 
-    this.voiceInput.on('error', (error) => {
-      this.emit('error', error);
+    this.voiceInput.on("error", (error) => {
+      this.emit("error", error);
     });
   }
 
@@ -139,7 +143,7 @@ export class ConversationManager extends EventEmitter {
       this.wakeWordActive = true;
       this.setupWakeWordDetection();
     } catch (error) {
-      console.warn('Wake word detection initialization failed:', error);
+      console.warn("Wake word detection initialization failed:", error);
       // Continue without wake word detection
     }
   }
@@ -149,28 +153,31 @@ export class ConversationManager extends EventEmitter {
 
     // Use Web Speech API for wake word detection simulation
     // In a production environment, this would use a dedicated wake word service
-    if (typeof window !== 'undefined' && 'webkitSpeechRecognition' in window) {
-      const WakeWordRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
+    if (typeof window !== "undefined" && "webkitSpeechRecognition" in window) {
+      const WakeWordRecognition =
+        (window as any).webkitSpeechRecognition ||
+        (window as any).SpeechRecognition;
       const wakeRecognition = new WakeWordRecognition();
       wakeRecognition.continuous = true;
       wakeRecognition.interimResults = false;
-      wakeRecognition.lang = 'en-US';
+      wakeRecognition.lang = "en-US";
 
       wakeRecognition.onresult = (event: any) => {
-        const transcript = event.results[event.results.length - 1][0].transcript.toLowerCase();
+        const transcript =
+          event.results[event.results.length - 1][0].transcript.toLowerCase();
         if (transcript.includes(this.config.wakeWord!.toLowerCase())) {
-          this.emit('wake-word-detected');
+          this.emit("wake-word-detected");
           this.handleWakeWord();
         }
       };
 
       wakeRecognition.onerror = (error: any) => {
-        console.warn('Wake word detection error:', error);
+        console.warn("Wake word detection error:", error);
       };
 
       wakeRecognition.start();
     } else {
-      console.warn('Web Speech API not available for wake word detection');
+      console.warn("Web Speech API not available for wake word detection");
     }
   }
 
@@ -178,10 +185,10 @@ export class ConversationManager extends EventEmitter {
     try {
       // Simplified VAD using audio level detection
       // In production, this would use WebRTC VAD or similar
-      console.log('Voice Activity Detection enabled');
+      console.log("Voice Activity Detection enabled");
       this.vadActive = true;
     } catch (error) {
-      console.warn('VAD initialization failed:', error);
+      console.warn("VAD initialization failed:", error);
     }
   }
 
@@ -202,7 +209,7 @@ export class ConversationManager extends EventEmitter {
     }
 
     await this.voiceInput.startRecording();
-    
+
     // Set response timeout
     this.resetResponseTimer();
   }
@@ -222,35 +229,34 @@ export class ConversationManager extends EventEmitter {
     }
 
     this.state.isProcessing = true;
-    this.emit('processing-started');
+    this.emit("processing-started");
 
     // Add to conversation history
     this.state.conversationHistory.push({
-      role: 'user',
+      role: "user",
       content: text,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     });
 
     try {
       // Send to agent for processing
       const response = await this.sendToAgent(text);
-      
+
       // Add response to history
       this.state.conversationHistory.push({
-        role: 'assistant',
+        role: "assistant",
         content: response,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       });
 
       // Speak the response
       await this.speak(response);
-
     } catch (error) {
-      this.emit('error', error);
+      this.emit("error", error);
     } finally {
       this.state.isProcessing = false;
-      this.emit('processing-stopped');
-      
+      this.emit("processing-stopped");
+
       // Continue listening if auto-listen is enabled
       if (this.config.autoListen && !this.state.isListening) {
         await this.startListening();
@@ -262,17 +268,17 @@ export class ConversationManager extends EventEmitter {
     // This would integrate with the agent's chat endpoint
     // For now, we'll emit an event for the application to handle
     return new Promise((resolve, reject) => {
-      this.emit('agent-request', text, (response: string) => {
+      this.emit("agent-request", text, (response: string) => {
         if (response) {
           resolve(response);
         } else {
-          reject(new Error('No response from agent'));
+          reject(new Error("No response from agent"));
         }
       });
-      
+
       // Timeout if no response
       setTimeout(() => {
-        reject(new Error('Agent response timeout'));
+        reject(new Error("Agent response timeout"));
       }, this.config.responseTimeout!);
     });
   }
@@ -281,15 +287,15 @@ export class ConversationManager extends EventEmitter {
     if (!text) return;
 
     this.state.isSpeaking = true;
-    this.emit('speaking-started');
+    this.emit("speaking-started");
 
     try {
       await this.voiceEngine.playText(text);
     } catch (error) {
-      this.emit('error', error);
+      this.emit("error", error);
     } finally {
       this.state.isSpeaking = false;
-      this.emit('speaking-stopped');
+      this.emit("speaking-stopped");
     }
   }
 
@@ -300,14 +306,14 @@ export class ConversationManager extends EventEmitter {
 
     this.voiceEngine.stopSpeaking();
     this.state.isSpeaking = false;
-    this.emit('speaking-interrupted');
+    this.emit("speaking-interrupted");
   }
 
   private resetResponseTimer(): void {
     this.clearResponseTimer();
     this.responseTimer = setTimeout(() => {
       this.stopListening();
-      this.emit('response-timeout');
+      this.emit("response-timeout");
     }, this.config.responseTimeout!);
   }
 
@@ -334,10 +340,10 @@ export class ConversationManager extends EventEmitter {
 
   private async processEndOfSpeech(): Promise<void> {
     await this.stopListening();
-    
+
     if (this.state.currentTranscript) {
       await this.processUserInput(this.state.currentTranscript);
-      this.state.currentTranscript = '';
+      this.state.currentTranscript = "";
     }
   }
 
@@ -375,7 +381,7 @@ export class ConversationManager extends EventEmitter {
   async destroy(): Promise<void> {
     await this.stopListening();
     await this.stopSpeaking();
-    
+
     if (this.voiceInput) {
       this.voiceInput.destroy();
       this.voiceInput = null;
@@ -399,7 +405,9 @@ export class ConversationManager extends EventEmitter {
 // Export singleton instance
 let conversationManagerInstance: ConversationManager | null = null;
 
-export function initializeConversationManager(config?: ConversationConfig): ConversationManager {
+export function initializeConversationManager(
+  config?: ConversationConfig,
+): ConversationManager {
   if (!conversationManagerInstance) {
     conversationManagerInstance = new ConversationManager(config);
   }

@@ -9,63 +9,77 @@ Transform Luna from button-based to fully natural voice interaction like Jarvis 
 ## 🎯 Core Enhancements
 
 ### 1. **Wake Word Detection** ⭐ PRIORITY
+
 **Current**: Manual button press to start listening
 **Target**: Say "Hey Luna" to activate
 
 **Implementation**:
+
 - Already have Picovoice Porcupine integration (`@picovoice/porcupine-web`)
 - Enable continuous background listening for wake word
 - Low-power mode when idle
 - Activate full listening on wake word detection
 
 **Files to Modify**:
+
 - `app/renderer/components/LuxuryApp.tsx` - Add wake word mode
 - `app/renderer/services/VoiceService.ts` - Implement wake word detection
 
 ### 2. **Automatic Message Sending** ⭐ PRIORITY
+
 **Current**: Transcription appears, user must click "Send"
 **Target**: Auto-send to AI immediately after transcription
 
 **Implementation**:
+
 - After STT completes, automatically trigger chat submission
 - No user interaction needed
 - Show subtle indicator that AI is processing
 
 **Files to Modify**:
+
 - `app/renderer/components/LuxuryApp.tsx:331` - Auto-submit on transcription_received
 
 ### 3. **Continuous Conversation Flow** ⭐ PRIORITY
+
 **Current**: One-shot interaction, stops after each exchange
 **Target**: Continuous back-and-forth like talking to a person
 
 **Implementation**:
+
 - After TTS completes, auto-resume listening
 - Smart silence detection (2-3 seconds) to end turn
 - Visual indicator showing "Listening..." vs "Waiting for you..."
 
 **Already Implemented**:
+
 - `VoiceService.ts:655` - `autoListenAfterSpeaking: true`
 - Just needs to be enabled by default!
 
 ### 4. **Streaming TTS with Sentence Chunking** ⭐ PRIORITY
+
 **Current**: Wait for full response, then speak all at once
 **Target**: Speak each sentence as AI generates it
 
 **Implementation**:
+
 - Parse streaming response into sentences
 - Start TTS on first complete sentence
 - Continue generating while speaking
 - Feels more responsive and natural
 
 **Files to Modify**:
+
 - `app/renderer/components/LuxuryApp.tsx` - Implement sentence-by-sentence TTS
 - `app/renderer/services/VoiceService.ts:689` - Enhanced streaming with sentence detection
 
 ### 5. **Barge-In Capability**
+
 **Current**: Can't interrupt Luna while speaking
 **Target**: Say "Luna" or start speaking to interrupt
 
 **Implementation**:
+
 - Monitor for voice activity during TTS
 - Cancel TTS and start new listening cycle
 - Acknowledge interruption ("Yes?" or just stop cleanly)
@@ -75,27 +89,33 @@ Transform Luna from button-based to fully natural voice interaction like Jarvis 
 ## 🚀 Additional "Jarvis" Features
 
 ### 6. **Ambient Awareness Mode**
+
 - Always listening in background (privacy toggle)
 - Activates on wake word
 - Low-power mode when idle
 - Optional: Respond to phrases like "Luna, remind me..." without wake word
 
 ### 7. **Context Retention**
+
 **Already Implemented**: Memory system active!
+
 - `backend/` has full memory with vector search
 - Just needs integration with conversation flow
 
 ### 8. **Proactive Assistance**
+
 - "It's 2 PM, time for your meeting"
 - "You asked me to remind you about..."
 - Weather updates, news briefings
 
 ### 9. **Multi-Modal Responses**
+
 - Voice + visual cards for complex info
 - Show images, charts, code snippets while explaining
 - Picture-in-picture mode for Luna's responses
 
 ### 10. **Personality Customization**
+
 - Formal vs Casual tone
 - Response speed (fast/thoughtful)
 - Humor level
@@ -106,18 +126,21 @@ Transform Luna from button-based to fully natural voice interaction like Jarvis 
 ## 📋 Implementation Priority
 
 ### Phase 1: Core Natural Interaction (THIS SESSION)
+
 1. ✅ Auto-send transcriptions to AI
 2. ✅ Enable continuous conversation (already in code!)
 3. ✅ Streaming sentence-by-sentence TTS
 4. ⚠️ Wake word detection (optional - can do manual for now)
 
 ### Phase 2: Enhanced Experience
+
 5. Barge-in capability
 6. Better silence detection
 7. Context-aware responses
 8. Visual improvements for voice states
 
 ### Phase 3: Advanced Features
+
 9. Ambient awareness
 10. Proactive assistance
 11. Personality customization
@@ -128,6 +151,7 @@ Transform Luna from button-based to fully natural voice interaction like Jarvis 
 ## 🎬 User Flow: Natural Interaction
 
 ### Current Flow (Button-Based)
+
 ```
 1. User clicks "Listen" button
 2. User speaks: "What's the weather?"
@@ -139,6 +163,7 @@ Transform Luna from button-based to fully natural voice interaction like Jarvis 
 ```
 
 ### Target Flow (Natural/Jarvis-like)
+
 ```
 1. User says: "Hey Luna"
 2. Luna: *chime* (listening indicator)
@@ -178,11 +203,11 @@ private handleTranscriptionReceived = async (transcript: string) => {
 ```typescript
 // In VoiceService initialization
 const voiceService = new VoiceService({
-  autoListenAfterSpeaking: true,  // ✅ Already in code!
-  continuousListening: true,       // Enable this
-  enableVAD: true,                 // Voice Activity Detection
+  autoListenAfterSpeaking: true, // ✅ Already in code!
+  continuousListening: true, // Enable this
+  enableVAD: true, // Voice Activity Detection
   silenceThreshold: 0.01,
-  volumeThreshold: 0.1
+  volumeThreshold: 0.1,
 });
 ```
 
@@ -231,6 +256,7 @@ private async handleStreamingWithSentenceTTS(message: string) {
 ## 🔧 Configuration Options
 
 Add to `.env`:
+
 ```env
 # Voice Configuration
 LUNA_WAKE_WORD_ENABLED=true
@@ -268,6 +294,7 @@ LUNA_PERSONALITY=professional  # professional, casual, friendly
 ```
 
 ### Minimal Mode (Picture-in-Picture)
+
 - Small floating window
 - Just voice waveform + text
 - Always on top
@@ -306,6 +333,7 @@ LUNA_PERSONALITY=professional  # professional, casual, friendly
 **Ready to implement Phase 1!**
 
 Let's start with the highest impact changes:
+
 1. Auto-send transcriptions
 2. Enable continuous conversation
 3. Implement streaming sentence TTS

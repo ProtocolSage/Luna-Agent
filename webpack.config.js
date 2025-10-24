@@ -1,66 +1,66 @@
-const path = require('path');
-const fs = require('fs');
-const webpack = require('webpack');
+const path = require("path");
+const fs = require("fs");
+const webpack = require("webpack");
 
 // Simple plugin to copy HTML and CSS files
 class CopyRendererFilesPlugin {
   apply(compiler) {
-    compiler.hooks.afterEmit.tap('CopyRendererFilesPlugin', () => {
+    compiler.hooks.afterEmit.tap("CopyRendererFilesPlugin", () => {
       // Ensure renderer directory exists
-      const rendererDir = path.join(__dirname, 'dist/app/renderer');
+      const rendererDir = path.join(__dirname, "dist/app/renderer");
       if (!fs.existsSync(rendererDir)) {
         fs.mkdirSync(rendererDir, { recursive: true });
       }
 
       // Copy HTML file
-      const htmlSrc = path.join(__dirname, 'app/renderer/index.html');
-      const htmlDest = path.join(__dirname, 'dist/app/renderer/index.html');
+      const htmlSrc = path.join(__dirname, "app/renderer/index.html");
+      const htmlDest = path.join(__dirname, "dist/app/renderer/index.html");
       if (fs.existsSync(htmlSrc)) {
         fs.copyFileSync(htmlSrc, htmlDest);
-        console.log('Copied index.html to dist/app/renderer/');
+        console.log("Copied index.html to dist/app/renderer/");
       }
 
       // Copy styles directory
-      const stylesSrc = path.join(__dirname, 'app/renderer/styles');
-      const stylesDest = path.join(__dirname, 'dist/app/renderer/styles');
-      
+      const stylesSrc = path.join(__dirname, "app/renderer/styles");
+      const stylesDest = path.join(__dirname, "dist/app/renderer/styles");
+
       if (fs.existsSync(stylesSrc)) {
         if (!fs.existsSync(stylesDest)) {
           fs.mkdirSync(stylesDest, { recursive: true });
         }
-        
+
         const files = fs.readdirSync(stylesSrc);
-        files.forEach(file => {
-          if (file.endsWith('.css')) {
+        files.forEach((file) => {
+          if (file.endsWith(".css")) {
             fs.copyFileSync(
               path.join(stylesSrc, file),
-              path.join(stylesDest, file)
+              path.join(stylesDest, file),
             );
           }
         });
-        console.log('Copied CSS files to dist/app/renderer/styles/');
+        console.log("Copied CSS files to dist/app/renderer/styles/");
       }
 
       // Copy assets directory
-      const assetsSrc = path.join(__dirname, 'assets');
-      const assetsDest = path.join(__dirname, 'dist/assets');
-      
+      const assetsSrc = path.join(__dirname, "assets");
+      const assetsDest = path.join(__dirname, "dist/assets");
+
       if (fs.existsSync(assetsSrc)) {
         if (!fs.existsSync(assetsDest)) {
           fs.mkdirSync(assetsDest, { recursive: true });
         }
-        
+
         // Recursively copy assets
         const copyDir = (src, dest) => {
           if (!fs.existsSync(dest)) {
             fs.mkdirSync(dest, { recursive: true });
           }
-          
+
           const files = fs.readdirSync(src);
-          files.forEach(file => {
+          files.forEach((file) => {
             const srcPath = path.join(src, file);
             const destPath = path.join(dest, file);
-            
+
             if (fs.statSync(srcPath).isDirectory()) {
               copyDir(srcPath, destPath);
             } else {
@@ -68,9 +68,9 @@ class CopyRendererFilesPlugin {
             }
           });
         };
-        
+
         copyDir(assetsSrc, assetsDest);
-        console.log('Copied assets to dist/assets/');
+        console.log("Copied assets to dist/assets/");
       }
     });
   }
@@ -150,36 +150,36 @@ const mainConfig = {
 
 // Backend server configuration
 const backendConfig = {
-  mode: process.env.NODE_ENV || 'development',
-  target: 'node',
-  entry: './backend/server.ts',
+  mode: process.env.NODE_ENV || "development",
+  target: "node",
+  entry: "./backend/server.ts",
   output: {
-    path: path.resolve(__dirname, 'dist/backend'),
-    filename: 'server.js',
-    libraryTarget: 'commonjs2'
+    path: path.resolve(__dirname, "dist/backend"),
+    filename: "server.js",
+    libraryTarget: "commonjs2",
   },
   externals: {
-    'better-sqlite3': 'commonjs2 better-sqlite3',
-    'fs': 'commonjs2 fs',
-    'path': 'commonjs2 path',
-    'crypto': 'commonjs2 crypto',
-    'os': 'commonjs2 os',
-    'child_process': 'commonjs2 child_process',
-    'buffer': 'commonjs2 buffer',
-    'stream': 'commonjs2 stream',
-    'util': 'commonjs2 util',
-    'events': 'commonjs2 events',
-    'net': 'commonjs2 net',
-    'http': 'commonjs2 http',
-    'https': 'commonjs2 https',
-    'url': 'commonjs2 url'
+    "better-sqlite3": "commonjs2 better-sqlite3",
+    fs: "commonjs2 fs",
+    path: "commonjs2 path",
+    crypto: "commonjs2 crypto",
+    os: "commonjs2 os",
+    child_process: "commonjs2 child_process",
+    buffer: "commonjs2 buffer",
+    stream: "commonjs2 stream",
+    util: "commonjs2 util",
+    events: "commonjs2 events",
+    net: "commonjs2 net",
+    http: "commonjs2 http",
+    https: "commonjs2 https",
+    url: "commonjs2 url",
   },
   resolve: {
-    extensions: ['.ts', '.tsx', '.js', '.jsx'],
+    extensions: [".ts", ".tsx", ".js", ".jsx"],
     alias: {
-      '@': path.resolve(__dirname),
-      '@agent': path.resolve(__dirname, 'agent')
-    }
+      "@": path.resolve(__dirname),
+      "@agent": path.resolve(__dirname, "agent"),
+    },
   },
   module: {
     rules: [
@@ -187,36 +187,40 @@ const backendConfig = {
         test: /\.tsx?$/,
         use: [
           {
-            loader: 'ts-loader',
+            loader: "ts-loader",
             options: {
-              configFile: 'tsconfig.json',
-              transpileOnly: true
-            }
-          }
+              configFile: "tsconfig.json",
+              transpileOnly: true,
+            },
+          },
         ],
-        exclude: /node_modules/
-      }
-    ]
+        exclude: /node_modules/,
+      },
+    ],
   },
   node: {
     __dirname: false,
-    __filename: false
+    __filename: false,
   },
   optimization: {
-    minimize: false
+    minimize: false,
   },
   plugins: [
     new webpack.DefinePlugin({
-      'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development')
+      "process.env.NODE_ENV": JSON.stringify(
+        process.env.NODE_ENV || "development",
+      ),
     }),
     // Ignore module-alias in production builds since webpack handles path resolution
-    ...(process.env.NODE_ENV === 'production' ? [
-      new webpack.IgnorePlugin({
-        resourceRegExp: /^module-alias$/
-      })
-    ] : [])
+    ...(process.env.NODE_ENV === "production"
+      ? [
+          new webpack.IgnorePlugin({
+            resourceRegExp: /^module-alias$/,
+          }),
+        ]
+      : []),
   ],
-  devtool: process.env.NODE_ENV === 'development' ? 'source-map' : false
+  devtool: process.env.NODE_ENV === "development" ? "source-map" : false,
 };
 
 // ===============================================================================

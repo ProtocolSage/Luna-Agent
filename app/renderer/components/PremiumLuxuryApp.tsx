@@ -1,30 +1,30 @@
-import React, { useState, useEffect, useRef } from 'react';
-import '../styles/premium-luxury.css';
+import React, { useState, useEffect, useRef } from "react";
+import "../styles/premium-luxury.css";
 
 // Types
 interface Message {
-  role: 'user' | 'assistant';
+  role: "user" | "assistant";
   content: string;
   timestamp: number;
 }
 
 interface SystemStatus {
-  backend: 'connected' | 'disconnected';
-  voice: 'ready' | 'listening' | 'processing' | 'error';
+  backend: "connected" | "disconnected";
+  voice: "ready" | "listening" | "processing" | "error";
   model: string;
 }
 
 export const PremiumLuxuryApp: React.FC = () => {
   // State
   const [messages, setMessages] = useState<Message[]>([]);
-  const [inputText, setInputText] = useState('');
+  const [inputText, setInputText] = useState("");
   const [isListening, setIsListening] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [systemStatus, setSystemStatus] = useState<SystemStatus>({
-    backend: 'disconnected',
-    voice: 'ready',
-    model: 'Loading...'
+    backend: "disconnected",
+    voice: "ready",
+    model: "Loading...",
   });
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -33,7 +33,7 @@ export const PremiumLuxuryApp: React.FC = () => {
   const audioChunksRef = useRef<Blob[]>([]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  const API_BASE = 'http://localhost:3001';
+  const API_BASE = "http://localhost:3001";
 
   /**
    * Initialize and check backend connection
@@ -48,7 +48,7 @@ export const PremiumLuxuryApp: React.FC = () => {
    * Auto-scroll to bottom when new messages arrive
    */
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   /**
@@ -60,19 +60,19 @@ export const PremiumLuxuryApp: React.FC = () => {
 
       if (response.ok) {
         const data = await response.json();
-        setSystemStatus(prev => ({
+        setSystemStatus((prev) => ({
           ...prev,
-          backend: 'connected',
-          model: data.activeModel || 'GPT-4'
+          backend: "connected",
+          model: data.activeModel || "GPT-4",
         }));
       } else {
-        throw new Error('Backend unhealthy');
+        throw new Error("Backend unhealthy");
       }
     } catch (error) {
-      setSystemStatus(prev => ({
+      setSystemStatus((prev) => ({
         ...prev,
-        backend: 'disconnected',
-        model: 'Offline'
+        backend: "disconnected",
+        model: "Offline",
       }));
     }
   };
@@ -85,55 +85,55 @@ export const PremiumLuxuryApp: React.FC = () => {
     if (!text.trim() || isProcessing) return;
 
     const userMessage: Message = {
-      role: 'user',
+      role: "user",
       content: text,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
 
-    setMessages(prev => [...prev, userMessage]);
-    setInputText('');
+    setMessages((prev) => [...prev, userMessage]);
+    setInputText("");
     setIsProcessing(true);
-    setSystemStatus(prev => ({ ...prev, voice: 'processing' }));
+    setSystemStatus((prev) => ({ ...prev, voice: "processing" }));
 
     try {
       const response = await fetch(`${API_BASE}/api/agent/chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: userMessage.content,
-          conversationHistory: messages
-        })
+          conversationHistory: messages,
+        }),
       });
 
-      if (!response.ok) throw new Error('Failed to get response');
+      if (!response.ok) throw new Error("Failed to get response");
 
       const data = await response.json();
-      const responseText = data.response || 'No response received';
+      const responseText = data.response || "No response received";
 
       const assistantMessage: Message = {
-        role: 'assistant',
+        role: "assistant",
         content: responseText,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       };
 
-      setMessages(prev => [...prev, assistantMessage]);
+      setMessages((prev) => [...prev, assistantMessage]);
 
       // Speak the response using TTS
       await speakResponse(responseText);
-
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error("Error sending message:", error);
 
       const errorMessage: Message = {
-        role: 'assistant',
-        content: 'I apologize, but I encountered an error processing your request. Please try again.',
-        timestamp: Date.now()
+        role: "assistant",
+        content:
+          "I apologize, but I encountered an error processing your request. Please try again.",
+        timestamp: Date.now(),
       };
 
-      setMessages(prev => [...prev, errorMessage]);
+      setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setIsProcessing(false);
-      setSystemStatus(prev => ({ ...prev, voice: 'ready' }));
+      setSystemStatus((prev) => ({ ...prev, voice: "ready" }));
       inputRef.current?.focus();
     }
   };
@@ -146,15 +146,15 @@ export const PremiumLuxuryApp: React.FC = () => {
       setIsSpeaking(true);
 
       const response = await fetch(`${API_BASE}/api/voice/tts`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           text,
-          provider: 'openai'
-        })
+          provider: "openai",
+        }),
       });
 
-      if (!response.ok) throw new Error('TTS failed');
+      if (!response.ok) throw new Error("TTS failed");
 
       const audioBlob = await response.blob();
       const audioUrl = URL.createObjectURL(audioBlob);
@@ -170,9 +170,8 @@ export const PremiumLuxuryApp: React.FC = () => {
       };
 
       await audioRef.current.play();
-
     } catch (error) {
-      console.error('TTS error:', error);
+      console.error("TTS error:", error);
       setIsSpeaking(false);
     }
   };
@@ -198,11 +197,13 @@ export const PremiumLuxuryApp: React.FC = () => {
           channelCount: 1,
           sampleRate: 16000,
           echoCancellation: true,
-          noiseSuppression: true
-        }
+          noiseSuppression: true,
+        },
       });
 
-      const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/wav';
+      const mimeType = MediaRecorder.isTypeSupported("audio/webm")
+        ? "audio/webm"
+        : "audio/wav";
       const mediaRecorder = new MediaRecorder(stream, { mimeType });
 
       audioChunksRef.current = [];
@@ -218,19 +219,18 @@ export const PremiumLuxuryApp: React.FC = () => {
         await transcribeAudio(audioBlob);
 
         // Stop all tracks
-        stream.getTracks().forEach(track => track.stop());
+        stream.getTracks().forEach((track) => track.stop());
       };
 
       mediaRecorder.start();
       mediaRecorderRef.current = mediaRecorder;
 
       setIsListening(true);
-      setSystemStatus(prev => ({ ...prev, voice: 'listening' }));
-
+      setSystemStatus((prev) => ({ ...prev, voice: "listening" }));
     } catch (error) {
-      console.error('Recording error:', error);
-      setSystemStatus(prev => ({ ...prev, voice: 'error' }));
-      alert('Microphone access denied or not available');
+      console.error("Recording error:", error);
+      setSystemStatus((prev) => ({ ...prev, voice: "error" }));
+      alert("Microphone access denied or not available");
     }
   };
 
@@ -238,10 +238,13 @@ export const PremiumLuxuryApp: React.FC = () => {
    * Stop recording audio
    */
   const stopRecording = () => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+    if (
+      mediaRecorderRef.current &&
+      mediaRecorderRef.current.state !== "inactive"
+    ) {
       mediaRecorderRef.current.stop();
       setIsListening(false);
-      setSystemStatus(prev => ({ ...prev, voice: 'processing' }));
+      setSystemStatus((prev) => ({ ...prev, voice: "processing" }));
     }
   };
 
@@ -251,44 +254,43 @@ export const PremiumLuxuryApp: React.FC = () => {
   const transcribeAudio = async (audioBlob: Blob) => {
     try {
       const formData = new FormData();
-      formData.append('file', audioBlob, 'recording.webm');
+      formData.append("file", audioBlob, "recording.webm");
 
       const response = await fetch(`${API_BASE}/api/voice/transcribe`, {
-        method: 'POST',
-        body: formData
+        method: "POST",
+        body: formData,
       });
 
       if (!response.ok) {
-        throw new Error('Transcription failed');
+        throw new Error("Transcription failed");
       }
 
       const data = await response.json();
       const transcription = data.text?.trim();
 
-      console.log('Whisper API response:', data);
-      console.log('Transcription text:', transcription);
-      console.log('Transcription length:', transcription?.length);
+      console.log("Whisper API response:", data);
+      console.log("Transcription text:", transcription);
+      console.log("Transcription length:", transcription?.length);
 
       if (transcription && transcription.length > 0) {
-        console.log('✅ Valid transcription received:', transcription);
+        console.log("✅ Valid transcription received:", transcription);
         setInputText(transcription);
-        setSystemStatus(prev => ({ ...prev, voice: 'ready' }));
+        setSystemStatus((prev) => ({ ...prev, voice: "ready" }));
 
         // Auto-send the transcribed message
         setTimeout(() => {
           handleSendMessage(transcription);
         }, 300);
       } else {
-        console.warn('❌ Empty or invalid transcription');
-        setSystemStatus(prev => ({ ...prev, voice: 'error' }));
+        console.warn("❌ Empty or invalid transcription");
+        setSystemStatus((prev) => ({ ...prev, voice: "error" }));
       }
-
     } catch (error) {
-      console.error('Transcription error:', error);
-      setSystemStatus(prev => ({ ...prev, voice: 'error' }));
-      alert('Voice transcription failed. Please try again.');
+      console.error("Transcription error:", error);
+      setSystemStatus((prev) => ({ ...prev, voice: "error" }));
+      alert("Voice transcription failed. Please try again.");
     } finally {
-      setSystemStatus(prev => ({ ...prev, voice: 'ready' }));
+      setSystemStatus((prev) => ({ ...prev, voice: "ready" }));
     }
   };
 
@@ -296,7 +298,7 @@ export const PremiumLuxuryApp: React.FC = () => {
    * Handle keyboard shortcuts
    */
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
     }
@@ -307,10 +309,10 @@ export const PremiumLuxuryApp: React.FC = () => {
    */
   const formatTime = (timestamp: number): string => {
     const date = new Date(timestamp);
-    return date.toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
+    return date.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
     });
   };
 
@@ -318,9 +320,9 @@ export const PremiumLuxuryApp: React.FC = () => {
    * Get voice button label
    */
   const getVoiceButtonLabel = (): string => {
-    if (isListening) return 'Recording...';
-    if (systemStatus.voice === 'processing') return 'Processing...';
-    return 'Click to speak';
+    if (isListening) return "Recording...";
+    if (systemStatus.voice === "processing") return "Processing...";
+    return "Click to speak";
   };
 
   return (
@@ -333,10 +335,16 @@ export const PremiumLuxuryApp: React.FC = () => {
         </div>
 
         <div className="luna-status">
-          <div className="status-indicator" style={{
-            background: systemStatus.backend === 'connected' ? '#10b981' : '#ef4444'
-          }} />
-          <span>{systemStatus.backend === 'connected' ? 'Connected' : 'Offline'}</span>
+          <div
+            className="status-indicator"
+            style={{
+              background:
+                systemStatus.backend === "connected" ? "#10b981" : "#ef4444",
+            }}
+          />
+          <span>
+            {systemStatus.backend === "connected" ? "Connected" : "Offline"}
+          </span>
           <span style={{ opacity: 0.5 }}>•</span>
           <span>{systemStatus.model}</span>
           <span style={{ opacity: 0.5 }}>•</span>
@@ -354,8 +362,9 @@ export const PremiumLuxuryApp: React.FC = () => {
                 <div className="empty-icon">✨</div>
                 <h2 className="empty-title">Welcome to Luna</h2>
                 <p className="empty-subtitle">
-                  Your premium AI assistant powered by OpenAI Whisper and advanced language models.
-                  Speak naturally or type your message.
+                  Your premium AI assistant powered by OpenAI Whisper and
+                  advanced language models. Speak naturally or type your
+                  message.
                 </p>
               </div>
             ) : (
@@ -363,7 +372,9 @@ export const PremiumLuxuryApp: React.FC = () => {
                 {messages.map((msg, idx) => (
                   <div key={idx} className={`message ${msg.role}`}>
                     <div className="message-content">{msg.content}</div>
-                    <div className="message-timestamp">{formatTime(msg.timestamp)}</div>
+                    <div className="message-timestamp">
+                      {formatTime(msg.timestamp)}
+                    </div>
                   </div>
                 ))}
                 {isProcessing && (
@@ -389,7 +400,9 @@ export const PremiumLuxuryApp: React.FC = () => {
                 ref={inputRef}
                 type="text"
                 className="input-field"
-                placeholder={isListening ? 'Listening...' : 'Type or speak your message...'}
+                placeholder={
+                  isListening ? "Listening..." : "Type or speak your message..."
+                }
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 onKeyDown={handleKeyDown}
@@ -398,12 +411,12 @@ export const PremiumLuxuryApp: React.FC = () => {
             </div>
 
             <button
-              className={`btn-voice ${isListening ? 'listening' : ''} ${isSpeaking ? 'speaking' : ''}`}
+              className={`btn-voice ${isListening ? "listening" : ""} ${isSpeaking ? "speaking" : ""}`}
               onClick={handleVoiceToggle}
-              disabled={isProcessing || systemStatus.backend === 'disconnected'}
+              disabled={isProcessing || systemStatus.backend === "disconnected"}
               title={getVoiceButtonLabel()}
             >
-              {isListening ? '⏹' : isSpeaking ? '🔊' : '🎤'}
+              {isListening ? "⏹" : isSpeaking ? "🔊" : "🎤"}
             </button>
 
             <button
@@ -411,7 +424,7 @@ export const PremiumLuxuryApp: React.FC = () => {
               onClick={() => handleSendMessage()}
               disabled={!inputText.trim() || isProcessing || isListening}
             >
-              {isProcessing ? 'Processing...' : 'Send'}
+              {isProcessing ? "Processing..." : "Send"}
             </button>
           </div>
         </div>

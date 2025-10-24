@@ -1,7 +1,12 @@
-import { ToolPipeline, PipelineContext, PipelineResult, PipelineConfig } from './ToolPipeline';
-import { ToolExecutive } from '../tools/executive';
-import { ModelRouter } from '../orchestrator/modelRouter';
-import { EventEmitter } from 'events';
+import {
+  ToolPipeline,
+  PipelineContext,
+  PipelineResult,
+  PipelineConfig,
+} from "./ToolPipeline";
+import { ToolExecutive } from "../tools/executive";
+import { ModelRouter } from "../orchestrator/modelRouter";
+import { EventEmitter } from "events";
 
 export interface PipelineServiceConfig {
   maxConcurrentExecutions: number;
@@ -24,7 +29,7 @@ export interface ExecutionRequest {
   request: string;
   context: PipelineContext;
   config?: Partial<PipelineConfig>;
-  priority: 'low' | 'normal' | 'high';
+  priority: "low" | "normal" | "high";
   createdAt: Date;
 }
 
@@ -40,27 +45,27 @@ export class PipelineService extends EventEmitter {
     failedExecutions: 0,
     averageExecutionTime: 0,
     toolUsageStats: {},
-    activeExecutions: 0
+    activeExecutions: 0,
   };
   private cleanupInterval?: NodeJS.Timeout;
 
   constructor(
     executive: ToolExecutive,
     modelRouter: ModelRouter,
-    config: Partial<PipelineServiceConfig> = {}
+    config: Partial<PipelineServiceConfig> = {},
   ) {
     super();
-    
+
     this.config = {
       maxConcurrentExecutions: 5,
       defaultTimeout: 300000, // 5 minutes
       enableMetrics: true,
       autoCleanupInterval: 3600000, // 1 hour
-      ...config
+      ...config,
     };
 
     this.pipeline = new ToolPipeline(executive, modelRouter, {
-      timeoutMs: this.config.defaultTimeout
+      timeoutMs: this.config.defaultTimeout,
     });
 
     this.startCleanupTimer();
@@ -73,21 +78,21 @@ export class PipelineService extends EventEmitter {
     request: string,
     context: Partial<PipelineContext> = {},
     options: {
-      priority?: 'low' | 'normal' | 'high';
+      priority?: "low" | "normal" | "high";
       config?: Partial<PipelineConfig>;
       waitForCompletion?: boolean;
-    } = {}
+    } = {},
   ): Promise<string | PipelineResult> {
     const executionId = this.generateExecutionId();
-    
+
     const fullContext: PipelineContext = {
-      sessionId: context.sessionId || 'default',
+      sessionId: context.sessionId || "default",
       traceId: context.traceId || executionId,
       userId: context.userId,
       metadata: context.metadata || {},
       constraints: context.constraints || [],
       workingDir: context.workingDir || process.cwd(),
-      ...context
+      ...context,
     };
 
     const executionRequest: ExecutionRequest = {
@@ -95,18 +100,18 @@ export class PipelineService extends EventEmitter {
       request,
       context: fullContext,
       config: options.config,
-      priority: options.priority || 'normal',
-      createdAt: new Date()
+      priority: options.priority || "normal",
+      createdAt: new Date(),
     };
 
     // Add to queue
     this.addToQueue(executionRequest);
-    
+
     // Emit queued event
-    this.emit('requestQueued', {
+    this.emit("requestQueued", {
       id: executionId,
       request,
-      queuePosition: this.executionQueue.length
+      queuePosition: this.executionQueue.length,
     });
 
     // Process queue
@@ -122,7 +127,9 @@ export class PipelineService extends EventEmitter {
   /**
    * Get the result of a specific execution
    */
-  async getExecutionResult(executionId: string): Promise<PipelineResult | null> {
+  async getExecutionResult(
+    executionId: string,
+  ): Promise<PipelineResult | null> {
     // Check if still active
     const activePromise = this.activeExecutions.get(executionId);
     if (activePromise) {
@@ -136,20 +143,22 @@ export class PipelineService extends EventEmitter {
   /**
    * Get current execution status
    */
-  getExecutionStatus(executionId: string): 'queued' | 'active' | 'completed' | 'not_found' {
+  getExecutionStatus(
+    executionId: string,
+  ): "queued" | "active" | "completed" | "not_found" {
     if (this.activeExecutions.has(executionId)) {
-      return 'active';
+      return "active";
     }
-    
+
     if (this.executionHistory.has(executionId)) {
-      return 'completed';
+      return "completed";
     }
-    
-    if (this.executionQueue.some(req => req.id === executionId)) {
-      return 'queued';
+
+    if (this.executionQueue.some((req) => req.id === executionId)) {
+      return "queued";
     }
-    
-    return 'not_found';
+
+    return "not_found";
   }
 
   /**
@@ -157,17 +166,25 @@ export class PipelineService extends EventEmitter {
    */
   cancelExecution(executionId: string): boolean {
     // Remove from queue if queued
-    const queueIndex = this.executionQueue.findIndex(req => req.id === executionId);
+    const queueIndex = this.executionQueue.findIndex(
+      (req) => req.id === executionId,
+    );
     if (queueIndex >= 0) {
       this.executionQueue.splice(queueIndex, 1);
-      this.emit('requestCancelled', { id: executionId, reason: 'cancelled_from_queue' });
+      this.emit("requestCancelled", {
+        id: executionId,
+        reason: "cancelled_from_queue",
+      });
       return true;
     }
 
     // Abort if active
     if (this.activeExecutions.has(executionId)) {
       this.pipeline.abortExecution(executionId);
-      this.emit('requestCancelled', { id: executionId, reason: 'aborted_during_execution' });
+      this.emit("requestCancelled", {
+        id: executionId,
+        reason: "aborted_during_execution",
+      });
       return true;
     }
 
@@ -180,7 +197,7 @@ export class PipelineService extends EventEmitter {
   getMetrics(): PipelineMetrics {
     return {
       ...this.metrics,
-      activeExecutions: this.activeExecutions.size
+      activeExecutions: this.activeExecutions.size,
     };
   }
 
@@ -195,7 +212,7 @@ export class PipelineService extends EventEmitter {
     return {
       queueLength: this.executionQueue.length,
       activeExecutions: this.activeExecutions.size,
-      nextExecution: this.executionQueue[0]
+      nextExecution: this.executionQueue[0],
     };
   }
 
@@ -204,7 +221,7 @@ export class PipelineService extends EventEmitter {
    */
   clearHistory(olderThan?: Date): number {
     let cleared = 0;
-    
+
     if (olderThan) {
       // Clear based on age - would need to track creation time
       // For now, clear all
@@ -214,8 +231,8 @@ export class PipelineService extends EventEmitter {
       cleared = this.executionHistory.size;
       this.executionHistory.clear();
     }
-    
-    this.emit('historyCleaned', { clearedCount: cleared });
+
+    this.emit("historyCleaned", { clearedCount: cleared });
     return cleared;
   }
 
@@ -223,8 +240,8 @@ export class PipelineService extends EventEmitter {
    * Shutdown the service gracefully
    */
   async shutdown(timeout = 30000): Promise<void> {
-    console.log('Pipeline service shutting down...');
-    
+    console.log("Pipeline service shutting down...");
+
     // Clear cleanup timer
     if (this.cleanupInterval) {
       clearInterval(this.cleanupInterval);
@@ -232,30 +249,29 @@ export class PipelineService extends EventEmitter {
 
     // Wait for active executions to complete or timeout
     const activePromises = Array.from(this.activeExecutions.values());
-    
+
     if (activePromises.length > 0) {
-      console.log(`Waiting for ${activePromises.length} active executions to complete...`);
-      
+      console.log(
+        `Waiting for ${activePromises.length} active executions to complete...`,
+      );
+
       const timeoutPromise = new Promise<void>((resolve) => {
         setTimeout(resolve, timeout);
       });
-      
+
       try {
-        await Promise.race([
-          Promise.all(activePromises),
-          timeoutPromise
-        ]);
+        await Promise.race([Promise.all(activePromises), timeoutPromise]);
       } catch (error) {
-        console.warn('Some executions did not complete during shutdown');
+        console.warn("Some executions did not complete during shutdown");
       }
     }
 
     // Clear remaining state
     this.executionQueue.length = 0;
     this.activeExecutions.clear();
-    
-    this.emit('shutdown');
-    console.log('Pipeline service shutdown complete');
+
+    this.emit("shutdown");
+    console.log("Pipeline service shutdown complete");
   }
 
   /**
@@ -268,7 +284,7 @@ export class PipelineService extends EventEmitter {
     this.executionQueue.splice(insertIndex, 0, request);
   }
 
-  private findInsertPosition(priority: 'low' | 'normal' | 'high'): number {
+  private findInsertPosition(priority: "low" | "normal" | "high"): number {
     const priorityOrder = { high: 3, normal: 2, low: 1 };
     const requestPriority = priorityOrder[priority];
 
@@ -284,7 +300,7 @@ export class PipelineService extends EventEmitter {
 
   private async processQueue(): Promise<void> {
     while (
-      this.executionQueue.length > 0 && 
+      this.executionQueue.length > 0 &&
       this.activeExecutions.size < this.config.maxConcurrentExecutions
     ) {
       const request = this.executionQueue.shift()!;
@@ -294,40 +310,40 @@ export class PipelineService extends EventEmitter {
 
   private async executeRequest(request: ExecutionRequest): Promise<void> {
     const startTime = Date.now();
-    
+
     const executionPromise = this.pipeline.execute(
       request.request,
       request.context,
       {
         autoPlanning: true,
-        allowUnsafeTools: request.context.constraints.includes('allow_unsafe_tools')
-      }
+        allowUnsafeTools:
+          request.context.constraints.includes("allow_unsafe_tools"),
+      },
     );
 
     // Add to active executions
     this.activeExecutions.set(request.id, executionPromise);
-    
-    this.emit('executionStarted', {
+
+    this.emit("executionStarted", {
       id: request.id,
       request: request.request,
-      startTime: new Date(startTime)
+      startTime: new Date(startTime),
     });
 
     try {
       const result = await executionPromise;
-      
+
       // Update metrics
       this.updateMetrics(result, Date.now() - startTime);
-      
+
       // Store in history
       this.executionHistory.set(request.id, result);
-      
-      this.emit('executionCompleted', {
+
+      this.emit("executionCompleted", {
         id: request.id,
         result,
-        executionTime: Date.now() - startTime
+        executionTime: Date.now() - startTime,
       });
-
     } catch (error: any) {
       const errorResult: PipelineResult = {
         success: false,
@@ -335,22 +351,21 @@ export class PipelineService extends EventEmitter {
         totalTimeMs: Date.now() - startTime,
         finalOutput: null,
         error: error.message,
-        metadata: { executionId: request.id }
+        metadata: { executionId: request.id },
       };
 
       this.updateMetrics(errorResult, Date.now() - startTime);
       this.executionHistory.set(request.id, errorResult);
-      
-      this.emit('executionFailed', {
+
+      this.emit("executionFailed", {
         id: request.id,
         error: error.message,
-        executionTime: Date.now() - startTime
+        executionTime: Date.now() - startTime,
       });
-
     } finally {
       // Remove from active executions
       this.activeExecutions.delete(request.id);
-      
+
       // Process next in queue
       setImmediate(() => this.processQueue());
     }
@@ -359,7 +374,7 @@ export class PipelineService extends EventEmitter {
   private async waitForExecution(executionId: string): Promise<PipelineResult> {
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
-        reject(new Error('Execution timeout'));
+        reject(new Error("Execution timeout"));
       }, this.config.defaultTimeout + 10000); // Add buffer
 
       const checkCompletion = () => {
@@ -370,10 +385,12 @@ export class PipelineService extends EventEmitter {
           return;
         }
 
-        if (!this.activeExecutions.has(executionId) && 
-            !this.executionQueue.some(req => req.id === executionId)) {
+        if (
+          !this.activeExecutions.has(executionId) &&
+          !this.executionQueue.some((req) => req.id === executionId)
+        ) {
           clearTimeout(timeout);
-          reject(new Error('Execution not found'));
+          reject(new Error("Execution not found"));
           return;
         }
 
@@ -389,7 +406,7 @@ export class PipelineService extends EventEmitter {
     if (!this.config.enableMetrics) return;
 
     this.metrics.totalExecutions++;
-    
+
     if (result.success) {
       this.metrics.successfulExecutions++;
     } else {
@@ -397,13 +414,14 @@ export class PipelineService extends EventEmitter {
     }
 
     // Update average execution time
-    this.metrics.averageExecutionTime = 
-      (this.metrics.averageExecutionTime * (this.metrics.totalExecutions - 1) + executionTime) / 
+    this.metrics.averageExecutionTime =
+      (this.metrics.averageExecutionTime * (this.metrics.totalExecutions - 1) +
+        executionTime) /
       this.metrics.totalExecutions;
 
     // Update tool usage stats
-    result.steps.forEach(step => {
-      this.metrics.toolUsageStats[step.tool] = 
+    result.steps.forEach((step) => {
+      this.metrics.toolUsageStats[step.tool] =
         (this.metrics.toolUsageStats[step.tool] || 0) + 1;
     });
   }
@@ -421,7 +439,9 @@ export class PipelineService extends EventEmitter {
   }
 
   private performCleanup(): void {
-    const oldThreshold = new Date(Date.now() - this.config.autoCleanupInterval * 2);
+    const oldThreshold = new Date(
+      Date.now() - this.config.autoCleanupInterval * 2,
+    );
     let cleaned = 0;
 
     // Clean up old history entries
@@ -435,7 +455,7 @@ export class PipelineService extends EventEmitter {
     }
 
     if (cleaned > 0) {
-      this.emit('autoCleanup', { cleanedEntries: cleaned });
+      this.emit("autoCleanup", { cleanedEntries: cleaned });
     }
   }
 }

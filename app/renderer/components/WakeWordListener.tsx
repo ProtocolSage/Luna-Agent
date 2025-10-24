@@ -1,12 +1,14 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { logger } from '../utils/logger';
+import React, { useEffect, useRef, useState } from "react";
+import { logger } from "../utils/logger";
 
 // Try to import Porcupine, but provide fallback
 let PorcupineClient: any;
 try {
-  PorcupineClient = require('../services/wakeWord/PorcupineClient');
+  PorcupineClient = require("../services/wakeWord/PorcupineClient");
 } catch (e) {
-  logger.warn('Porcupine client not available, will use Web Speech API fallback');
+  logger.warn(
+    "Porcupine client not available, will use Web Speech API fallback",
+  );
 }
 
 type AudioResources = {
@@ -23,7 +25,11 @@ interface WakeWordListenerProps {
   useFallback?: boolean;
 }
 
-function downsampleBuffer(buffer: Float32Array, inputRate: number, targetRate: number): Float32Array {
+function downsampleBuffer(
+  buffer: Float32Array,
+  inputRate: number,
+  targetRate: number,
+): Float32Array {
   if (inputRate === targetRate) {
     return buffer;
   }
@@ -43,7 +49,10 @@ function downsampleBuffer(buffer: Float32Array, inputRate: number, targetRate: n
   let offsetBuffer = 0;
 
   while (offsetResult < result.length) {
-    const nextOffsetBuffer = Math.min(buffer.length, Math.floor((offsetResult + 1) * sampleRateRatio));
+    const nextOffsetBuffer = Math.min(
+      buffer.length,
+      Math.floor((offsetResult + 1) * sampleRateRatio),
+    );
     let accum = 0;
     let count = 0;
     for (let i = offsetBuffer; i < nextOffsetBuffer; i += 1) {
@@ -66,30 +75,32 @@ class WebSpeechWakeWordListener {
 
   constructor(onDetection: (label: string) => void) {
     this.onDetection = onDetection;
-    
-    const SpeechRecognition = (window as any).webkitSpeechRecognition || 
-                              (window as any).SpeechRecognition;
-    
+
+    const SpeechRecognition =
+      (window as any).webkitSpeechRecognition ||
+      (window as any).SpeechRecognition;
+
     if (SpeechRecognition) {
       this.recognition = new SpeechRecognition();
       this.recognition.continuous = true;
       this.recognition.interimResults = true;
-      this.recognition.lang = 'en-US';
-      
+      this.recognition.lang = "en-US";
+
       this.recognition.onresult = (event: any) => {
-        const transcript = event.results[event.results.length - 1][0].transcript.toLowerCase();
-        if (transcript.includes('hey luna') || transcript.includes('luna')) {
-          logger.info('Wake word detected via Web Speech API');
-          this.onDetection('Hey Luna');
+        const transcript =
+          event.results[event.results.length - 1][0].transcript.toLowerCase();
+        if (transcript.includes("hey luna") || transcript.includes("luna")) {
+          logger.info("Wake word detected via Web Speech API");
+          this.onDetection("Hey Luna");
           // Restart listening after detection
           this.stop();
           setTimeout(() => this.start(), 2000);
         }
       };
-      
+
       this.recognition.onerror = (event: any) => {
-        logger.warn('Speech recognition error:', event.error);
-        if (event.error === 'no-speech' || event.error === 'aborted') {
+        logger.warn("Speech recognition error:", event.error);
+        if (event.error === "no-speech" || event.error === "aborted") {
           // Restart on these recoverable errors
           setTimeout(() => {
             if (this.isListening) {
@@ -98,7 +109,7 @@ class WebSpeechWakeWordListener {
           }, 1000);
         }
       };
-      
+
       this.recognition.onend = () => {
         // Restart if we should still be listening
         if (this.isListening) {
@@ -113,10 +124,13 @@ class WebSpeechWakeWordListener {
       try {
         this.recognition.start();
         this.isListening = true;
-        logger.info('Web Speech API wake word listening started');
+        logger.info("Web Speech API wake word listening started");
       } catch (e) {
         // Already started or other error
-        logger.debug('Speech recognition start error (may be already running):', e);
+        logger.debug(
+          "Speech recognition start error (may be already running):",
+          e,
+        );
       }
     }
   }
@@ -145,18 +159,30 @@ async function initializeAudioPipeline(
 
   const audioContext = new AudioContext({ sampleRate: handle.sampleRate });
   const source = audioContext.createMediaStreamSource(mediaStream);
-  const processor = audioContext.createScriptProcessor(handle.frameLength * 2, 1, 1);
+  const processor = audioContext.createScriptProcessor(
+    handle.frameLength * 2,
+    1,
+    1,
+  );
 
   let floatBuffer = new Float32Array(handle.frameLength * 4);
   let bufferLength = 0;
-  const inputSampleRate = audioContext.sampleRate;  const targetSampleRate = handle.sampleRate;
+  const inputSampleRate = audioContext.sampleRate;
+  const targetSampleRate = handle.sampleRate;
 
   processor.onaudioprocess = (event) => {
     const inputChannel = event.inputBuffer.getChannelData(0);
-    const inputData = downsampleBuffer(inputChannel, inputSampleRate, targetSampleRate);
+    const inputData = downsampleBuffer(
+      inputChannel,
+      inputSampleRate,
+      targetSampleRate,
+    );
 
     if (bufferLength + inputData.length > floatBuffer.length) {
-      const nextCapacity = Math.max(floatBuffer.length * 2, bufferLength + inputData.length);
+      const nextCapacity = Math.max(
+        floatBuffer.length * 2,
+        bufferLength + inputData.length,
+      );
       const expanded = new Float32Array(nextCapacity);
       expanded.set(floatBuffer.subarray(0, bufferLength));
       floatBuffer = expanded;
@@ -175,11 +201,12 @@ async function initializeAudioPipeline(
       try {
         handle.process(frame);
       } catch (processError) {
-        logger.error('Failed to process audio frame:', processError);
+        logger.error("Failed to process audio frame:", processError);
       }
 
       floatBuffer.copyWithin(0, handle.frameLength, bufferLength);
-      bufferLength -= handle.frameLength;    }
+      bufferLength -= handle.frameLength;
+    }
   };
 
   source.connect(processor);
@@ -209,7 +236,8 @@ const WakeWordListener: React.FC<WakeWordListenerProps> = ({
   useEffect(() => {
     let isMounted = true;
 
-    const stopAudio = async (): Promise<void> => {      const audioResources = audioResourcesRef.current;
+    const stopAudio = async (): Promise<void> => {
+      const audioResources = audioResourcesRef.current;
       audioResourcesRef.current = null;
 
       if (audioResources) {
@@ -219,7 +247,7 @@ const WakeWordListener: React.FC<WakeWordListenerProps> = ({
         try {
           await audioResources.context.close();
         } catch (closeError) {
-          logger.warn('Failed to close audio context cleanly:', closeError);
+          logger.warn("Failed to close audio context cleanly:", closeError);
         }
       }
     };
@@ -235,11 +263,12 @@ const WakeWordListener: React.FC<WakeWordListenerProps> = ({
         }
 
         if (workerRef.current) {
-          logger.info('Releasing Porcupine worker.');
+          logger.info("Releasing Porcupine worker.");
           try {
             await workerRef.current.release();
           } catch (releaseError) {
-            logger.warn('Release reported an error:', releaseError);          } finally {
+            logger.warn("Release reported an error:", releaseError);
+          } finally {
             workerRef.current.terminate();
             workerRef.current = null;
           }
@@ -260,23 +289,29 @@ const WakeWordListener: React.FC<WakeWordListenerProps> = ({
 
     async function initPorcupine() {
       // Check if we should use Web Speech API fallback
-      const shouldUseFallback = useFallback || 
-                                !accessKey || 
-                                !PorcupineClient ||
-                                !await checkAssetsExist();
+      const shouldUseFallback =
+        useFallback ||
+        !accessKey ||
+        !PorcupineClient ||
+        !(await checkAssetsExist());
 
       if (shouldUseFallback) {
         // Use Web Speech API fallback
-        logger.info('Using Web Speech API for wake word detection');
+        logger.info("Using Web Speech API for wake word detection");
         setUsingFallback(true);
-                
-        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-          webSpeechRef.current = new WebSpeechWakeWordListener(onWakeWordDetected);
+
+        if (
+          "webkitSpeechRecognition" in window ||
+          "SpeechRecognition" in window
+        ) {
+          webSpeechRef.current = new WebSpeechWakeWordListener(
+            onWakeWordDetected,
+          );
           await webSpeechRef.current.start();
           setIsListening(true);
           setError(null);
         } else {
-          setError('Web Speech API not supported in this browser');
+          setError("Web Speech API not supported in this browser");
         }
         return;
       }
@@ -284,12 +319,12 @@ const WakeWordListener: React.FC<WakeWordListenerProps> = ({
       // Try to use Porcupine
       try {
         const keyword = {
-          label: 'Hey Luna',
-          publicPath: 'assets/Hey-Luna_en_wasm_v3_0_0.ppn',
+          label: "Hey Luna",
+          publicPath: "assets/Hey-Luna_en_wasm_v3_0_0.ppn",
           sensitivity: 0.6,
         };
 
-        logger.info('Initializing Porcupine with keyword:', keyword);
+        logger.info("Initializing Porcupine with keyword:", keyword);
 
         const porcupineWorker = await PorcupineClient.createPorcupineClient({
           accessKey,
@@ -299,17 +334,18 @@ const WakeWordListener: React.FC<WakeWordListenerProps> = ({
               logger.info(`Wake word detected: ${detection.label}`);
               onWakeWordDetected(detection.label);
             }
-          },          model: {
-            publicPath: 'assets/porcupine_params.pv',
+          },
+          model: {
+            publicPath: "assets/porcupine_params.pv",
           },
           assetPaths: {
-            worker: 'assets/porcupine_worker.js',
-            wasm: 'assets/pv_porcupine.wasm',
-            wasmSimd: 'assets/pv_porcupine_simd.wasm',
+            worker: "assets/porcupine_worker.js",
+            wasm: "assets/pv_porcupine.wasm",
+            wasmSimd: "assets/pv_porcupine_simd.wasm",
           },
           options: {
             processErrorCallback: (err: Error) => {
-              logger.error('Process error:', err);
+              logger.error("Process error:", err);
               if (isMounted) {
                 setError(err.message);
               }
@@ -326,7 +362,7 @@ const WakeWordListener: React.FC<WakeWordListenerProps> = ({
         try {
           await initializeAudioPipeline(porcupineWorker, audioResourcesRef);
         } catch (audioError) {
-          logger.error('Audio pipeline initialization failed:', audioError);
+          logger.error("Audio pipeline initialization failed:", audioError);
           await porcupineWorker.release();
           porcupineWorker.terminate();
           throw audioError;
@@ -341,21 +377,26 @@ const WakeWordListener: React.FC<WakeWordListenerProps> = ({
         workerRef.current = porcupineWorker;
         setIsListening(true);
         setError(null);
-        logger.info('Porcupine wake word listening started');
+        logger.info("Porcupine wake word listening started");
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : String(err);
-        logger.error('Failed to initialize Porcupine:', errorMessage);
-        
+        logger.error("Failed to initialize Porcupine:", errorMessage);
+
         // Fall back to Web Speech API
-        logger.info('Falling back to Web Speech API');
+        logger.info("Falling back to Web Speech API");
         setUsingFallback(true);
-        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-          webSpeechRef.current = new WebSpeechWakeWordListener(onWakeWordDetected);
+        if (
+          "webkitSpeechRecognition" in window ||
+          "SpeechRecognition" in window
+        ) {
+          webSpeechRef.current = new WebSpeechWakeWordListener(
+            onWakeWordDetected,
+          );
           await webSpeechRef.current.start();
           setIsListening(true);
           setError(null);
         } else {
-          setError('Wake word detection not available');
+          setError("Wake word detection not available");
           setIsListening(false);
         }
       }
@@ -363,12 +404,12 @@ const WakeWordListener: React.FC<WakeWordListenerProps> = ({
     async function checkAssetsExist(): Promise<boolean> {
       try {
         const assetsToCheck = [
-          'assets/porcupine_worker.js',
-          'assets/pv_porcupine.wasm',
+          "assets/porcupine_worker.js",
+          "assets/pv_porcupine.wasm",
         ];
-        
+
         for (const asset of assetsToCheck) {
-          const response = await fetch(asset, { method: 'HEAD' });
+          const response = await fetch(asset, { method: "HEAD" });
           if (!response.ok) {
             logger.warn(`Asset not found: ${asset}`);
             return false;
@@ -393,14 +434,12 @@ const WakeWordListener: React.FC<WakeWordListenerProps> = ({
       {isListening && (
         <div className="listening-indicator">
           <span className="pulse-dot"></span>
-          {usingFallback ? 'Listening (Web Speech)...' : 'Listening for "Hey Luna"...'}
+          {usingFallback
+            ? "Listening (Web Speech)..."
+            : 'Listening for "Hey Luna"...'}
         </div>
       )}
-      {error && (
-        <div className="error-message">
-          {error}
-        </div>
-      )}
+      {error && <div className="error-message">{error}</div>}
     </div>
   );
 };

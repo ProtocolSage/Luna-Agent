@@ -1,8 +1,14 @@
-import * as fs from 'fs/promises';
-import * as path from 'path';
+import * as fs from "fs/promises";
+import * as path from "path";
 
 // Type-safe session data interfaces
-type SessionValue = string | number | boolean | null | SessionValue[] | { [key: string]: SessionValue };
+type SessionValue =
+  | string
+  | number
+  | boolean
+  | null
+  | SessionValue[]
+  | { [key: string]: SessionValue };
 type UserPreference = string | number | boolean | string[];
 type ContextVariable = string | number | boolean | object | null;
 type TemporaryData = SessionValue;
@@ -30,7 +36,7 @@ export class KVStore {
   private saveTimer: NodeJS.Timeout | null = null;
 
   constructor() {
-    this.dataDir = path.join(__dirname, '../../data/sessions');
+    this.dataDir = path.join(__dirname, "../../data/sessions");
   }
 
   async initialize(): Promise<void> {
@@ -39,9 +45,9 @@ export class KVStore {
       await this.loadExistingSessions();
       this.startPeriodicSave();
       this.isInitialized = true;
-      console.log('KV store initialized');
+      console.log("KV store initialized");
     } catch (error) {
-      console.error('Failed to initialize KV store:', error);
+      console.error("Failed to initialize KV store:", error);
       throw error;
     }
   }
@@ -61,7 +67,10 @@ export class KVStore {
     return null;
   }
 
-  async setSession(sessionId: string, data: Partial<SessionData>): Promise<void> {
+  async setSession(
+    sessionId: string,
+    data: Partial<SessionData>,
+  ): Promise<void> {
     if (!this.isInitialized) {
       return;
     }
@@ -77,13 +86,16 @@ export class KVStore {
       userPreferences: existing?.userPreferences || {},
       contextVariables: existing?.contextVariables || {},
       temporaryData: existing?.temporaryData || {},
-      ...data
+      ...data,
     };
 
     this.sessions.set(sessionId, sessionData);
   }
 
-  async updateSession(sessionId: string, updates: Partial<SessionData>): Promise<void> {
+  async updateSession(
+    sessionId: string,
+    updates: Partial<SessionData>,
+  ): Promise<void> {
     const existing = await this.getSession(sessionId);
     if (existing) {
       await this.setSession(sessionId, { ...existing, ...updates });
@@ -92,7 +104,7 @@ export class KVStore {
 
   async deleteSession(sessionId: string): Promise<void> {
     this.sessions.delete(sessionId);
-    
+
     try {
       const sessionPath = path.join(this.dataDir, `${sessionId}.json`);
       await fs.unlink(sessionPath);
@@ -104,15 +116,17 @@ export class KVStore {
 
   async getAllSessions(): Promise<Record<string, SessionData>> {
     const result: Record<string, SessionData> = {};
-    
+
     for (const [sessionId, sessionData] of this.sessions) {
       result[sessionId] = { ...sessionData };
     }
-    
+
     return result;
   }
 
-  async getActiveSessions(maxAge: number = 24 * 60 * 60 * 1000): Promise<SessionData[]> {
+  async getActiveSessions(
+    maxAge: number = 24 * 60 * 60 * 1000,
+  ): Promise<SessionData[]> {
     const cutoff = new Date(Date.now() - maxAge);
     const activeSessions: SessionData[] = [];
 
@@ -122,60 +136,80 @@ export class KVStore {
       }
     }
 
-    return activeSessions.sort((a, b) => 
-      new Date(b.lastActivity).getTime() - new Date(a.lastActivity).getTime()
+    return activeSessions.sort(
+      (a, b) =>
+        new Date(b.lastActivity).getTime() - new Date(a.lastActivity).getTime(),
     );
   }
 
-  async setUserPreference(sessionId: string, key: string, value: UserPreference): Promise<void> {
-    const session = await this.getSession(sessionId) || {
+  async setUserPreference(
+    sessionId: string,
+    key: string,
+    value: UserPreference,
+  ): Promise<void> {
+    const session = (await this.getSession(sessionId)) || {
       sessionId,
       createdAt: new Date(),
       lastActivity: new Date(),
       messageCount: 0,
       userPreferences: {},
       contextVariables: {},
-      temporaryData: {}
+      temporaryData: {},
     };
 
     session.userPreferences[key] = value;
     await this.setSession(sessionId, session);
   }
 
-  async getUserPreference(sessionId: string, key: string): Promise<UserPreference | undefined> {
+  async getUserPreference(
+    sessionId: string,
+    key: string,
+  ): Promise<UserPreference | undefined> {
     const session = await this.getSession(sessionId);
     return session?.userPreferences[key];
   }
 
-  async setContextVariable(sessionId: string, key: string, value: ContextVariable): Promise<void> {
-    const session = await this.getSession(sessionId) || {
+  async setContextVariable(
+    sessionId: string,
+    key: string,
+    value: ContextVariable,
+  ): Promise<void> {
+    const session = (await this.getSession(sessionId)) || {
       sessionId,
       createdAt: new Date(),
       lastActivity: new Date(),
       messageCount: 0,
       userPreferences: {},
       contextVariables: {},
-      temporaryData: {}
+      temporaryData: {},
     };
 
     session.contextVariables[key] = value;
     await this.setSession(sessionId, session);
   }
 
-  async getContextVariable(sessionId: string, key: string): Promise<ContextVariable | undefined> {
+  async getContextVariable(
+    sessionId: string,
+    key: string,
+  ): Promise<ContextVariable | undefined> {
     const session = await this.getSession(sessionId);
     return session?.contextVariables[key];
   }
 
-  async setTemporaryData(sessionId: string, key: string, value: TemporaryData, ttl?: number): Promise<void> {
-    const session = await this.getSession(sessionId) || {
+  async setTemporaryData(
+    sessionId: string,
+    key: string,
+    value: TemporaryData,
+    ttl?: number,
+  ): Promise<void> {
+    const session = (await this.getSession(sessionId)) || {
       sessionId,
       createdAt: new Date(),
       lastActivity: new Date(),
       messageCount: 0,
       userPreferences: {},
       contextVariables: {},
-      temporaryData: {}
+      temporaryData: {},
     };
 
     const data: TTLTemporaryData = { value };
@@ -187,14 +221,21 @@ export class KVStore {
     await this.setSession(sessionId, session);
   }
 
-  async getTemporaryData(sessionId: string, key: string): Promise<TemporaryData | undefined> {
+  async getTemporaryData(
+    sessionId: string,
+    key: string,
+  ): Promise<TemporaryData | undefined> {
     const session = await this.getSession(sessionId);
     const tempData = session?.temporaryData[key];
-    
+
     if (!tempData) return undefined;
 
     // Type guard to check if this is TTL data
-    if (typeof tempData === 'object' && tempData !== null && 'value' in tempData) {
+    if (
+      typeof tempData === "object" &&
+      tempData !== null &&
+      "value" in tempData
+    ) {
       const ttlData = tempData as TTLTemporaryData;
       // Check if data has expired
       if (ttlData.expiresAt && new Date() > new Date(ttlData.expiresAt)) {
@@ -221,18 +262,18 @@ export class KVStore {
   private async loadExistingSessions(): Promise<void> {
     try {
       const files = await fs.readdir(this.dataDir);
-      const jsonFiles = files.filter(f => f.endsWith('.json'));
+      const jsonFiles = files.filter((f) => f.endsWith(".json"));
 
       for (const file of jsonFiles) {
         try {
           const filePath = path.join(this.dataDir, file);
-          const content = await fs.readFile(filePath, 'utf8');
+          const content = await fs.readFile(filePath, "utf8");
           const sessionData = JSON.parse(content);
-          
+
           // Convert date strings back to Date objects
           sessionData.createdAt = new Date(sessionData.createdAt);
           sessionData.lastActivity = new Date(sessionData.lastActivity);
-          
+
           this.sessions.set(sessionData.sessionId, sessionData);
         } catch (error) {
           console.warn(`Failed to load session from ${file}:`, error);
@@ -241,7 +282,10 @@ export class KVStore {
 
       console.log(`Loaded ${this.sessions.size} sessions from storage`);
     } catch (error) {
-      console.debug('No existing session data found, starting fresh. Details:', error);
+      console.debug(
+        "No existing session data found, starting fresh. Details:",
+        error,
+      );
     }
   }
 
@@ -252,7 +296,7 @@ export class KVStore {
         await fs.writeFile(sessionPath, JSON.stringify(sessionData, null, 2));
       }
     } catch (error) {
-      console.error('Failed to save sessions:', error);
+      console.error("Failed to save sessions:", error);
     }
   }
 
@@ -263,7 +307,9 @@ export class KVStore {
     }, 30000);
   }
 
-  async cleanupExpiredSessions(maxAge: number = 7 * 24 * 60 * 60 * 1000): Promise<number> {
+  async cleanupExpiredSessions(
+    maxAge: number = 7 * 24 * 60 * 60 * 1000,
+  ): Promise<number> {
     const cutoff = new Date(Date.now() - maxAge);
     const toDelete: string[] = [];
 
@@ -283,13 +329,13 @@ export class KVStore {
 
   async cleanupExpiredTemporaryData(): Promise<void> {
     const now = new Date();
-    
+
     for (const [sessionId, session] of this.sessions) {
       let hasExpiredData = false;
-      
+
       for (const [key, data] of Object.entries(session.temporaryData)) {
         // Type guard to check if this is TTL data
-        if (typeof data === 'object' && data !== null && 'value' in data) {
+        if (typeof data === "object" && data !== null && "value" in data) {
           const ttlData = data as TTLTemporaryData;
           if (ttlData.expiresAt && now > new Date(ttlData.expiresAt)) {
             delete session.temporaryData[key];
@@ -297,7 +343,7 @@ export class KVStore {
           }
         }
       }
-      
+
       if (hasExpiredData) {
         await this.setSession(sessionId, session);
       }
@@ -313,21 +359,29 @@ export class KVStore {
   }> {
     const sessions = Array.from(this.sessions.values());
     const activeSessions = await this.getActiveSessions();
-    
-    const messageCounts = sessions.map(s => s.messageCount);
-    const averageMessageCount = messageCounts.length > 0 ? 
-      messageCounts.reduce((a, b) => a + b, 0) / messageCounts.length : 0;
 
-    const createdDates = sessions.map(s => new Date(s.createdAt));
-    const oldestSession = createdDates.length > 0 ? new Date(Math.min(...createdDates.map(d => d.getTime()))) : null;
-    const newestSession = createdDates.length > 0 ? new Date(Math.max(...createdDates.map(d => d.getTime()))) : null;
+    const messageCounts = sessions.map((s) => s.messageCount);
+    const averageMessageCount =
+      messageCounts.length > 0
+        ? messageCounts.reduce((a, b) => a + b, 0) / messageCounts.length
+        : 0;
+
+    const createdDates = sessions.map((s) => new Date(s.createdAt));
+    const oldestSession =
+      createdDates.length > 0
+        ? new Date(Math.min(...createdDates.map((d) => d.getTime())))
+        : null;
+    const newestSession =
+      createdDates.length > 0
+        ? new Date(Math.max(...createdDates.map((d) => d.getTime())))
+        : null;
 
     return {
       totalSessions: sessions.length,
       activeSessions: activeSessions.length,
       averageMessageCount,
       oldestSession,
-      newestSession
+      newestSession,
     };
   }
 
@@ -348,7 +402,7 @@ export class KVStore {
 
     // Save all sessions before cleanup
     await this.saveAllSessions();
-    
+
     // Cleanup expired data
     await this.cleanupExpiredSessions();
     await this.cleanupExpiredTemporaryData();
@@ -362,8 +416,7 @@ export class KVStore {
     return {
       sessionCount: this.sessions.size,
       isInitialized: this.isInitialized,
-      dataDir: this.dataDir
+      dataDir: this.dataDir,
     };
   }
 }
-

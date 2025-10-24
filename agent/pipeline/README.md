@@ -25,9 +25,9 @@ The Tool Pipeline System consists of three main components:
 ### Basic Usage
 
 ```typescript
-import { ToolExecutive } from '../tools/executive';
-import { ToolPipeline } from '../pipeline';
-import { ModelRouter } from '../orchestrator/modelRouter';
+import { ToolExecutive } from "../tools/executive";
+import { ToolPipeline } from "../pipeline";
+import { ModelRouter } from "../orchestrator/modelRouter";
 
 // Initialize components
 const executive = new ToolExecutive();
@@ -42,19 +42,19 @@ const result = await pipeline.execute(
     traceId: "task_001",
     workingDir: process.cwd(),
     constraints: [],
-    metadata: {}
-  }
+    metadata: {},
+  },
 );
 
-console.log('Task completed:', result.success);
-console.log('Steps executed:', result.steps.length);
-console.log('Final output:', result.finalOutput);
+console.log("Task completed:", result.success);
+console.log("Steps executed:", result.steps.length);
+console.log("Final output:", result.finalOutput);
 ```
 
 ### Service-Based Usage
 
 ```typescript
-import { PipelineService } from '../pipeline';
+import { PipelineService } from "../pipeline";
 
 const service = new PipelineService(executive, modelRouter);
 
@@ -62,12 +62,12 @@ const service = new PipelineService(executive, modelRouter);
 const executionId = await service.submitRequest(
   "Analyze project structure and generate documentation",
   { sessionId: "docs_generation" },
-  { priority: 'high', waitForCompletion: false }
+  { priority: "high", waitForCompletion: false },
 );
 
 // Check status
 const status = service.getExecutionStatus(executionId);
-console.log('Execution status:', status);
+console.log("Execution status:", status);
 
 // Get result when complete
 const result = await service.getExecutionResult(executionId);
@@ -76,7 +76,7 @@ const result = await service.getExecutionResult(executionId);
 ### Reasoning Engine Integration
 
 ```typescript
-import { ReasoningEngine } from '../orchestrator/reasoningEngine';
+import { ReasoningEngine } from "../orchestrator/reasoningEngine";
 
 const reasoningEngine = new ReasoningEngine(modelRouter, config, executive);
 
@@ -86,8 +86,8 @@ const result = await reasoningEngine.reason(
   {
     availableTools: ["write_file", "execute_command", "web_search"],
     allowCodeExecution: true,
-    mode: 'react'
-  }
+    mode: "react",
+  },
 );
 ```
 
@@ -96,6 +96,7 @@ const result = await reasoningEngine.reason(
 The ToolExecutive comes with a comprehensive set of built-in tools:
 
 ### File System Tools
+
 - `read_file` - Read file contents
 - `write_file` - Write content to file
 - `append_file` - Append content to file
@@ -106,6 +107,7 @@ The ToolExecutive comes with a comprehensive set of built-in tools:
 - `stat_file` - Get file statistics
 
 ### Network & Web Tools
+
 - `fetch_url` - Fetch content from URLs
 - `download_file` - Download files from URLs
 - `upload_file` - Upload files to URLs
@@ -114,17 +116,20 @@ The ToolExecutive comes with a comprehensive set of built-in tools:
 - `scrape_links` - Extract links from web pages
 
 ### Code Execution Tools
+
 - `execute_command` - Run shell commands
 - `execute_python` - Execute Python scripts
 - `execute_javascript` - Execute JavaScript code
 
 ### System Tools
+
 - `get_system_info` - Get system information
 - `status` - Get comprehensive system status
 - `get_time` - Get current time
 - `sleep` - Wait for specified duration
 
 ### Memory & Knowledge Tools
+
 - `add_memory` - Store information in memory
 - `search_memory` - Search stored memories
 - `get_memory` - Retrieve specific memories
@@ -132,11 +137,13 @@ The ToolExecutive comes with a comprehensive set of built-in tools:
 - `delete_memory` - Remove memories
 
 ### Desktop Automation (Windows)
+
 - `desktop_screenshot` - Take screenshots
 - `list_windows` - List open windows
 - `focus_window` - Focus specific windows
 
 ### Clipboard Tools
+
 - `clipboard_read` - Read clipboard content
 - `clipboard_write` - Write to clipboard
 
@@ -146,12 +153,12 @@ The ToolExecutive comes with a comprehensive set of built-in tools:
 
 ```typescript
 interface PipelineConfig {
-  maxSteps: number;        // Maximum execution steps (default: 10)
-  timeoutMs: number;       // Execution timeout (default: 300000)
-  allowParallel: boolean;  // Enable parallel execution (default: true)
-  retryCount: number;      // Retry attempts for failed steps (default: 2)
+  maxSteps: number; // Maximum execution steps (default: 10)
+  timeoutMs: number; // Execution timeout (default: 300000)
+  allowParallel: boolean; // Enable parallel execution (default: true)
+  retryCount: number; // Retry attempts for failed steps (default: 2)
   validateResults: boolean; // Validate step results (default: true)
-  logExecution: boolean;   // Log execution details (default: true)
+  logExecution: boolean; // Log execution details (default: true)
 }
 ```
 
@@ -159,10 +166,10 @@ interface PipelineConfig {
 
 ```typescript
 interface PipelineServiceConfig {
-  maxConcurrentExecutions: number;  // Max parallel executions (default: 5)
-  defaultTimeout: number;           // Default timeout (default: 300000)
-  enableMetrics: boolean;           // Enable metrics collection (default: true)
-  autoCleanupInterval: number;      // Cleanup interval (default: 3600000)
+  maxConcurrentExecutions: number; // Max parallel executions (default: 5)
+  defaultTimeout: number; // Default timeout (default: 300000)
+  enableMetrics: boolean; // Enable metrics collection (default: true)
+  autoCleanupInterval: number; // Cleanup interval (default: 3600000)
 }
 ```
 
@@ -174,10 +181,10 @@ You can enforce security constraints on pipeline execution:
 const context = {
   sessionId: "secure_session",
   constraints: [
-    'allow_code_execution',    // Allow code execution tools
-    'allow_unsafe_tools',      // Allow potentially unsafe tools
-    'allow_file_operations',   // Allow file system operations
-    'no_network_access'        // Disable network tools
+    "allow_code_execution", // Allow code execution tools
+    "allow_unsafe_tools", // Allow potentially unsafe tools
+    "allow_file_operations", // Allow file system operations
+    "no_network_access", // Disable network tools
   ],
   // ...
 };
@@ -189,36 +196,36 @@ const context = {
 
 ```typescript
 executive.registerTool({
-  name: 'custom_analysis',
-  description: 'Perform custom data analysis',
+  name: "custom_analysis",
+  description: "Perform custom data analysis",
   parameters: {
-    data: { type: 'string', required: true },
-    method: { type: 'string', default: 'standard' }
+    data: { type: "string", required: true },
+    method: { type: "string", default: "standard" },
   },
   handler: async (args, context) => {
     // Your custom tool implementation
-    return { result: 'analysis complete' };
-  }
+    return { result: "analysis complete" };
+  },
 });
 ```
 
 ### Execution Monitoring
 
 ```typescript
-service.on('requestQueued', (event) => {
-  console.log('Request queued:', event.id);
+service.on("requestQueued", (event) => {
+  console.log("Request queued:", event.id);
 });
 
-service.on('executionStarted', (event) => {
-  console.log('Execution started:', event.id);
+service.on("executionStarted", (event) => {
+  console.log("Execution started:", event.id);
 });
 
-service.on('executionCompleted', (event) => {
-  console.log('Execution completed:', event.id, event.result.success);
+service.on("executionCompleted", (event) => {
+  console.log("Execution completed:", event.id, event.result.success);
 });
 
-service.on('executionFailed', (event) => {
-  console.log('Execution failed:', event.id, event.error);
+service.on("executionFailed", (event) => {
+  console.log("Execution failed:", event.id, event.error);
 });
 ```
 
@@ -226,11 +233,11 @@ service.on('executionFailed', (event) => {
 
 ```typescript
 const metrics = service.getMetrics();
-console.log('Pipeline Metrics:', {
+console.log("Pipeline Metrics:", {
   totalExecutions: metrics.totalExecutions,
   successRate: metrics.successfulExecutions / metrics.totalExecutions,
   averageTime: metrics.averageExecutionTime,
-  toolUsage: metrics.toolUsageStats
+  toolUsage: metrics.toolUsageStats,
 });
 ```
 
@@ -247,21 +254,25 @@ The pipeline system includes comprehensive error handling:
 ## Best Practices
 
 ### 1. Security First
+
 - Always validate user inputs before execution
 - Use appropriate constraints for different contexts
 - Regularly audit available tools and permissions
 
 ### 2. Performance Optimization
+
 - Enable parallel execution for independent tasks
 - Set appropriate timeouts for different task types
 - Use priority queues for better resource allocation
 
 ### 3. Monitoring and Debugging
+
 - Enable execution logging for development
 - Monitor metrics in production
 - Store execution history for analysis
 
 ### 4. Resource Management
+
 - Set reasonable concurrency limits
 - Implement proper cleanup procedures
 - Monitor memory usage for long-running services

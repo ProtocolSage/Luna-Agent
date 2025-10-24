@@ -18,7 +18,7 @@ export interface SLOConfig {
 }
 
 export interface ReasoningConfig {
-  strategy: 'react' | 'cot' | 'tot' | 'reflexion';
+  strategy: "react" | "cot" | "tot" | "reflexion";
   maxSteps: number;
   maxTokens: number;
   selfReflection: boolean;
@@ -56,7 +56,7 @@ export interface EvolutionConfig {
 
 export interface ModelConfig {
   name: string;
-  provider: 'openai' | 'anthropic' | 'mistral' | 'local';
+  provider: "openai" | "anthropic" | "mistral" | "local";
   temperature: number;
   maxTokens: number;
   costPer1kTokensIn?: number;
@@ -67,7 +67,7 @@ export interface ModelConfig {
 export interface MemoryDocument {
   id: string;
   content: string;
-  type: 'conversation' | 'document' | 'context' | 'preference';
+  type: "conversation" | "document" | "context" | "preference";
   sessionId?: string;
   userId?: string;
   timestamp: string;
@@ -97,7 +97,7 @@ export interface ToolDefinition {
 }
 
 export interface ToolParameter {
-  type: 'string' | 'number' | 'boolean' | 'object' | 'array';
+  type: "string" | "number" | "boolean" | "object" | "array";
   description: string;
   required?: boolean;
   enum?: any[];
@@ -142,7 +142,7 @@ export interface ValidationResult {
   injectionDetection?: {
     isInjection: boolean;
     detectedTechniques: string[];
-    riskLevel: 'low' | 'medium' | 'high' | 'critical';
+    riskLevel: "low" | "medium" | "high" | "critical";
     sanitizedText?: string;
   };
 }
@@ -185,7 +185,7 @@ export interface AgentResponse {
 
 // Chat Types
 export interface ChatMessage {
-  role: 'user' | 'assistant' | 'system';
+  role: "user" | "assistant" | "system";
   content: string;
   timestamp?: number;
   metadata?: Record<string, any>;
@@ -201,16 +201,15 @@ export interface ChatContext {
 
 // Health Check Types
 export interface HealthStatus {
-  status: 'healthy' | 'degraded' | 'unhealthy';
+  status: "healthy" | "degraded" | "unhealthy";
   timestamp: number;
   components: Record<string, ComponentHealth>;
   details?: Record<string, any>;
 }
 
 export interface ComponentHealth {
-  status: 'healthy' | 'degraded' | 'unhealthy';
+  status: "healthy" | "degraded" | "unhealthy";
   lastCheck: number;
   details?: any;
   error?: string;
 }
-

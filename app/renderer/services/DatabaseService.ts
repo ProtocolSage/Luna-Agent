@@ -27,25 +27,29 @@ export class DatabaseService {
   private initializeDatabase(config?: DatabaseConfig): void {
     try {
       // Try to use better-sqlite3 if available
-      const Database = require('better-sqlite3');
-      
+      const Database = require("better-sqlite3");
+
       if (config?.inMemory) {
-        this.db = new Database(':memory:');
-        console.log('[Database] Using in-memory SQLite database');
+        this.db = new Database(":memory:");
+        console.log("[Database] Using in-memory SQLite database");
       } else {
-        const dbPath = config?.path || './luna-agent.db';
+        const dbPath = config?.path || "./luna-agent.db";
         this.db = new Database(dbPath);
         console.log(`[Database] Using SQLite database at: ${dbPath}`);
       }
-      
+
       this.setupTables();
     } catch (error: any) {
       // Fall back to in-memory implementation
-      console.warn('[Database] Better-sqlite3 not available, using in-memory fallback');
-      console.warn('[Database] To enable persistent storage, install Visual Studio Build Tools');
-      
+      console.warn(
+        "[Database] Better-sqlite3 not available, using in-memory fallback",
+      );
+      console.warn(
+        "[Database] To enable persistent storage, install Visual Studio Build Tools",
+      );
+
       // Use the in-memory fallback
-      const InMemoryDatabase = require('./InMemoryDatabase');
+      const InMemoryDatabase = require("./InMemoryDatabase");
       this.db = new InMemoryDatabase();
     }
   }
@@ -82,8 +86,10 @@ export class DatabaseService {
       // Using in-memory fallback
       return this.db.getMessages(limit);
     }
-    
-    const stmt = this.db.prepare('SELECT * FROM messages ORDER BY id DESC LIMIT ?');
+
+    const stmt = this.db.prepare(
+      "SELECT * FROM messages ORDER BY id DESC LIMIT ?",
+    );
     return stmt.all(limit).reverse();
   }
 
@@ -92,16 +98,16 @@ export class DatabaseService {
       // Using in-memory fallback
       return this.db.addMessage(role, content, metadata);
     }
-    
+
     const stmt = this.db.prepare(
-      'INSERT INTO messages (role, content, metadata) VALUES (?, ?, ?)'
+      "INSERT INTO messages (role, content, metadata) VALUES (?, ?, ?)",
     );
     const result = stmt.run(role, content, JSON.stringify(metadata));
     return {
       id: result.lastInsertRowid,
       role,
       content,
-      metadata
+      metadata,
     };
   }
 
@@ -110,8 +116,8 @@ export class DatabaseService {
       // Using in-memory fallback
       return this.db.clearMessages();
     }
-    
-    this.db.exec('DELETE FROM messages');
+
+    this.db.exec("DELETE FROM messages");
     return true;
   }
 
@@ -121,8 +127,8 @@ export class DatabaseService {
       // Using in-memory fallback
       return this.db.getSetting(key);
     }
-    
-    const stmt = this.db.prepare('SELECT value FROM settings WHERE key = ?');
+
+    const stmt = this.db.prepare("SELECT value FROM settings WHERE key = ?");
     const row = stmt.get(key);
     return row ? JSON.parse(row.value) : null;
   }
@@ -132,9 +138,9 @@ export class DatabaseService {
       // Using in-memory fallback
       return this.db.setSetting(key, value);
     }
-    
+
     const stmt = this.db.prepare(
-      'INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)'
+      "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",
     );
     stmt.run(key, JSON.stringify(value));
     return true;
@@ -144,20 +150,20 @@ export class DatabaseService {
   public execute(query: string, params: any[] = []): QueryResult {
     if (!this.db.prepare) {
       // In-memory fallback doesn't support raw queries
-      console.warn('[Database] Raw queries not supported in fallback mode');
+      console.warn("[Database] Raw queries not supported in fallback mode");
       return { rows: [], changes: 0 };
     }
-    
+
     const stmt = this.db.prepare(query);
-    
-    if (query.trim().toUpperCase().startsWith('SELECT')) {
+
+    if (query.trim().toUpperCase().startsWith("SELECT")) {
       return { rows: stmt.all(...params) };
     } else {
       const result = stmt.run(...params);
       return {
         rows: [],
         changes: result.changes,
-        lastId: result.lastInsertRowid
+        lastId: result.lastInsertRowid,
       };
     }
   }

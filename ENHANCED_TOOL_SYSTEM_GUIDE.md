@@ -33,10 +33,10 @@ private toolSystemInitialized: boolean = false;
 // Update your setupRoutes() method:
 private setupRoutes(): void {
   // ... existing routes ...
-  
+
   // Replace existing tools route:
   this.app.use('/api/tools', enhancedToolsRoutes);
-  
+
   // ... rest of your routes ...
 }
 
@@ -44,13 +44,13 @@ private setupRoutes(): void {
 private async initializeEnhancedTools(): Promise<void> {
   try {
     console.log('🚀 Initializing Enhanced Tool System...');
-    
+
     // Initialize with your existing ModelRouter
     initializeToolSystem(this.modelRouter);
-    
+
     this.toolSystemInitialized = true;
     console.log('✅ Enhanced Tool System ready');
-    
+
   } catch (error) {
     console.error('❌ Failed to initialize Enhanced Tool System:', error);
     throw error;
@@ -61,7 +61,7 @@ private async initializeEnhancedTools(): Promise<void> {
 constructor() {
   // ... existing initialization ...
   this.initializeComponents();
-  
+
   // Add this:
   this.initializeEnhancedTools().catch(console.error);
 }
@@ -79,7 +79,7 @@ private async shutdown(): Promise<void> {
 In your agent/voice system where you're getting the "ToolExecutive instance" error, use:
 
 ```typescript
-import { getToolExecutive } from '../backend/services/enhancedToolExecutor';
+import { getToolExecutive } from "../backend/services/enhancedToolExecutor";
 
 // Instead of creating a new instance, get the initialized one:
 const toolExecutive = getToolExecutive();
@@ -110,8 +110,8 @@ curl http://localhost:3000/api/tools/list
 // Test file operations
 POST /api/tools/execute
 {
-  "tool": "list_directory", 
-  "input": {"path": "."}, 
+  "tool": "list_directory",
+  "input": {"path": "."},
   "sessionId": "test-session"
 }
 
@@ -169,64 +169,77 @@ POST /api/tools/submit
 ## 🔄 Migration from Old System
 
 ### Before (Simple Tool Registry)
+
 ```javascript
 // Old system - limited tools
 const tools = {
   status: async () => ({ ok: true }),
   reminders: async (i) => ({ scheduled: i?.when }),
   goals: async (i) => ({ stored: !!i }),
-  executive: async (i) => ({ summary: String(i) })
+  executive: async (i) => ({ summary: String(i) }),
 };
 ```
 
 ### After (Enhanced Tool Executive)
+
 ```javascript
 // New system - 50+ comprehensive tools
 const executive = getToolExecutive();
 const tools = executive.getToolDefinitions(); // 50+ tools
-const result = await executive.executePlan([{
-  tool: 'web_search',
-  args: { query: 'latest AI developments', limit: 5 }
-}], 'trace-123');
+const result = await executive.executePlan(
+  [
+    {
+      tool: "web_search",
+      args: { query: "latest AI developments", limit: 5 },
+    },
+  ],
+  "trace-123",
+);
 ```
 
 ## 📡 API Endpoints Available
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/tools/execute` | POST | Execute single tool |
-| `/api/tools/plan` | POST | AI-orchestrated multi-tool execution |
-| `/api/tools/submit` | POST | Queue-based execution |
-| `/api/tools/result/:id` | GET | Get execution result |
-| `/api/tools/list` | GET | List all available tools |
-| `/api/tools/metrics` | GET | Get execution statistics |
-| `/api/tools/cancel/:id` | DELETE | Cancel execution |
-| `/api/tools/health` | GET | System health check |
+| Endpoint                | Method | Description                          |
+| ----------------------- | ------ | ------------------------------------ |
+| `/api/tools/execute`    | POST   | Execute single tool                  |
+| `/api/tools/plan`       | POST   | AI-orchestrated multi-tool execution |
+| `/api/tools/submit`     | POST   | Queue-based execution                |
+| `/api/tools/result/:id` | GET    | Get execution result                 |
+| `/api/tools/list`       | GET    | List all available tools             |
+| `/api/tools/metrics`    | GET    | Get execution statistics             |
+| `/api/tools/cancel/:id` | DELETE | Cancel execution                     |
+| `/api/tools/health`     | GET    | System health check                  |
 
 ## 🎯 Voice Agent Integration
 
 For your voice AI agent, the tool system is now available as:
 
 ```typescript
-import { getToolExecutive, executeToolPlan } from './backend/services/enhancedToolExecutor';
+import {
+  getToolExecutive,
+  executeToolPlan,
+} from "./backend/services/enhancedToolExecutor";
 
 class VoiceAgent {
   private toolExecutive = getToolExecutive();
-  
+
   async processVoiceCommand(command: string, sessionId: string) {
     // Simple tool execution
-    const result = await this.toolExecutive.executePlan([{
-      tool: 'status',
-      args: {}
-    }], sessionId);
-    
-    // Or AI-orchestrated execution
-    const orchestratedResult = await executeToolPlan(
-      command, 
-      sessionId, 
-      { allowUnsafeTools: false }
+    const result = await this.toolExecutive.executePlan(
+      [
+        {
+          tool: "status",
+          args: {},
+        },
+      ],
+      sessionId,
     );
-    
+
+    // Or AI-orchestrated execution
+    const orchestratedResult = await executeToolPlan(command, sessionId, {
+      allowUnsafeTools: false,
+    });
+
     return orchestratedResult.ok ? orchestratedResult.result : null;
   }
 }
@@ -245,27 +258,34 @@ class VoiceAgent {
 ## 🔍 Troubleshooting
 
 ### "Tool pipeline not available" Error
+
 This error occurs when the ToolExecutive isn't properly initialized. Ensure:
 
 1. ✅ `initializeToolSystem()` is called on server startup
-2. ✅ Enhanced tool routes are mounted (`/api/tools`)  
+2. ✅ Enhanced tool routes are mounted (`/api/tools`)
 3. ✅ ModelRouter is properly configured
 4. ✅ Database is accessible for tool auditing
 
 ### Tools Not Found
+
 Check tool availability:
+
 ```bash
 curl http://localhost:3000/api/tools/list
 curl http://localhost:3000/api/tools/health
 ```
 
 ### Memory/Database Issues
+
 Verify database initialization:
+
 ```javascript
 // Check if database tables exist
 const db = getDB();
-const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all();
-console.log('Available tables:', tables);
+const tables = db
+  .prepare("SELECT name FROM sqlite_master WHERE type='table'")
+  .all();
+console.log("Available tables:", tables);
 ```
 
 ## 🎉 Success Indicators

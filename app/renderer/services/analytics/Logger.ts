@@ -2,7 +2,7 @@ export enum LogLevel {
   DEBUG = 0,
   INFO = 1,
   WARN = 2,
-  ERROR = 3
+  ERROR = 3,
 }
 
 export class Logger {
@@ -24,7 +24,10 @@ export class Logger {
 
   public debug(message: string, ...args: any[]): void {
     if (this.logLevel <= LogLevel.DEBUG) {
-      console.debug(`[DEBUG] ${new Date().toISOString()} - ${message}`, ...args);
+      console.debug(
+        `[DEBUG] ${new Date().toISOString()} - ${message}`,
+        ...args,
+      );
     }
   }
 
@@ -42,7 +45,11 @@ export class Logger {
 
   public error(message: string, error?: Error, ...args: any[]): void {
     if (this.logLevel <= LogLevel.ERROR) {
-      console.error(`[ERROR] ${new Date().toISOString()} - ${message}`, error, ...args);
+      console.error(
+        `[ERROR] ${new Date().toISOString()} - ${message}`,
+        error,
+        ...args,
+      );
     }
   }
 

@@ -1,8 +1,8 @@
 // Status tool for system health checks and metrics
-import { memoryService } from '../../memory/MemoryService';
+import { memoryService } from "../../memory/MemoryService";
 
 export interface SystemStatus {
-  status: 'healthy' | 'degraded' | 'error';
+  status: "healthy" | "degraded" | "error";
   timestamp: string;
   uptime: number;
   memory: {
@@ -23,32 +23,32 @@ export interface SystemStatus {
 export async function getStatus(): Promise<SystemStatus> {
   const startTime = Date.now();
   const errors: string[] = [];
-  
+
   try {
     // Get memory system stats
     const memoryStats = await memoryService.getStats();
-    
+
     // Calculate metrics
     const uptime = process.uptime();
     const latency = Date.now() - startTime;
-    
+
     // Determine overall health
-    let status: 'healthy' | 'degraded' | 'error' = 'healthy';
-    
+    let status: "healthy" | "degraded" | "error" = "healthy";
+
     if (memoryStats.totalMemories === 0) {
-      status = 'degraded';
-      errors.push('No memories stored yet');
+      status = "degraded";
+      errors.push("No memories stored yet");
     }
-    
+
     if (!memoryStats.embeddingServiceAvailable) {
-      errors.push('Embedding service unavailable (no OpenAI API key)');
+      errors.push("Embedding service unavailable (no OpenAI API key)");
     }
-    
+
     if (latency > 1000) {
-      status = 'degraded';
-      errors.push('High system latency detected');
+      status = "degraded";
+      errors.push("High system latency detected");
     }
-    
+
     return {
       status,
       timestamp: new Date().toISOString(),
@@ -56,29 +56,28 @@ export async function getStatus(): Promise<SystemStatus> {
       memory: {
         totalMemories: memoryStats.totalMemories,
         embeddingServiceAvailable: memoryStats.embeddingServiceAvailable,
-        dbSize: `${Math.round((memoryStats.totalMemories * 0.5))}KB` // Rough estimate
+        dbSize: `${Math.round(memoryStats.totalMemories * 0.5)}KB`, // Rough estimate
       },
       performance: {
         avgLatency: latency,
-        lastOperationMs: latency
+        lastOperationMs: latency,
       },
-      errors
+      errors,
     };
-    
   } catch (error: any) {
     return {
-      status: 'error',
+      status: "error",
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
       memory: {
         totalMemories: 0,
         embeddingServiceAvailable: false,
-        dbSize: '0KB'
+        dbSize: "0KB",
       },
       performance: {
-        avgLatency: Date.now() - startTime
+        avgLatency: Date.now() - startTime,
       },
-      errors: [`System error: ${error.message}`]
+      errors: [`System error: ${error.message}`],
     };
   }
 }

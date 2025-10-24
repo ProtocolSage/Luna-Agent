@@ -1,5 +1,5 @@
-import React, { Component, ReactNode } from 'react';
-import { logger } from '../utils/logger';
+import React, { Component, ReactNode } from "react";
+import { logger } from "../utils/logger";
 
 interface Props {
   children: ReactNode;
@@ -19,10 +19,10 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    logger.error('Component error boundary caught exception', { 
-      error: error.message, 
+    logger.error("Component error boundary caught exception", {
+      error: error.message,
       stack: error.stack,
-      componentStack: errorInfo.componentStack
+      componentStack: errorInfo.componentStack,
     });
   }
 
@@ -37,42 +37,50 @@ export class ErrorBoundary extends Component<Props, State> {
       }
 
       return (
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          minHeight: '100vh',
-          padding: '2rem',
-          background: '#0a0a0a',
-          color: '#fff'
-        }}>
-          <div style={{
-            maxWidth: '600px',
-            textAlign: 'center'
-          }}>
-            <h1 style={{ fontSize: '2rem', marginBottom: '1rem' }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            minHeight: "100vh",
+            padding: "2rem",
+            background: "#0a0a0a",
+            color: "#fff",
+          }}
+        >
+          <div
+            style={{
+              maxWidth: "600px",
+              textAlign: "center",
+            }}
+          >
+            <h1 style={{ fontSize: "2rem", marginBottom: "1rem" }}>
               ⚠️ Something went wrong
             </h1>
-            <p style={{ 
-              fontSize: '1rem', 
-              marginBottom: '1rem',
-              color: '#ff4444',
-              fontFamily: 'monospace'
-            }}>
+            <p
+              style={{
+                fontSize: "1rem",
+                marginBottom: "1rem",
+                color: "#ff4444",
+                fontFamily: "monospace",
+              }}
+            >
               {this.state.error?.message}
             </p>
-            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+            <div
+              style={{ display: "flex", gap: "1rem", justifyContent: "center" }}
+            >
               <button
                 onClick={this.handleReset}
                 style={{
-                  padding: '0.75rem 1.5rem',
-                  background: '#4444ff',
-                  border: 'none',
-                  borderRadius: '0.5rem',
-                  color: '#fff',
-                  cursor: 'pointer',
-                  fontSize: '1rem'
+                  padding: "0.75rem 1.5rem",
+                  background: "#4444ff",
+                  border: "none",
+                  borderRadius: "0.5rem",
+                  color: "#fff",
+                  cursor: "pointer",
+                  fontSize: "1rem",
                 }}
               >
                 Try Again
@@ -80,13 +88,13 @@ export class ErrorBoundary extends Component<Props, State> {
               <button
                 onClick={() => window.location.reload()}
                 style={{
-                  padding: '0.75rem 1.5rem',
-                  background: '#444',
-                  border: 'none',
-                  borderRadius: '0.5rem',
-                  color: '#fff',
-                  cursor: 'pointer',
-                  fontSize: '1rem'
+                  padding: "0.75rem 1.5rem",
+                  background: "#444",
+                  border: "none",
+                  borderRadius: "0.5rem",
+                  color: "#fff",
+                  cursor: "pointer",
+                  fontSize: "1rem",
                 }}
               >
                 Reload App

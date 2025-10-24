@@ -1,14 +1,18 @@
 // app/renderer/services/GlobalDebugService.ts
 // Global debug panel service for voice troubleshooting
 
-import { getEnhancedVoiceService } from './EnhancedVoiceService';
-import { testEnvironmentAndRecommend, saveVoiceConfig, getFinalVoiceConfig } from '../config/voiceConfig';
+import { getEnhancedVoiceService } from "./EnhancedVoiceService";
+import {
+  testEnvironmentAndRecommend,
+  saveVoiceConfig,
+  getFinalVoiceConfig,
+} from "../config/voiceConfig";
 
 interface DebugPanelState {
   isVisible: boolean;
   position: { x: number; y: number };
   size: { width: number; height: number };
-  tab: 'voice' | 'environment' | 'settings';
+  tab: "voice" | "environment" | "settings";
 }
 
 export class GlobalDebugService {
@@ -18,7 +22,7 @@ export class GlobalDebugService {
     isVisible: false,
     position: { x: 20, y: 20 },
     size: { width: 400, height: 500 },
-    tab: 'voice'
+    tab: "voice",
   };
   private updateInterval: NodeJS.Timeout | null = null;
 
@@ -37,19 +41,21 @@ export class GlobalDebugService {
   public static initializeGlobally(): void {
     // Call this in your main App.tsx to set up global shortcuts
     GlobalDebugService.getInstance();
-    console.log('[GlobalDebugService] Global debug shortcuts initialized (Ctrl+Shift+D)');
+    console.log(
+      "[GlobalDebugService] Global debug shortcuts initialized (Ctrl+Shift+D)",
+    );
   }
 
   private setupGlobalKeyListener(): void {
-    document.addEventListener('keydown', (event) => {
+    document.addEventListener("keydown", (event) => {
       // Ctrl+Shift+D to toggle debug panel
-      if (event.ctrlKey && event.shiftKey && event.key === 'D') {
+      if (event.ctrlKey && event.shiftKey && event.key === "D") {
         event.preventDefault();
         this.toggle();
       }
-      
+
       // Escape to close debug panel
-      if (event.key === 'Escape' && this.state.isVisible) {
+      if (event.key === "Escape" && this.state.isVisible) {
         event.preventDefault();
         this.hide();
       }
@@ -66,24 +72,24 @@ export class GlobalDebugService {
 
   public show(): void {
     if (this.state.isVisible) return;
-    
+
     this.state.isVisible = true;
     this.createDebugPanel();
     this.startUpdating();
     this.saveState();
-    
-    console.log('[GlobalDebugService] Debug panel opened');
+
+    console.log("[GlobalDebugService] Debug panel opened");
   }
 
   public hide(): void {
     if (!this.state.isVisible) return;
-    
+
     this.state.isVisible = false;
     this.destroyDebugPanel();
     this.stopUpdating();
     this.saveState();
-    
-    console.log('[GlobalDebugService] Debug panel closed');
+
+    console.log("[GlobalDebugService] Debug panel closed");
   }
 
   private createDebugPanel(): void {
@@ -91,8 +97,8 @@ export class GlobalDebugService {
       this.debugPanel.remove();
     }
 
-    this.debugPanel = document.createElement('div');
-    this.debugPanel.className = 'global-debug-panel';
+    this.debugPanel = document.createElement("div");
+    this.debugPanel.className = "global-debug-panel";
     this.debugPanel.style.cssText = `
       position: fixed;
       top: ${this.state.position.y}px;
@@ -182,22 +188,22 @@ export class GlobalDebugService {
     if (!this.debugPanel) return;
 
     // Close button
-    const closeBtn = this.debugPanel.querySelector('.debug-close');
-    closeBtn?.addEventListener('click', () => this.hide());
+    const closeBtn = this.debugPanel.querySelector(".debug-close");
+    closeBtn?.addEventListener("click", () => this.hide());
 
     // Make draggable
-    const header = this.debugPanel.querySelector('.debug-header');
+    const header = this.debugPanel.querySelector(".debug-header");
     if (header) {
       let isDragging = false;
       let startX = 0;
       let startY = 0;
 
-      header.addEventListener('mousedown', ((e: MouseEvent) => {
+      header.addEventListener("mousedown", ((e: MouseEvent) => {
         isDragging = true;
         startX = e.clientX - this.state.position.x;
         startY = e.clientY - this.state.position.y;
-        document.addEventListener('mousemove', onMouseMove);
-        document.addEventListener('mouseup', onMouseUp);
+        document.addEventListener("mousemove", onMouseMove);
+        document.addEventListener("mouseup", onMouseUp);
       }) as EventListener);
 
       const onMouseMove = (e: MouseEvent) => {
@@ -210,15 +216,15 @@ export class GlobalDebugService {
 
       const onMouseUp = () => {
         isDragging = false;
-        document.removeEventListener('mousemove', onMouseMove);
-        document.removeEventListener('mouseup', onMouseUp);
+        document.removeEventListener("mousemove", onMouseMove);
+        document.removeEventListener("mouseup", onMouseUp);
         this.saveState();
       };
     }
   }
 
   private updateDebugContent(): void {
-    const content = this.debugPanel?.querySelector('.debug-content');
+    const content = this.debugPanel?.querySelector(".debug-content");
     if (!content) return;
 
     try {
@@ -235,14 +241,14 @@ export class GlobalDebugService {
             </div>
             <div style="display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #333; font-size: 11px;">
               <span>Listening:</span>
-              <span style="color: ${debugInfo.isListening ? '#4CAF50' : '#f44336'};">
-                ${debugInfo.isListening ? '🟢 Active' : '🔴 Inactive'}
+              <span style="color: ${debugInfo.isListening ? "#4CAF50" : "#f44336"};">
+                ${debugInfo.isListening ? "🟢 Active" : "🔴 Inactive"}
               </span>
             </div>
             <div style="display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #333; font-size: 11px;">
               <span>Processing:</span>
-              <span style="color: ${debugInfo.isProcessing ? '#FF9800' : '#666'};">
-                ${debugInfo.isProcessing ? '🟡 Processing' : '⚪ Idle'}
+              <span style="color: ${debugInfo.isProcessing ? "#FF9800" : "#666"};">
+                ${debugInfo.isProcessing ? "🟡 Processing" : "⚪ Idle"}
               </span>
             </div>
             <div style="display: flex; justify-content: space-between; padding: 4px 0; font-size: 11px;">
@@ -267,13 +273,13 @@ export class GlobalDebugService {
             </div>
             <div style="display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #333; font-size: 11px;">
               <span>Speech Detected:</span>
-              <span style="color: ${debugInfo.metrics.speechDetected ? '#4CAF50' : '#666'};">
-                ${debugInfo.metrics.speechDetected ? '🟢 Yes' : '🔴 No'}
+              <span style="color: ${debugInfo.metrics.speechDetected ? "#4CAF50" : "#666"};">
+                ${debugInfo.metrics.speechDetected ? "🟢 Yes" : "🔴 No"}
               </span>
             </div>
             <div style="display: flex; justify-content: space-between; padding: 4px 0; font-size: 11px;">
               <span>Confidence:</span>
-              <span style="color: ${debugInfo.metrics.confidence > 0.8 ? '#4CAF50' : debugInfo.metrics.confidence > 0.6 ? '#FF9800' : '#f44336'};">
+              <span style="color: ${debugInfo.metrics.confidence > 0.8 ? "#4CAF50" : debugInfo.metrics.confidence > 0.6 ? "#FF9800" : "#f44336"};">
                 ${(debugInfo.metrics.confidence * 100).toFixed(0)}%
               </span>
             </div>
@@ -335,21 +341,24 @@ export class GlobalDebugService {
 
   private saveState(): void {
     try {
-      localStorage.setItem('luna-debug-panel-state', JSON.stringify(this.state));
+      localStorage.setItem(
+        "luna-debug-panel-state",
+        JSON.stringify(this.state),
+      );
     } catch (error) {
-      console.warn('Failed to save debug panel state:', error);
+      console.warn("Failed to save debug panel state:", error);
     }
   }
 
   private loadSavedState(): void {
     try {
-      const saved = localStorage.getItem('luna-debug-panel-state');
+      const saved = localStorage.getItem("luna-debug-panel-state");
       if (saved) {
         const savedState = JSON.parse(saved);
         this.state = { ...this.state, ...savedState, isVisible: false }; // Don't auto-show
       }
     } catch (error) {
-      console.warn('Failed to load debug panel state:', error);
+      console.warn("Failed to load debug panel state:", error);
     }
   }
 }

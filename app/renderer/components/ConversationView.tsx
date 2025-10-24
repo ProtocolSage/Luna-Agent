@@ -1,7 +1,7 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from "react";
 
 interface Message {
-  role: 'user' | 'assistant';
+  role: "user" | "assistant";
   content: string;
   timestamp: number;
 }
@@ -11,12 +11,15 @@ interface Props {
   isProcessing: boolean;
 }
 
-export const ConversationView: React.FC<Props> = ({ messages, isProcessing }) => {
+export const ConversationView: React.FC<Props> = ({
+  messages,
+  isProcessing,
+}) => {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Auto-scroll to bottom when new messages arrive
-    scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
+    scrollRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isProcessing]);
 
   return (
@@ -31,20 +34,20 @@ export const ConversationView: React.FC<Props> = ({ messages, isProcessing }) =>
       {messages.map((msg, idx) => (
         <div key={idx} className={`message ${msg.role}`}>
           <div className="message-avatar">
-            {msg.role === 'user' ? '👤' : '🤖'}
+            {msg.role === "user" ? "👤" : "🤖"}
           </div>
           <div className="message-bubble">
             <div className="message-content">{msg.content}</div>
             <div className="message-time">
-              {new Date(msg.timestamp).toLocaleTimeString([], { 
-                hour: '2-digit', 
-                minute: '2-digit' 
+              {new Date(msg.timestamp).toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
               })}
             </div>
           </div>
         </div>
       ))}
-      
+
       {isProcessing && (
         <div className="message assistant">
           <div className="message-avatar">🤖</div>
@@ -57,7 +60,7 @@ export const ConversationView: React.FC<Props> = ({ messages, isProcessing }) =>
           </div>
         </div>
       )}
-      
+
       <div ref={scrollRef} />
     </div>
   );

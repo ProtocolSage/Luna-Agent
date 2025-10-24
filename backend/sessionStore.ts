@@ -8,31 +8,31 @@ export interface Session {
 
 class SessionStore {
   private sessions = new Map<string, Session>();
-  
+
   get(id: string): Session | undefined {
     return this.sessions.get(id);
   }
-  
+
   set(session: Session): void {
     this.sessions.set(session.id, session);
   }
-  
+
   delete(id: string): boolean {
     return this.sessions.delete(id);
   }
-  
+
   has(id: string): boolean {
     return this.sessions.has(id);
   }
-  
+
   clear(): void {
     this.sessions.clear();
   }
-  
+
   size(): number {
     return this.sessions.size;
   }
-  
+
   // Update last accessed time
   touch(id: string): boolean {
     const session = this.sessions.get(id);

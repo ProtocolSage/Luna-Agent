@@ -1,9 +1,9 @@
 // Feature Flag System Tests
-import { 
-  FeatureFlagManager, 
-  DEFAULT_VOICE_FLAGS, 
-  DEFAULT_SYSTEM_FLAGS 
-} from '../../app/renderer/services/FeatureFlags';
+import {
+  FeatureFlagManager,
+  DEFAULT_VOICE_FLAGS,
+  DEFAULT_SYSTEM_FLAGS,
+} from "../../app/renderer/services/FeatureFlags";
 
 // Mock localStorage for testing
 const mockLocalStorage = (() => {
@@ -19,16 +19,16 @@ const mockLocalStorage = (() => {
     }),
     clear: jest.fn(() => {
       store = {};
-    })
+    }),
   };
 })();
 
-Object.defineProperty(window, 'localStorage', {
+Object.defineProperty(window, "localStorage", {
   value: mockLocalStorage,
-  writable: true
+  writable: true,
 });
 
-describe('FeatureFlagManager', () => {
+describe("FeatureFlagManager", () => {
   let manager: FeatureFlagManager;
 
   beforeEach(() => {
@@ -37,8 +37,8 @@ describe('FeatureFlagManager', () => {
     manager = new FeatureFlagManager();
   });
 
-  describe('Initialization', () => {
-    it('should initialize with default flags', () => {
+  describe("Initialization", () => {
+    it("should initialize with default flags", () => {
       const voiceFlags = manager.getVoiceFlags();
       const systemFlags = manager.getSystemFlags();
 
@@ -46,97 +46,100 @@ describe('FeatureFlagManager', () => {
       expect(systemFlags).toEqual(DEFAULT_SYSTEM_FLAGS);
     });
 
-    it('should load saved flags from localStorage', () => {
-      const savedVoiceFlags = { 
-        ...DEFAULT_VOICE_FLAGS, 
-        speechToText: false 
+    it("should load saved flags from localStorage", () => {
+      const savedVoiceFlags = {
+        ...DEFAULT_VOICE_FLAGS,
+        speechToText: false,
       };
-      
-      mockLocalStorage.setItem('luna-voice-flags', JSON.stringify(savedVoiceFlags));
-      
+
+      mockLocalStorage.setItem(
+        "luna-voice-flags",
+        JSON.stringify(savedVoiceFlags),
+      );
+
       const newManager = new FeatureFlagManager();
       const voiceFlags = newManager.getVoiceFlags();
-      
+
       expect(voiceFlags.speechToText).toBe(false);
     });
   });
 
-  describe('Voice Feature Management', () => {
-    it('should check if voice feature is enabled', () => {
-      expect(manager.isVoiceFeatureEnabled('speechToText')).toBe(true);
-      expect(manager.isVoiceFeatureEnabled('offlineMode')).toBe(false);
+  describe("Voice Feature Management", () => {
+    it("should check if voice feature is enabled", () => {
+      expect(manager.isVoiceFeatureEnabled("speechToText")).toBe(true);
+      expect(manager.isVoiceFeatureEnabled("offlineMode")).toBe(false);
     });
 
-    it('should enable voice feature', () => {
-      manager.enableVoiceFeature('offlineMode');
-      expect(manager.isVoiceFeatureEnabled('offlineMode')).toBe(true);
+    it("should enable voice feature", () => {
+      manager.enableVoiceFeature("offlineMode");
+      expect(manager.isVoiceFeatureEnabled("offlineMode")).toBe(true);
     });
 
-    it('should disable voice feature', () => {
-      manager.disableVoiceFeature('speechToText');
-      expect(manager.isVoiceFeatureEnabled('speechToText')).toBe(false);
+    it("should disable voice feature", () => {
+      manager.disableVoiceFeature("speechToText");
+      expect(manager.isVoiceFeatureEnabled("speechToText")).toBe(false);
     });
 
-    it('should toggle voice feature', () => {
-      const initialState = manager.isVoiceFeatureEnabled('voiceCloning');
-      const newState = manager.toggleVoiceFeature('voiceCloning');
-      
+    it("should toggle voice feature", () => {
+      const initialState = manager.isVoiceFeatureEnabled("voiceCloning");
+      const newState = manager.toggleVoiceFeature("voiceCloning");
+
       expect(newState).toBe(!initialState);
-      expect(manager.isVoiceFeatureEnabled('voiceCloning')).toBe(newState);
+      expect(manager.isVoiceFeatureEnabled("voiceCloning")).toBe(newState);
     });
   });
 
-  describe('System Feature Management', () => {
-    it('should check if system feature is enabled', () => {
-      expect(manager.isSystemFeatureEnabled('darkMode')).toBe(true);
-      expect(manager.isSystemFeatureEnabled('debugMode')).toBe(false);
+  describe("System Feature Management", () => {
+    it("should check if system feature is enabled", () => {
+      expect(manager.isSystemFeatureEnabled("darkMode")).toBe(true);
+      expect(manager.isSystemFeatureEnabled("debugMode")).toBe(false);
     });
 
-    it('should enable system feature', () => {
-      manager.enableSystemFeature('debugMode');
-      expect(manager.isSystemFeatureEnabled('debugMode')).toBe(true);
+    it("should enable system feature", () => {
+      manager.enableSystemFeature("debugMode");
+      expect(manager.isSystemFeatureEnabled("debugMode")).toBe(true);
     });
 
-    it('should disable system feature', () => {
-      manager.disableSystemFeature('darkMode');
-      expect(manager.isSystemFeatureEnabled('darkMode')).toBe(false);
+    it("should disable system feature", () => {
+      manager.disableSystemFeature("darkMode");
+      expect(manager.isSystemFeatureEnabled("darkMode")).toBe(false);
     });
 
-    it('should toggle system feature', () => {
-      const initialState = manager.isSystemFeatureEnabled('animations');
-      const newState = manager.toggleSystemFeature('animations');
-      
+    it("should toggle system feature", () => {
+      const initialState = manager.isSystemFeatureEnabled("animations");
+      const newState = manager.toggleSystemFeature("animations");
+
       expect(newState).toBe(!initialState);
-      expect(manager.isSystemFeatureEnabled('animations')).toBe(newState);
+      expect(manager.isSystemFeatureEnabled("animations")).toBe(newState);
     });
   });
 
-  describe('Batch Operations', () => {
-    it('should set multiple voice flags at once', () => {
+  describe("Batch Operations", () => {
+    it("should set multiple voice flags at once", () => {
       manager.setVoiceFlags({
         speechToText: false,
         textToSpeech: false,
-        voiceActivation: false
+        voiceActivation: false,
       });
 
-      expect(manager.isVoiceFeatureEnabled('speechToText')).toBe(false);
-      expect(manager.isVoiceFeatureEnabled('textToSpeech')).toBe(false);
-      expect(manager.isVoiceFeatureEnabled('voiceActivation')).toBe(false);
+      expect(manager.isVoiceFeatureEnabled("speechToText")).toBe(false);
+      expect(manager.isVoiceFeatureEnabled("textToSpeech")).toBe(false);
+      expect(manager.isVoiceFeatureEnabled("voiceActivation")).toBe(false);
       // Other flags should remain unchanged
-      expect(manager.isVoiceFeatureEnabled('wakeWordDetection')).toBe(true);
+      expect(manager.isVoiceFeatureEnabled("wakeWordDetection")).toBe(true);
     });
 
-    it('should set multiple system flags at once', () => {
+    it("should set multiple system flags at once", () => {
       manager.setSystemFlags({
         debugMode: true,
-        devTools: true
+        devTools: true,
       });
 
-      expect(manager.isSystemFeatureEnabled('debugMode')).toBe(true);
-      expect(manager.isSystemFeatureEnabled('devTools')).toBe(true);
+      expect(manager.isSystemFeatureEnabled("debugMode")).toBe(true);
+      expect(manager.isSystemFeatureEnabled("devTools")).toBe(true);
     });
 
-    it('should reset to defaults', () => {
+    it("should reset to defaults", () => {
       // Change some flags first
       manager.setVoiceFlags({ speechToText: false });
       manager.setSystemFlags({ debugMode: true });
@@ -149,27 +152,27 @@ describe('FeatureFlagManager', () => {
     });
   });
 
-  describe('Preset Configurations', () => {
-    it('should apply development mode', () => {
+  describe("Preset Configurations", () => {
+    it("should apply development mode", () => {
       manager.applyDevelopmentMode();
-      
-      expect(manager.isSystemFeatureEnabled('debugMode')).toBe(true);
-      expect(manager.isSystemFeatureEnabled('devTools')).toBe(true);
-      expect(manager.isSystemFeatureEnabled('performanceMetrics')).toBe(true);
+
+      expect(manager.isSystemFeatureEnabled("debugMode")).toBe(true);
+      expect(manager.isSystemFeatureEnabled("devTools")).toBe(true);
+      expect(manager.isSystemFeatureEnabled("performanceMetrics")).toBe(true);
     });
 
-    it('should apply minimal mode', () => {
+    it("should apply minimal mode", () => {
       manager.applyMinimalMode();
-      
-      expect(manager.isVoiceFeatureEnabled('voiceCloning')).toBe(false);
-      expect(manager.isVoiceFeatureEnabled('voiceEffects')).toBe(false);
-      expect(manager.isSystemFeatureEnabled('animations')).toBe(false);
+
+      expect(manager.isVoiceFeatureEnabled("voiceCloning")).toBe(false);
+      expect(manager.isVoiceFeatureEnabled("voiceEffects")).toBe(false);
+      expect(manager.isSystemFeatureEnabled("animations")).toBe(false);
     });
 
-    it('should apply production mode', () => {
+    it("should apply production mode", () => {
       // First change some settings
-      manager.enableSystemFeature('debugMode');
-      manager.disableVoiceFeature('speechToText');
+      manager.enableSystemFeature("debugMode");
+      manager.disableVoiceFeature("speechToText");
 
       // Apply production mode
       manager.applyProductionMode();
@@ -179,8 +182,8 @@ describe('FeatureFlagManager', () => {
     });
   });
 
-  describe('Configuration Export/Import', () => {
-    it('should export configuration as JSON', () => {
+  describe("Configuration Export/Import", () => {
+    it("should export configuration as JSON", () => {
       manager.setVoiceFlags({ speechToText: false });
       manager.setSystemFlags({ debugMode: true });
 
@@ -192,79 +195,79 @@ describe('FeatureFlagManager', () => {
       expect(parsed.timestamp).toBeDefined();
     });
 
-    it('should import valid configuration', () => {
+    it("should import valid configuration", () => {
       const config = JSON.stringify({
         voice: { speechToText: false, textToSpeech: false },
-        system: { debugMode: true, devTools: true }
+        system: { debugMode: true, devTools: true },
       });
 
       const result = manager.importConfiguration(config);
 
       expect(result).toBe(true);
-      expect(manager.isVoiceFeatureEnabled('speechToText')).toBe(false);
-      expect(manager.isVoiceFeatureEnabled('textToSpeech')).toBe(false);
-      expect(manager.isSystemFeatureEnabled('debugMode')).toBe(true);
-      expect(manager.isSystemFeatureEnabled('devTools')).toBe(true);
+      expect(manager.isVoiceFeatureEnabled("speechToText")).toBe(false);
+      expect(manager.isVoiceFeatureEnabled("textToSpeech")).toBe(false);
+      expect(manager.isSystemFeatureEnabled("debugMode")).toBe(true);
+      expect(manager.isSystemFeatureEnabled("devTools")).toBe(true);
     });
 
-    it('should handle invalid configuration gracefully', () => {
-      const result = manager.importConfiguration('invalid json');
+    it("should handle invalid configuration gracefully", () => {
+      const result = manager.importConfiguration("invalid json");
       expect(result).toBe(false);
     });
   });
 
-  describe('Event Listeners', () => {
-    it('should notify listeners when flags change', () => {
+  describe("Event Listeners", () => {
+    it("should notify listeners when flags change", () => {
       const listener = jest.fn();
       const unsubscribe = manager.onFlagsChanged(listener);
 
-      manager.toggleVoiceFeature('speechToText');
+      manager.toggleVoiceFeature("speechToText");
 
       expect(listener).toHaveBeenCalledTimes(1);
 
       // Should not call after unsubscribe
       unsubscribe();
-      manager.toggleVoiceFeature('textToSpeech');
+      manager.toggleVoiceFeature("textToSpeech");
 
       expect(listener).toHaveBeenCalledTimes(1);
     });
 
-    it('should support multiple listeners', () => {
+    it("should support multiple listeners", () => {
       const listener1 = jest.fn();
       const listener2 = jest.fn();
 
       manager.onFlagsChanged(listener1);
       manager.onFlagsChanged(listener2);
 
-      manager.toggleVoiceFeature('speechToText');
+      manager.toggleVoiceFeature("speechToText");
 
       expect(listener1).toHaveBeenCalledTimes(1);
       expect(listener2).toHaveBeenCalledTimes(1);
     });
   });
 
-  describe('Persistence', () => {
-    it('should save voice flags to localStorage', () => {
+  describe("Persistence", () => {
+    it("should save voice flags to localStorage", () => {
       manager.setVoiceFlags({ speechToText: false });
 
       expect(mockLocalStorage.setItem).toHaveBeenCalledWith(
-        'luna-voice-flags',
-        expect.stringContaining('"speechToText":false')
+        "luna-voice-flags",
+        expect.stringContaining('"speechToText":false'),
       );
     });
 
-    it('should save system flags to localStorage', () => {
+    it("should save system flags to localStorage", () => {
       manager.setSystemFlags({ debugMode: true });
 
       expect(mockLocalStorage.setItem).toHaveBeenCalledWith(
-        'luna-system-flags',
-        expect.stringContaining('"debugMode":true')
+        "luna-system-flags",
+        expect.stringContaining('"debugMode":true'),
       );
     });
 
-    it('should handle localStorage errors gracefully', () => {
+    it("should handle localStorage errors gracefully", () => {
       mockLocalStorage.setItem.mockImplementation(() => {
-        throw new Error('Storage full');
+        throw new Error("Storage full");
       });
 
       // Should not throw
@@ -274,33 +277,33 @@ describe('FeatureFlagManager', () => {
     });
   });
 
-  describe('Utility Methods', () => {
-    it('should list enabled voice features', () => {
+  describe("Utility Methods", () => {
+    it("should list enabled voice features", () => {
       manager.setVoiceFlags({
         speechToText: true,
         textToSpeech: false,
-        voiceActivation: true
+        voiceActivation: true,
       });
 
       const enabled = manager.getEnabledVoiceFeatures();
-      
-      expect(enabled).toContain('speechToText');
-      expect(enabled).toContain('voiceActivation');
-      expect(enabled).not.toContain('textToSpeech');
+
+      expect(enabled).toContain("speechToText");
+      expect(enabled).toContain("voiceActivation");
+      expect(enabled).not.toContain("textToSpeech");
     });
 
-    it('should list enabled system features', () => {
+    it("should list enabled system features", () => {
       manager.setSystemFlags({
         darkMode: true,
         animations: false,
-        debugMode: true
+        debugMode: true,
       });
 
       const enabled = manager.getEnabledSystemFeatures();
-      
-      expect(enabled).toContain('darkMode');
-      expect(enabled).toContain('debugMode');
-      expect(enabled).not.toContain('animations');
+
+      expect(enabled).toContain("darkMode");
+      expect(enabled).toContain("debugMode");
+      expect(enabled).not.toContain("animations");
     });
   });
 });

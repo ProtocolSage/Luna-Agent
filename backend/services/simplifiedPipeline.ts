@@ -3,8 +3,8 @@
  * Compatible with our self-contained ToolExecutive
  */
 
-import { ToolExecutive, ToolStep, ToolResult } from '@agent/tools/executive';
-import { ModelRouter } from '@agent/orchestrator/modelRouter';
+import { ToolExecutive, ToolStep, ToolResult } from "@agent/tools/executive";
+import { ModelRouter } from "@agent/orchestrator/modelRouter";
 
 export interface PipelineContext {
   sessionId: string;
@@ -39,7 +39,7 @@ export interface PipelineRequest {
   prompt?: string;
   steps?: ToolStep[];
   context?: Record<string, any>;
-  priority?: 'high' | 'normal' | 'low';
+  priority?: "high" | "normal" | "low";
 }
 
 /**
@@ -47,49 +47,57 @@ export interface PipelineRequest {
  */
 export class ToolPipeline {
   private options: PipelineContext;
-  
+
   constructor(
     private toolExecutive: ToolExecutive,
     private modelRouter: ModelRouter | null,
-    options: Partial<PipelineContext> = {}
+    options: Partial<PipelineContext> = {},
   ) {
     this.options = {
-      sessionId: options.sessionId || 'default',
+      sessionId: options.sessionId || "default",
       maxSteps: options.maxSteps || 10,
       timeoutMs: options.timeoutMs || 300000,
       allowParallel: options.allowParallel || false,
       retryCount: options.retryCount || 2,
       validateResults: options.validateResults || true,
       logExecution: options.logExecution || true,
-      ...options
+      ...options,
     };
   }
 
-  async execute(steps: ToolStep[], sessionId: string, context?: Partial<PipelineContext>): Promise<PipelineResult> {
+  async execute(
+    steps: ToolStep[],
+    sessionId: string,
+    context?: Partial<PipelineContext>,
+  ): Promise<PipelineResult> {
     const traceId = context?.traceId || `pipeline_${sessionId}_${Date.now()}`;
-    
+
     try {
       const results = await this.toolExecutive.executePlan(steps, traceId);
-      
+
       return {
         success: results.every((r: ToolResult) => r.success),
         steps: results,
         metadata: {
           traceId,
           executedAt: new Date().toISOString(),
-          totalSteps: steps.length
-        }
+          totalSteps: steps.length,
+        },
       };
     } catch (error: any) {
       return {
         success: false,
         steps: [],
-        error: error.message || 'Pipeline execution failed'
+        error: error.message || "Pipeline execution failed",
       };
     }
   }
 
-  async executeWithOrchestration(prompt: string, sessionId: string, context?: Partial<PipelineContext>): Promise<PipelineResult> {
+  async executeWithOrchestration(
+    prompt: string,
+    sessionId: string,
+    context?: Partial<PipelineContext>,
+  ): Promise<PipelineResult> {
     // Simplified orchestration - just execute any provided steps
     // In a real implementation, this would use the model router to generate steps
     return this.execute([], sessionId, context);
@@ -101,43 +109,47 @@ export class ToolPipeline {
  */
 export class PipelineService {
   private executions: Map<string, PipelineResult> = new Map();
-  
+
   constructor(
     private toolExecutive: ToolExecutive,
     private modelRouter: ModelRouter | null,
-    private options: any
+    private options: any,
   ) {}
 
-  async submitRequest(request: PipelineRequest, sessionId?: string, options?: any): Promise<PipelineResult> {
+  async submitRequest(
+    request: PipelineRequest,
+    sessionId?: string,
+    options?: any,
+  ): Promise<PipelineResult> {
     const executionId = `exec_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const finalSessionId = sessionId || request.sessionId;
-    
+
     // Execute immediately in simplified version
     const traceId = `service_${finalSessionId}_${Date.now()}`;
     const steps = request.steps || [];
-    
+
     try {
       const results = await this.toolExecutive.executePlan(steps, traceId);
-      
+
       const pipelineResult: PipelineResult = {
         success: results.every((r: ToolResult) => r.success),
         steps: results,
         metadata: {
           executionId,
           sessionId: finalSessionId,
-          priority: request.priority || 'normal'
-        }
+          priority: request.priority || "normal",
+        },
       };
-      
+
       this.executions.set(executionId, pipelineResult);
       return pipelineResult;
     } catch (error: any) {
       const errorResult: PipelineResult = {
         success: false,
         steps: [],
-        error: error.message
+        error: error.message,
       };
-      
+
       this.executions.set(executionId, errorResult);
       return errorResult;
     }
@@ -152,14 +164,16 @@ export class PipelineService {
     return this.getExecution(executionId);
   }
 
-  // Alias for compatibility  
-  getExecutionStatus(executionId: string): { status: string; result?: PipelineResult } | undefined {
+  // Alias for compatibility
+  getExecutionStatus(
+    executionId: string,
+  ): { status: string; result?: PipelineResult } | undefined {
     const result = this.getExecution(executionId);
     if (!result) return undefined;
-    
+
     return {
-      status: result.success ? 'completed' : 'failed',
-      result
+      status: result.success ? "completed" : "failed",
+      result,
     };
   }
 
@@ -167,7 +181,7 @@ export class PipelineService {
     return {
       queueSize: 0,
       activeExecutions: this.executions.size,
-      totalProcessed: this.executions.size
+      totalProcessed: this.executions.size,
     };
   }
 
@@ -179,7 +193,7 @@ export class PipelineService {
     return {
       activeExecutions: this.executions.size,
       totalProcessed: this.executions.size,
-      queueSize: 0
+      queueSize: 0,
     };
   }
 

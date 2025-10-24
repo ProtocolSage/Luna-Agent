@@ -5,8 +5,8 @@ import {
   PorcupineModel,
   PorcupineOptions,
   keywordsProcess,
-} from '@picovoice/porcupine-web';
-import { loadModel } from '@picovoice/web-utils';
+} from "@picovoice/porcupine-web";
+import { loadModel } from "@picovoice/web-utils";
 
 export type PorcupineKeywords =
   | PorcupineKeyword
@@ -29,33 +29,35 @@ export interface PorcupineAssetPaths {
 }
 
 interface WorkerInitOk {
-  command: 'ok';
+  command: "ok";
   version: string;
   frameLength: number;
   sampleRate: number;
 }
 
 interface WorkerDetectionOk {
-  command: 'ok';
+  command: "ok";
   porcupineDetection: { index: number; label: string };
 }
 
 interface WorkerError {
-  command: 'error' | 'failed';
+  command: "error" | "failed";
   status: number;
   shortMessage: string;
   messageStack?: string[];
 }
 
 interface WorkerReleaseOk {
-  command: 'ok';
+  command: "ok";
 }
 
 type WorkerInitResponse = WorkerInitOk | WorkerError;
 type WorkerProcessResponse = WorkerDetectionOk | WorkerError;
 type WorkerReleaseResponse = WorkerReleaseOk | WorkerError;
 
-type ProcessErrorCallback = NonNullable<PorcupineOptions['processErrorCallback']>;
+type ProcessErrorCallback = NonNullable<
+  PorcupineOptions["processErrorCallback"]
+>;
 
 function buildError(message: string, payload: WorkerError): Error {
   const parts = [message, `status=${payload.status}`];
@@ -63,9 +65,9 @@ function buildError(message: string, payload: WorkerError): Error {
     parts.push(payload.shortMessage);
   }
   if (payload.messageStack && payload.messageStack.length > 0) {
-    parts.push(payload.messageStack.join(' -> '));
+    parts.push(payload.messageStack.join(" -> "));
   }
-  return new Error(parts.join(' | '));
+  return new Error(parts.join(" | "));
 }
 
 async function fetchAssetAsBase64(path: string): Promise<string> {
@@ -75,13 +77,15 @@ async function fetchAssetAsBase64(path: string): Promise<string> {
   }
   const buffer = await response.arrayBuffer();
   const bytes = new Uint8Array(buffer);
-  let binary = '';
+  let binary = "";
   const chunkSize = 0x8000;
   for (let i = 0; i < bytes.length; i += chunkSize) {
     const chunk = bytes.subarray(i, Math.min(i + chunkSize, bytes.length));
     binary += String.fromCharCode(...chunk);
   }
-  return typeof btoa === 'function' ? btoa(binary) : Buffer.from(binary, 'binary').toString('base64');
+  return typeof btoa === "function"
+    ? btoa(binary)
+    : Buffer.from(binary, "binary").toString("base64");
 }
 
 export interface CreatePorcupineClientArgs {
@@ -101,23 +105,31 @@ export async function createPorcupineClient({
   assetPaths,
   options,
 }: CreatePorcupineClientArgs): Promise<PorcupineClient> {
-  const [keywordPaths, keywordLabels, sensitivities] = await keywordsProcess(keywords);
+  const [keywordPaths, keywordLabels, sensitivities] =
+    await keywordsProcess(keywords);
 
-  const customWritePath = model.customWritePath ?? 'porcupine_model';
+  const customWritePath = model.customWritePath ?? "porcupine_model";
   const modelPath = await loadModel({ ...model, customWritePath });
 
   const [wasmBase64, wasmSimdBase64] = await Promise.all([
     fetchAssetAsBase64(assetPaths.wasm),
-    assetPaths.wasmSimd ? fetchAssetAsBase64(assetPaths.wasmSimd) : Promise.resolve(''),
+    assetPaths.wasmSimd
+      ? fetchAssetAsBase64(assetPaths.wasmSimd)
+      : Promise.resolve(""),
   ]);
 
   const worker = new Worker(assetPaths.worker);
-  const processErrorCallback: ProcessErrorCallback | undefined = options?.processErrorCallback;
+  const processErrorCallback: ProcessErrorCallback | undefined =
+    options?.processErrorCallback;
 
   return new Promise<PorcupineClient>((resolve, reject) => {
     let released = false;
 
-    const handleWorkerError = (error: WorkerError, prefix: string, rejectFn: (error: Error) => void) => {
+    const handleWorkerError = (
+      error: WorkerError,
+      prefix: string,
+      rejectFn: (error: Error) => void,
+    ) => {
       const wrapped = buildError(prefix, error);
       if (processErrorCallback) {
         processErrorCallback(wrapped as any);
@@ -126,18 +138,22 @@ export async function createPorcupineClient({
     };
 
     worker.onerror = (event) => {
-      reject(new Error(event.message ?? 'Porcupine worker encountered an unknown error'));
+      reject(
+        new Error(
+          event.message ?? "Porcupine worker encountered an unknown error",
+        ),
+      );
     };
 
     worker.onmessage = (event: MessageEvent<WorkerInitResponse>) => {
       const data = event.data;
-      if (data.command === 'ok') {
+      if (data.command === "ok") {
         const detectionHandler = (ev: MessageEvent<WorkerProcessResponse>) => {
           const payload = ev.data;
-          if (payload.command === 'ok') {
+          if (payload.command === "ok") {
             onDetection(payload.porcupineDetection);
           } else {
-            const err = buildError('Porcupine worker process error', payload);
+            const err = buildError("Porcupine worker process error", payload);
             if (processErrorCallback) {
               processErrorCallback(err as any);
             }
@@ -152,28 +168,37 @@ export async function createPorcupineClient({
           sampleRate: data.sampleRate,
           process(pcm: Int16Array) {
             if (released) {
-              throw new Error('Attempted to process audio after release');
+              throw new Error("Attempted to process audio after release");
             }
-            worker.postMessage({
-              command: 'process',
-              inputFrame: pcm,
-            }, [pcm.buffer]);
+            worker.postMessage(
+              {
+                command: "process",
+                inputFrame: pcm,
+              },
+              [pcm.buffer],
+            );
           },
           async release() {
             if (released) {
               return;
             }
             return new Promise<void>((resolveRelease, rejectRelease) => {
-              worker.onmessage = (releaseEvent: MessageEvent<WorkerReleaseResponse>) => {
+              worker.onmessage = (
+                releaseEvent: MessageEvent<WorkerReleaseResponse>,
+              ) => {
                 const releasePayload = releaseEvent.data;
-                if (releasePayload.command === 'ok') {
+                if (releasePayload.command === "ok") {
                   released = true;
                   resolveRelease();
                 } else {
-                  handleWorkerError(releasePayload, 'Porcupine worker release error', rejectRelease);
+                  handleWorkerError(
+                    releasePayload,
+                    "Porcupine worker release error",
+                    rejectRelease,
+                  );
                 }
               };
-              worker.postMessage({ command: 'release' });
+              worker.postMessage({ command: "release" });
             });
           },
           terminate() {
@@ -184,12 +209,16 @@ export async function createPorcupineClient({
 
         resolve(client);
       } else {
-        handleWorkerError(data, 'Porcupine worker initialization error', reject);
+        handleWorkerError(
+          data,
+          "Porcupine worker initialization error",
+          reject,
+        );
       }
     };
 
     worker.postMessage({
-      command: 'init',
+      command: "init",
       accessKey,
       modelPath,
       keywordPaths,

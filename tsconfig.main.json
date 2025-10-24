@@ -12,13 +12,6 @@
     "types": ["node"],
     "skipLibCheck": true
   },
-  "include": [
-    "app/main/**/*.ts",
-    "agent/**/*.ts"
-  ],
-  "exclude": [
-    "app/renderer/**/*",
-    "backend/**/*",
-    "node_modules"
-  ]
+  "include": ["app/main/**/*.ts", "agent/**/*.ts"],
+  "exclude": ["app/renderer/**/*", "backend/**/*", "node_modules"]
 }

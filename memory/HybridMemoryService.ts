@@ -1,10 +1,16 @@
-import { MemoryStore, Memory, MemoryType, MemorySearchOptions, MemorySearchResult } from './MemoryStore';
-import { SupabaseMemoryStore } from './SupabaseMemoryStore';
-import { EmbeddingService, embeddingService } from './EmbeddingService';
+import {
+  MemoryStore,
+  Memory,
+  MemoryType,
+  MemorySearchOptions,
+  MemorySearchResult,
+} from "./MemoryStore";
+import { SupabaseMemoryStore } from "./SupabaseMemoryStore";
+import { EmbeddingService, embeddingService } from "./EmbeddingService";
 
 /**
  * Hybrid Memory Service for Luna Agent
- * 
+ *
  * Combines Supabase cloud storage with local fallback for maximum reliability
  * Features:
  * - Primary: Supabase with vector search and real-time sync
@@ -22,25 +28,33 @@ export class HybridMemoryService {
   constructor(dbPath?: string) {
     // Initialize both stores
     this.cloudStore = new SupabaseMemoryStore();
-    this.localStore = new MemoryStore(dbPath || 'memory/luna-memory-local.db');
+    this.localStore = new MemoryStore(dbPath || "memory/luna-memory-local.db");
     this.embeddings = embeddingService;
-    
-    console.log('[HybridMemoryService] Initialized with cloud + local storage');
+
+    console.log("[HybridMemoryService] Initialized with cloud + local storage");
   }
 
   /**
    * Add a new memory with automatic embedding generation and dual storage
    */
-  async addMemory(content: string, type: MemoryType, metadata?: Record<string, any>): Promise<Memory> {
+  async addMemory(
+    content: string,
+    type: MemoryType,
+    metadata?: Record<string, any>,
+  ): Promise<Memory> {
     // Generate embedding if service is available
     let embedding: number[] | undefined;
-    
+
     if (this.embeddings.isAvailable()) {
       try {
-        const embeddingResult = await this.embeddings.generateEmbedding(content);
+        const embeddingResult =
+          await this.embeddings.generateEmbedding(content);
         embedding = embeddingResult?.embedding;
       } catch (error) {
-        console.warn('[HybridMemoryService] Failed to generate embedding:', error);
+        console.warn(
+          "[HybridMemoryService] Failed to generate embedding:",
+          error,
+        );
       }
     }
 
@@ -48,33 +62,39 @@ export class HybridMemoryService {
       content,
       type,
       embedding,
-      metadata
+      metadata,
     };
 
     // Try cloud first, fallback to local
     if (this.preferCloud) {
       try {
         const cloudMemory = await this.cloudStore.addMemory(memoryData);
-        
+
         // Also save locally as backup
         try {
           await this.localStore.addMemory(memoryData);
         } catch (localError) {
-          console.warn('[HybridMemoryService] Failed to backup to local storage:', localError);
+          console.warn(
+            "[HybridMemoryService] Failed to backup to local storage:",
+            localError,
+          );
         }
-        
+
         return cloudMemory;
       } catch (cloudError) {
-        console.warn('[HybridMemoryService] Cloud storage failed, using local:', cloudError);
+        console.warn(
+          "[HybridMemoryService] Cloud storage failed, using local:",
+          cloudError,
+        );
         return await this.localStore.addMemory(memoryData);
       }
     } else {
       // Local first (offline mode)
       const localMemory = await this.localStore.addMemory(memoryData);
-      
+
       // Try to sync to cloud in background
       this.syncToCloudBackground(memoryData);
-      
+
       return localMemory;
     }
   }
@@ -82,39 +102,61 @@ export class HybridMemoryService {
   /**
    * Update an existing memory with re-embedding if content changed
    */
-  async updateMemory(id: string, updates: Partial<{ content: string; type: MemoryType; metadata: Record<string, any>; embedding: number[] }>): Promise<Memory | null> {
+  async updateMemory(
+    id: string,
+    updates: Partial<{
+      content: string;
+      type: MemoryType;
+      metadata: Record<string, any>;
+      embedding: number[];
+    }>,
+  ): Promise<Memory | null> {
     const canEmbed = this.embeddings.isAvailable();
     const contentChanged = typeof updates.content === "string";
-    
+
     let finalUpdates = { ...updates };
-    
+
     // Re-generate embedding if content changed and embedding service available
     if (canEmbed && contentChanged && updates.content) {
       try {
-        const embeddingResult = await this.embeddings.generateEmbedding(updates.content);
+        const embeddingResult = await this.embeddings.generateEmbedding(
+          updates.content,
+        );
         if (embeddingResult?.embedding) {
           finalUpdates.embedding = embeddingResult.embedding;
         }
       } catch (error) {
-        console.warn('[HybridMemoryService] Failed to regenerate embedding:', error);
+        console.warn(
+          "[HybridMemoryService] Failed to regenerate embedding:",
+          error,
+        );
       }
     }
 
     // Try cloud first, fallback to local
     if (this.preferCloud) {
       try {
-        const cloudResult = await this.cloudStore.updateMemory(id, finalUpdates);
-        
+        const cloudResult = await this.cloudStore.updateMemory(
+          id,
+          finalUpdates,
+        );
+
         // Also update locally
         try {
           await this.localStore.updateMemory(id, finalUpdates);
         } catch (localError) {
-          console.warn('[HybridMemoryService] Failed to update local backup:', localError);
+          console.warn(
+            "[HybridMemoryService] Failed to update local backup:",
+            localError,
+          );
         }
-        
+
         return cloudResult;
       } catch (cloudError) {
-        console.warn('[HybridMemoryService] Cloud update failed, using local:', cloudError);
+        console.warn(
+          "[HybridMemoryService] Cloud update failed, using local:",
+          cloudError,
+        );
         return await this.localStore.updateMemory(id, finalUpdates);
       }
     } else {
@@ -134,14 +176,14 @@ export class HybridMemoryService {
       try {
         cloudSuccess = await this.cloudStore.deleteMemory(id);
       } catch (error) {
-        console.warn('[HybridMemoryService] Cloud delete failed:', error);
+        console.warn("[HybridMemoryService] Cloud delete failed:", error);
       }
     }
 
     try {
       localSuccess = await this.localStore.deleteMemory(id);
     } catch (error) {
-      console.warn('[HybridMemoryService] Local delete failed:', error);
+      console.warn("[HybridMemoryService] Local delete failed:", error);
     }
 
     return cloudSuccess || localSuccess;
@@ -156,7 +198,10 @@ export class HybridMemoryService {
         const cloudResult = await this.cloudStore.getMemoryById(id);
         if (cloudResult) return cloudResult;
       } catch (error) {
-        console.warn('[HybridMemoryService] Cloud get failed, trying local:', error);
+        console.warn(
+          "[HybridMemoryService] Cloud get failed, trying local:",
+          error,
+        );
       }
     }
 
@@ -166,12 +211,19 @@ export class HybridMemoryService {
   /**
    * Get memories by type with hybrid results
    */
-  async getMemoriesByType(type: MemoryType, limit = 50, offset = 0): Promise<Memory[]> {
+  async getMemoriesByType(
+    type: MemoryType,
+    limit = 50,
+    offset = 0,
+  ): Promise<Memory[]> {
     if (this.preferCloud) {
       try {
         return await this.cloudStore.getMemoriesByType(type, limit, offset);
       } catch (error) {
-        console.warn('[HybridMemoryService] Cloud query failed, using local:', error);
+        console.warn(
+          "[HybridMemoryService] Cloud query failed, using local:",
+          error,
+        );
         return await this.localStore.getMemoriesByType(type, limit, offset);
       }
     } else {
@@ -187,7 +239,10 @@ export class HybridMemoryService {
       try {
         return await this.cloudStore.getRecentMemories(limit, offset);
       } catch (error) {
-        console.warn('[HybridMemoryService] Cloud recent query failed, using local:', error);
+        console.warn(
+          "[HybridMemoryService] Cloud recent query failed, using local:",
+          error,
+        );
         return await this.localStore.getRecentMemories(limit, offset);
       }
     } else {
@@ -198,21 +253,26 @@ export class HybridMemoryService {
   /**
    * Advanced hybrid search combining cloud vector search with local fallback
    */
-  async searchMemories(options: MemorySearchOptions): Promise<MemorySearchResult[]> {
+  async searchMemories(
+    options: MemorySearchOptions,
+  ): Promise<MemorySearchResult[]> {
     if (this.preferCloud) {
       try {
         const cloudResults = await this.cloudStore.searchMemories(options);
-        
+
         // If cloud returns good results, use them
         if (cloudResults.length > 0) {
           return cloudResults;
         }
-        
+
         // Otherwise supplement with local results
         const localResults = await this.localStore.searchMemories(options);
         return localResults;
       } catch (error) {
-        console.warn('[HybridMemoryService] Cloud search failed, using local:', error);
+        console.warn(
+          "[HybridMemoryService] Cloud search failed, using local:",
+          error,
+        );
         return await this.localStore.searchMemories(options);
       }
     } else {
@@ -223,17 +283,26 @@ export class HybridMemoryService {
   /**
    * Vector similarity search with hybrid approach
    */
-  async vectorSearch(embedding: number[], options: MemorySearchOptions = {}): Promise<MemorySearchResult[]> {
+  async vectorSearch(
+    embedding: number[],
+    options: MemorySearchOptions = {},
+  ): Promise<MemorySearchResult[]> {
     if (this.preferCloud) {
       try {
-        const cloudResults = await this.cloudStore.vectorSearch(embedding, options);
-        
+        const cloudResults = await this.cloudStore.vectorSearch(
+          embedding,
+          options,
+        );
+
         // Cloud has native pgvector support, prefer its results
         if (cloudResults.length > 0) {
           return cloudResults;
         }
       } catch (error) {
-        console.warn('[HybridMemoryService] Cloud vector search failed, using local:', error);
+        console.warn(
+          "[HybridMemoryService] Cloud vector search failed, using local:",
+          error,
+        );
       }
     }
 
@@ -244,23 +313,32 @@ export class HybridMemoryService {
   /**
    * Intelligent search that uses embeddings when available, text search otherwise
    */
-  async intelligentSearch(query: string, options: MemorySearchOptions = {}): Promise<MemorySearchResult[]> {
+  async intelligentSearch(
+    query: string,
+    options: MemorySearchOptions = {},
+  ): Promise<MemorySearchResult[]> {
     // Try vector search first if embeddings are available
     if (this.embeddings.isAvailable()) {
       try {
         const queryEmbedding = await this.embeddings.generateEmbedding(query);
         if (queryEmbedding?.embedding) {
-          const vectorResults = await this.vectorSearch(queryEmbedding.embedding, {
-            ...options,
-            limit: Math.min(options.limit || 10, 20) // Get more candidates for vector search
-          });
-          
+          const vectorResults = await this.vectorSearch(
+            queryEmbedding.embedding,
+            {
+              ...options,
+              limit: Math.min(options.limit || 10, 20), // Get more candidates for vector search
+            },
+          );
+
           if (vectorResults.length > 0) {
             return vectorResults;
           }
         }
       } catch (error) {
-        console.warn('[HybridMemoryService] Vector search failed, falling back to text search:', error);
+        console.warn(
+          "[HybridMemoryService] Vector search failed, falling back to text search:",
+          error,
+        );
       }
     }
 
@@ -281,42 +359,43 @@ export class HybridMemoryService {
     localStats?: any;
   }> {
     let cloudStats, localStats;
-    
+
     // Get cloud stats
     if (this.preferCloud) {
       try {
         cloudStats = await this.cloudStore.getStats();
       } catch (error) {
-        console.warn('[HybridMemoryService] Failed to get cloud stats:', error);
+        console.warn("[HybridMemoryService] Failed to get cloud stats:", error);
       }
     }
-    
+
     // Get local stats
     try {
       localStats = await this.localStore.getStats();
     } catch (error) {
-      console.warn('[HybridMemoryService] Failed to get local stats:', error);
+      console.warn("[HybridMemoryService] Failed to get local stats:", error);
     }
 
     // Combine stats (prefer cloud if available)
-    const primaryStats = cloudStats || localStats || {
-      totalMemories: 0,
-      memoriesByType: {
-        conversation: 0,
-        document: 0,
-        goal: 0,
-        reminder: 0,
-        journal: 0,
-        note: 0,
-        task: 0
-      },
-      memoriesWithEmbeddings: 0
-    };
+    const primaryStats = cloudStats ||
+      localStats || {
+        totalMemories: 0,
+        memoriesByType: {
+          conversation: 0,
+          document: 0,
+          goal: 0,
+          reminder: 0,
+          journal: 0,
+          note: 0,
+          task: 0,
+        },
+        memoriesWithEmbeddings: 0,
+      };
 
     return {
       ...primaryStats,
       cloudStats,
-      localStats
+      localStats,
     };
   }
 
@@ -325,17 +404,19 @@ export class HybridMemoryService {
    */
   setCloudPreference(preferCloud: boolean): void {
     this.preferCloud = preferCloud;
-    console.log(`[HybridMemoryService] Switched to ${preferCloud ? 'cloud' : 'local'} preference`);
+    console.log(
+      `[HybridMemoryService] Switched to ${preferCloud ? "cloud" : "local"} preference`,
+    );
   }
 
   /**
    * Get current storage mode
    */
-  getStorageMode(): 'cloud' | 'local' | 'hybrid' {
+  getStorageMode(): "cloud" | "local" | "hybrid" {
     if (this.preferCloud) {
-      return 'cloud';
+      return "cloud";
     } else {
-      return 'local';
+      return "local";
     }
   }
 
@@ -344,8 +425,8 @@ export class HybridMemoryService {
    */
   async syncLocalToCloud(): Promise<void> {
     try {
-      console.log('[HybridMemoryService] Starting local to cloud sync...');
-      
+      console.log("[HybridMemoryService] Starting local to cloud sync...");
+
       const localMemories = await this.localStore.getRecentMemories(1000); // Get up to 1000 recent memories
       let synced = 0;
       let failed = 0;
@@ -356,18 +437,23 @@ export class HybridMemoryService {
             content: memory.content,
             type: memory.type,
             embedding: memory.embedding,
-            metadata: memory.metadata
+            metadata: memory.metadata,
           });
           synced++;
         } catch (error) {
-          console.warn(`[HybridMemoryService] Failed to sync memory ${memory.id}:`, error);
+          console.warn(
+            `[HybridMemoryService] Failed to sync memory ${memory.id}:`,
+            error,
+          );
           failed++;
         }
       }
 
-      console.log(`[HybridMemoryService] Sync complete: ${synced} synced, ${failed} failed`);
+      console.log(
+        `[HybridMemoryService] Sync complete: ${synced} synced, ${failed} failed`,
+      );
     } catch (error) {
-      console.error('[HybridMemoryService] Sync operation failed:', error);
+      console.error("[HybridMemoryService] Sync operation failed:", error);
     }
   }
 
@@ -378,16 +464,16 @@ export class HybridMemoryService {
     try {
       await this.cloudStore.close();
     } catch (error) {
-      console.warn('[HybridMemoryService] Error closing cloud store:', error);
+      console.warn("[HybridMemoryService] Error closing cloud store:", error);
     }
 
     try {
       this.localStore.close();
     } catch (error) {
-      console.warn('[HybridMemoryService] Error closing local store:', error);
+      console.warn("[HybridMemoryService] Error closing local store:", error);
     }
 
-    console.log('[HybridMemoryService] All stores closed');
+    console.log("[HybridMemoryService] All stores closed");
   }
 
   // Private helper methods
@@ -397,9 +483,14 @@ export class HybridMemoryService {
     setTimeout(async () => {
       try {
         await this.cloudStore.addMemory(memoryData);
-        console.log('[HybridMemoryService] Background sync to cloud successful');
+        console.log(
+          "[HybridMemoryService] Background sync to cloud successful",
+        );
       } catch (error) {
-        console.warn('[HybridMemoryService] Background sync to cloud failed:', error);
+        console.warn(
+          "[HybridMemoryService] Background sync to cloud failed:",
+          error,
+        );
       }
     }, 100); // Small delay to not block main operation
   }

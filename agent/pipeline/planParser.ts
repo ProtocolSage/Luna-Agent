@@ -7,20 +7,21 @@
  * 3. Returning empty plan on failure (fail-safe)
  */
 
-import { z } from 'zod';
+import { z } from "zod";
+import type { ToolPlanning } from "./ToolPipeline";
 
 // Strict schema for tool execution plans
 const ToolStepSchema = z.object({
   tool: z.string().min(1),
-  args: z.record(z.any())
+  args: z.record(z.any()).default({}),
 });
 
 const ToolPlanningSchema = z.object({
   steps: z.array(ToolStepSchema),
-  reasoning: z.string(),
-  confidence: z.number().min(0).max(1),
-  dependencies: z.array(z.string()),
-  estimatedTimeMs: z.number().positive()
+  reasoning: z.string().default(""),
+  confidence: z.number().min(0).max(1).default(0),
+  dependencies: z.array(z.string()).default([]),
+  estimatedTimeMs: z.number().int().nonnegative().default(0),
 });
 
 export type SafeToolPlanning = z.infer<typeof ToolPlanningSchema>;
@@ -31,12 +32,12 @@ export class PlanParser {
    * @param response - Raw LLM response
    * @returns Validated plan or null on failure
    */
-  static parsePlan(response: string): SafeToolPlanning | null {
+  static parsePlan(response: string): ToolPlanning | null {
     try {
       // Step 1: Extract JSON from response (may be wrapped in markdown)
       const jsonText = this.extractJSON(response);
       if (!jsonText) {
-        console.warn('[PlanParser] No JSON found in response');
+        console.warn("[PlanParser] No JSON found in response");
         return null;
       }
 
@@ -48,7 +49,7 @@ export class PlanParser {
         // Step 3: Try to repair malformed JSON
         parsed = this.repairJSON(jsonText);
         if (!parsed) {
-          console.warn('[PlanParser] JSON parse and repair failed');
+          console.warn("[PlanParser] JSON parse and repair failed");
           return null;
         }
       }
@@ -56,17 +57,17 @@ export class PlanParser {
       // Step 4: Validate against schema
       const validated = ToolPlanningSchema.safeParse(parsed);
       if (!validated.success) {
-        console.warn('[PlanParser] Schema validation failed:', validated.error);
+        console.warn("[PlanParser] Schema validation failed:", validated.error);
         return null;
       }
 
       // Step 5: Sanitize tool names (prevent injection)
       const sanitized = this.sanitizePlan(validated.data);
+      const normalized = this.normalizePlan(sanitized);
 
-      return sanitized;
-
+      return normalized;
     } catch (error) {
-      console.error('[PlanParser] Unexpected error:', error);
+      console.error("[PlanParser] Unexpected error:", error);
       return null;
     }
   }
@@ -100,14 +101,14 @@ export class PlanParser {
       // Common repairs
       repaired = repaired
         // Remove trailing commas
-        .replace(/,(\s*[}\]])/g, '$1')
+        .replace(/,(\s*[}\]])/g, "$1")
         // Fix unquoted keys
         .replace(/([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":')
         // Fix single quotes to double quotes
         .replace(/'/g, '"')
         // Remove comments
-        .replace(/\/\/.*/g, '')
-        .replace(/\/\*[\s\S]*?\*\//g, '');
+        .replace(/\/\/.*/g, "")
+        .replace(/\/\*[\s\S]*?\*\//g, "");
 
       return JSON.parse(repaired);
     } catch (error) {
@@ -121,10 +122,10 @@ export class PlanParser {
   private static sanitizePlan(plan: SafeToolPlanning): SafeToolPlanning {
     return {
       ...plan,
-      steps: plan.steps.map(step => ({
+      steps: plan.steps.map((step) => ({
         ...step,
-        tool: this.sanitizeToolName(step.tool)
-      }))
+        tool: this.sanitizeToolName(step.tool),
+      })),
     };
   }
 
@@ -133,19 +134,51 @@ export class PlanParser {
    */
   private static sanitizeToolName(name: string): string {
     // Only allow alphanumeric, underscore, and hyphen
-    return name.replace(/[^a-zA-Z0-9_-]/g, '');
+    const chars = Array.from(name);
+    let result = "";
+
+    for (let i = 0; i < chars.length; i++) {
+      const current = chars[i];
+      if (/[a-zA-Z0-9_]/.test(current)) {
+        result += current;
+        continue;
+      }
+
+      if (current === "-") {
+        const prev = chars[i - 1] ?? "";
+        const next = chars[i + 1] ?? "";
+        if (/[a-zA-Z0-9_]/.test(prev) && /[a-zA-Z0-9_]/.test(next)) {
+          result += "-";
+        }
+      }
+    }
+
+    return result;
   }
 
   /**
    * Create an empty safe plan (fail-safe default)
    */
-  static emptyPlan(): SafeToolPlanning {
+  static emptyPlan(): ToolPlanning {
     return {
       steps: [],
-      reasoning: 'Empty plan - planning failed safely',
+      reasoning: "Empty plan - planning failed safely",
       confidence: 0,
       dependencies: [],
-      estimatedTimeMs: 0
+      estimatedTimeMs: 0,
+    };
+  }
+
+  private static normalizePlan(plan: SafeToolPlanning): ToolPlanning {
+    return {
+      steps: plan.steps.map((step) => ({
+        tool: step.tool,
+        args: step.args ?? {},
+      })),
+      reasoning: plan.reasoning,
+      confidence: plan.confidence,
+      dependencies: plan.dependencies ?? [],
+      estimatedTimeMs: plan.estimatedTimeMs ?? 0,
     };
   }
 }

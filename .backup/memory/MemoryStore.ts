@@ -1,6 +1,6 @@
-import { getDatabase } from '../backend/database';
-import * as path from 'path';
-import * as fs from 'fs';
+import { getDatabase } from "../backend/database";
+import * as path from "path";
+import * as fs from "fs";
 
 export interface Memory {
   id: string;
@@ -11,7 +11,14 @@ export interface Memory {
   metadata?: Record<string, any>;
 }
 
-export type MemoryType = 'conversation' | 'document' | 'goal' | 'reminder' | 'journal' | 'note' | 'task';
+export type MemoryType =
+  | "conversation"
+  | "document"
+  | "goal"
+  | "reminder"
+  | "journal"
+  | "note"
+  | "task";
 
 export interface MemorySearchOptions {
   type?: MemoryType;
@@ -42,12 +49,12 @@ export class MemoryStore {
 
   constructor(dbPath?: string) {
     // Ensure memory directory exists
-    const memoryDir = path.dirname(dbPath || './memory/luna-memory.db');
+    const memoryDir = path.dirname(dbPath || "./memory/luna-memory.db");
     if (!fs.existsSync(memoryDir)) {
       fs.mkdirSync(memoryDir, { recursive: true });
     }
 
-    this.dbPath = dbPath || path.join(memoryDir, 'luna-memory.db');
+    this.dbPath = dbPath || path.join(memoryDir, "luna-memory.db");
     this.db = getDatabase(this.dbPath);
     this.initializeDatabase();
   }
@@ -100,7 +107,7 @@ export class MemoryStore {
             content_rowid='rowid'
           );
         `);
-        
+
         // Create triggers to keep FTS table in sync
         this.db.exec(`
           CREATE TRIGGER IF NOT EXISTS memories_fts_insert AFTER INSERT ON memories BEGIN
@@ -116,26 +123,28 @@ export class MemoryStore {
             INSERT INTO memories_fts(id, content, type, timestamp) VALUES(new.id, new.content, new.type, new.timestamp);
           END;
         `);
-        
-        console.log('[MemoryStore] FTS5 full-text search enabled');
+
+        console.log("[MemoryStore] FTS5 full-text search enabled");
       } catch (error) {
-        console.warn('[MemoryStore] FTS5 not supported, using LIKE queries for search');
+        console.warn(
+          "[MemoryStore] FTS5 not supported, using LIKE queries for search",
+        );
       }
 
       // Enable WAL mode for better concurrency (if supported)
       try {
-        this.db.pragma('journal_mode = WAL');
-        this.db.pragma('synchronous = NORMAL');
-        this.db.pragma('cache_size = 1000');
-        this.db.pragma('temp_store = memory');
-        console.log('[MemoryStore] Database optimizations applied');
+        this.db.pragma("journal_mode = WAL");
+        this.db.pragma("synchronous = NORMAL");
+        this.db.pragma("cache_size = 1000");
+        this.db.pragma("temp_store = memory");
+        console.log("[MemoryStore] Database optimizations applied");
       } catch (error) {
-        console.warn('[MemoryStore] Some database optimizations not supported');
+        console.warn("[MemoryStore] Some database optimizations not supported");
       }
-      
-      console.log('[MemoryStore] Database initialized successfully');
+
+      console.log("[MemoryStore] Database initialized successfully");
     } catch (error) {
-      console.error('[MemoryStore] Failed to initialize database:', error);
+      console.error("[MemoryStore] Failed to initialize database:", error);
       throw error;
     }
   }
@@ -143,14 +152,14 @@ export class MemoryStore {
   /**
    * Add a new memory to the store
    */
-  async addMemory(memory: Omit<Memory, 'id' | 'timestamp'>): Promise<Memory> {
+  async addMemory(memory: Omit<Memory, "id" | "timestamp">): Promise<Memory> {
     const id = this.generateId();
     const timestamp = new Date().toISOString();
-    
+
     const fullMemory: Memory = {
       id,
       timestamp,
-      ...memory
+      ...memory,
     };
 
     const stmt = this.db.prepare(`
@@ -164,7 +173,7 @@ export class MemoryStore {
       fullMemory.type,
       fullMemory.timestamp,
       fullMemory.embedding ? JSON.stringify(fullMemory.embedding) : null,
-      fullMemory.metadata ? JSON.stringify(fullMemory.metadata) : null
+      fullMemory.metadata ? JSON.stringify(fullMemory.metadata) : null,
     );
 
     return fullMemory;
@@ -173,7 +182,10 @@ export class MemoryStore {
   /**
    * Update an existing memory
    */
-  async updateMemory(id: string, updates: Partial<Omit<Memory, 'id' | 'timestamp'>>): Promise<Memory | null> {
+  async updateMemory(
+    id: string,
+    updates: Partial<Omit<Memory, "id" | "timestamp">>,
+  ): Promise<Memory | null> {
     const existing = await this.getMemoryById(id);
     if (!existing) return null;
 
@@ -183,7 +195,8 @@ export class MemoryStore {
       id: existing.id, // Preserve ID
       timestamp: existing.timestamp, // Preserve original timestamp
       // Handle explicit embedding updates (including clearing with null)
-      embedding: 'embedding' in updates ? updates.embedding : existing.embedding
+      embedding:
+        "embedding" in updates ? updates.embedding : existing.embedding,
     };
 
     const stmt = this.db.prepare(`
@@ -195,9 +208,13 @@ export class MemoryStore {
     const result = stmt.run(
       updated.content,
       updated.type,
-      updated.embedding === null ? null : (updated.embedding ? JSON.stringify(updated.embedding) : null),
+      updated.embedding === null
+        ? null
+        : updated.embedding
+          ? JSON.stringify(updated.embedding)
+          : null,
       updated.metadata ? JSON.stringify(updated.metadata) : null,
-      id
+      id,
     );
 
     return result.changes > 0 ? updated : null;
@@ -207,7 +224,7 @@ export class MemoryStore {
    * Delete a memory by ID
    */
   async deleteMemory(id: string): Promise<boolean> {
-    const stmt = this.db.prepare('DELETE FROM memories WHERE id = ?');
+    const stmt = this.db.prepare("DELETE FROM memories WHERE id = ?");
     const result = stmt.run(id);
     return result.changes > 0;
   }
@@ -216,25 +233,29 @@ export class MemoryStore {
    * Get a specific memory by ID
    */
   async getMemoryById(id: string): Promise<Memory | null> {
-    const stmt = this.db.prepare('SELECT * FROM memories WHERE id = ?');
+    const stmt = this.db.prepare("SELECT * FROM memories WHERE id = ?");
     const row = stmt.get(id) as any;
-    
+
     return row ? this.rowToMemory(row) : null;
   }
 
   /**
    * Get memories by type
    */
-  async getMemoriesByType(type: MemoryType, limit = 50, offset = 0): Promise<Memory[]> {
+  async getMemoriesByType(
+    type: MemoryType,
+    limit = 50,
+    offset = 0,
+  ): Promise<Memory[]> {
     const stmt = this.db.prepare(`
       SELECT * FROM memories 
       WHERE type = ? 
       ORDER BY timestamp DESC 
       LIMIT ? OFFSET ?
     `);
-    
+
     const rows = stmt.all(type, limit, offset) as any[];
-    return rows.map(row => this.rowToMemory(row));
+    return rows.map((row) => this.rowToMemory(row));
   }
 
   /**
@@ -246,23 +267,25 @@ export class MemoryStore {
       ORDER BY timestamp DESC 
       LIMIT ? OFFSET ?
     `);
-    
+
     const rows = stmt.all(limit, offset) as any[];
-    return rows.map(row => this.rowToMemory(row));
+    return rows.map((row) => this.rowToMemory(row));
   }
 
   /**
    * Full-text search across memory content
    * Uses FTS5 when available, falls back to LIKE queries
    */
-  async searchMemories(options: MemorySearchOptions): Promise<MemorySearchResult[]> {
+  async searchMemories(
+    options: MemorySearchOptions,
+  ): Promise<MemorySearchResult[]> {
     const { query, type, limit = 20, offset = 0, sinceTimestamp } = options;
-    
+
     // If we have a search query, try FTS5 first
     if (query && this.hasFTSSupport()) {
       return this.searchMemoriesFTS(options);
     }
-    
+
     // Fallback to regular SQL search
     return this.searchMemoriesSQL(options);
   }
@@ -270,9 +293,11 @@ export class MemoryStore {
   /**
    * Search using FTS5 full-text search
    */
-  private async searchMemoriesFTS(options: MemorySearchOptions): Promise<MemorySearchResult[]> {
+  private async searchMemoriesFTS(
+    options: MemorySearchOptions,
+  ): Promise<MemorySearchResult[]> {
     const { query, type, limit = 20, offset = 0, sinceTimestamp } = options;
-    
+
     let sql = `
       SELECT m.*, f.rank 
       FROM memories_fts f 
@@ -283,34 +308,37 @@ export class MemoryStore {
 
     // Add type filter
     if (type) {
-      sql += ' AND m.type = ?';
+      sql += " AND m.type = ?";
       params.push(type);
     }
 
     // Add timestamp filter
     if (sinceTimestamp) {
-      sql += ' AND m.timestamp >= ?';
+      sql += " AND m.timestamp >= ?";
       params.push(sinceTimestamp);
     }
 
-    sql += ' ORDER BY f.rank, m.timestamp DESC LIMIT ? OFFSET ?';
+    sql += " ORDER BY f.rank, m.timestamp DESC LIMIT ? OFFSET ?";
     params.push(limit, offset);
 
     try {
       const stmt = this.db.prepare(sql);
       const rows = stmt.all(...params) as any[];
-      
-      return rows.map(row => {
+
+      return rows.map((row) => {
         const memory = this.rowToMemory(row);
         const relevanceScore = this.calculateFTSRelevance(row.rank);
         return {
           memory,
           similarity: relevanceScore,
-          relevanceScore
+          relevanceScore,
         };
       });
     } catch (error) {
-      console.warn('[MemoryStore] FTS search failed, falling back to SQL:', error);
+      console.warn(
+        "[MemoryStore] FTS search failed, falling back to SQL:",
+        error,
+      );
       return this.searchMemoriesSQL(options);
     }
   }
@@ -318,43 +346,47 @@ export class MemoryStore {
   /**
    * Search using regular SQL queries
    */
-  private async searchMemoriesSQL(options: MemorySearchOptions): Promise<MemorySearchResult[]> {
+  private async searchMemoriesSQL(
+    options: MemorySearchOptions,
+  ): Promise<MemorySearchResult[]> {
     const { query, type, limit = 20, offset = 0, sinceTimestamp } = options;
-    
-    let sql = 'SELECT * FROM memories WHERE 1=1';
+
+    let sql = "SELECT * FROM memories WHERE 1=1";
     const params: any[] = [];
 
     // Add type filter
     if (type) {
-      sql += ' AND type = ?';
+      sql += " AND type = ?";
       params.push(type);
     }
 
     // Add timestamp filter
     if (sinceTimestamp) {
-      sql += ' AND timestamp >= ?';
+      sql += " AND timestamp >= ?";
       params.push(sinceTimestamp);
     }
 
     // Add content search with case-insensitive matching
     if (query) {
-      sql += ' AND (content LIKE ? OR LOWER(content) LIKE LOWER(?))';
+      sql += " AND (content LIKE ? OR LOWER(content) LIKE LOWER(?))";
       params.push(`%${query}%`, `%${query}%`);
     }
 
-    sql += ' ORDER BY timestamp DESC LIMIT ? OFFSET ?';
+    sql += " ORDER BY timestamp DESC LIMIT ? OFFSET ?";
     params.push(limit, offset);
 
     const stmt = this.db.prepare(sql);
     const rows = stmt.all(...params) as any[];
-    
-    return rows.map(row => {
+
+    return rows.map((row) => {
       const memory = this.rowToMemory(row);
-      const relevanceScore = query ? this.calculateSimpleRelevance(memory.content, query) : 1.0;
+      const relevanceScore = query
+        ? this.calculateSimpleRelevance(memory.content, query)
+        : 1.0;
       return {
         memory,
         similarity: relevanceScore,
-        relevanceScore
+        relevanceScore,
       };
     });
   }
@@ -364,7 +396,9 @@ export class MemoryStore {
    */
   private hasFTSSupport(): boolean {
     try {
-      const stmt = this.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='memories_fts'");
+      const stmt = this.db.prepare(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='memories_fts'",
+      );
       return stmt.get() !== undefined;
     } catch {
       return false;
@@ -383,31 +417,35 @@ export class MemoryStore {
   /**
    * Vector similarity search (when embeddings are available)
    */
-  async vectorSearch(embedding: number[], options: MemorySearchOptions = {}): Promise<MemorySearchResult[]> {
+  async vectorSearch(
+    embedding: number[],
+    options: MemorySearchOptions = {},
+  ): Promise<MemorySearchResult[]> {
     const { type, limit = 10 } = options;
-    
-    let sql = 'SELECT * FROM memories WHERE embedding IS NOT NULL';
+
+    let sql = "SELECT * FROM memories WHERE embedding IS NOT NULL";
     const params: any[] = [];
 
     if (type) {
-      sql += ' AND type = ?';
+      sql += " AND type = ?";
       params.push(type);
     }
 
     const stmt = this.db.prepare(sql);
     const rows = stmt.all(...params) as any[];
-    
+
     // Calculate cosine similarity for each memory
     const results: MemorySearchResult[] = rows
-      .map(row => {
+      .map((row) => {
         const memory = this.rowToMemory(row);
-        const similarity = memory.embedding ? 
-          this.cosineSimilarity(embedding, memory.embedding) : 0;
-        
+        const similarity = memory.embedding
+          ? this.cosineSimilarity(embedding, memory.embedding)
+          : 0;
+
         return {
           memory,
           similarity,
-          relevanceScore: similarity || 0
+          relevanceScore: similarity || 0,
         };
       })
       .sort((a, b) => (b.similarity || 0) - (a.similarity || 0))
@@ -426,16 +464,22 @@ export class MemoryStore {
     oldestMemory?: string;
     newestMemory?: string;
   }> {
-    const totalStmt = this.db.prepare('SELECT COUNT(*) as count FROM memories');
+    const totalStmt = this.db.prepare("SELECT COUNT(*) as count FROM memories");
     const totalResult = totalStmt.get() as { count: number };
 
-    const typeStmt = this.db.prepare('SELECT type, COUNT(*) as count FROM memories GROUP BY type');
+    const typeStmt = this.db.prepare(
+      "SELECT type, COUNT(*) as count FROM memories GROUP BY type",
+    );
     const typeResults = typeStmt.all() as { type: MemoryType; count: number }[];
 
-    const embeddingStmt = this.db.prepare('SELECT COUNT(*) as count FROM memories WHERE embedding IS NOT NULL');
+    const embeddingStmt = this.db.prepare(
+      "SELECT COUNT(*) as count FROM memories WHERE embedding IS NOT NULL",
+    );
     const embeddingResult = embeddingStmt.get() as { count: number };
 
-    const timeStmt = this.db.prepare('SELECT MIN(timestamp) as oldest, MAX(timestamp) as newest FROM memories');
+    const timeStmt = this.db.prepare(
+      "SELECT MIN(timestamp) as oldest, MAX(timestamp) as newest FROM memories",
+    );
     const timeResult = timeStmt.get() as { oldest?: string; newest?: string };
 
     const memoriesByType: Record<MemoryType, number> = {
@@ -445,10 +489,10 @@ export class MemoryStore {
       reminder: 0,
       journal: 0,
       note: 0,
-      task: 0
+      task: 0,
     };
 
-    typeResults.forEach(result => {
+    typeResults.forEach((result) => {
       memoriesByType[result.type] = result.count;
     });
 
@@ -457,7 +501,7 @@ export class MemoryStore {
       memoriesByType,
       memoriesWithEmbeddings: embeddingResult.count,
       oldestMemory: timeResult.oldest,
-      newestMemory: timeResult.newest
+      newestMemory: timeResult.newest,
     };
   }
 
@@ -481,34 +525,35 @@ export class MemoryStore {
       type: row.type as MemoryType,
       timestamp: row.timestamp,
       embedding: row.embedding != null ? JSON.parse(row.embedding) : null,
-      metadata: row.metadata ? JSON.parse(row.metadata) : undefined
+      metadata: row.metadata ? JSON.parse(row.metadata) : undefined,
     };
   }
 
   private calculateSimpleRelevance(content: string, query: string): number {
     const contentLower = content.toLowerCase();
     const queryLower = query.toLowerCase();
-    
+
     // Simple relevance: count of query term occurrences
-    const matches = (contentLower.match(new RegExp(queryLower, 'g')) || []).length;
+    const matches = (contentLower.match(new RegExp(queryLower, "g")) || [])
+      .length;
     const contentLength = content.length;
-    
+
     return matches / Math.max(1, contentLength / 100); // Normalize by content length
   }
 
   private cosineSimilarity(a: number[], b: number[]): number {
     if (a.length !== b.length) return 0;
-    
+
     let dotProduct = 0;
     let normA = 0;
     let normB = 0;
-    
+
     for (let i = 0; i < a.length; i++) {
       dotProduct += a[i] * b[i];
       normA += a[i] * a[i];
       normB += b[i] * b[i];
     }
-    
+
     return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
   }
 }

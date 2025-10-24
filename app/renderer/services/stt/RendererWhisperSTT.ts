@@ -1,5 +1,5 @@
-import { EventEmitter } from 'events';
-import { STTProvider, STTConfig } from './STTInterface';
+import { EventEmitter } from "events";
+import { STTProvider, STTConfig } from "./STTInterface";
 
 export interface TranscriptResult {
   text: string;
@@ -8,7 +8,7 @@ export interface TranscriptResult {
 }
 
 export class RendererWhisperSTT extends EventEmitter implements STTProvider {
-  public readonly name: string = 'RendererWhisperSTT';
+  public readonly name: string = "RendererWhisperSTT";
   public readonly isOnlineService: boolean = false;
   private _isListening: boolean = false;
   private initialized: boolean = false;
@@ -22,7 +22,7 @@ export class RendererWhisperSTT extends EventEmitter implements STTProvider {
 
   public async initialize(config: STTConfig): Promise<void> {
     this.initialized = true;
-    console.log('RendererWhisperSTT initialized with config:', config);
+    console.log("RendererWhisperSTT initialized with config:", config);
   }
 
   public async startListening(): Promise<void> {
@@ -42,7 +42,7 @@ export class RendererWhisperSTT extends EventEmitter implements STTProvider {
   }
 
   public setLanguage(language: string): void {
-    console.log('Language set to:', language);
+    console.log("Language set to:", language);
   }
 
   public destroy(): void {
@@ -62,14 +62,18 @@ export class RendererWhisperSTT extends EventEmitter implements STTProvider {
       offlineSupport: true,
       languageDetection: false,
       punctuation: true,
-      profanityFilter: false
+      profanityFilter: false,
     };
   }
 
-  public checkHealth(): Promise<{ healthy: boolean; latency?: number; error?: string }> {
+  public checkHealth(): Promise<{
+    healthy: boolean;
+    latency?: number;
+    error?: string;
+  }> {
     return Promise.resolve({
       healthy: this.initialized,
-      latency: 100
+      latency: 100,
     });
   }
 
@@ -78,23 +82,23 @@ export class RendererWhisperSTT extends EventEmitter implements STTProvider {
 
     try {
       this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      
+      this.audioContext = new (window.AudioContext ||
+        (window as any).webkitAudioContext)();
+
       this._isListening = true;
-      this.emit('listening_started');
+      this.emit("listening_started");
 
       // Placeholder for Whisper STT implementation
       // In production, this would integrate with the actual Whisper model
       setTimeout(() => {
-        this.emit('transcript', {
-          text: 'Sample transcription from Whisper STT',
+        this.emit("transcript", {
+          text: "Sample transcription from Whisper STT",
           isFinal: true,
-          confidence: 0.95
+          confidence: 0.95,
         });
       }, 1000);
-
     } catch (error) {
-      this.emit('error', error);
+      this.emit("error", error);
     }
   }
 
@@ -103,7 +107,7 @@ export class RendererWhisperSTT extends EventEmitter implements STTProvider {
 
     try {
       if (this.stream) {
-        this.stream.getTracks().forEach(track => track.stop());
+        this.stream.getTracks().forEach((track) => track.stop());
         this.stream = null;
       }
 
@@ -113,9 +117,9 @@ export class RendererWhisperSTT extends EventEmitter implements STTProvider {
       }
 
       this._isListening = false;
-      this.emit('listening_stopped');
+      this.emit("listening_stopped");
     } catch (error) {
-      this.emit('error', error);
+      this.emit("error", error);
     }
   }
 
@@ -126,7 +130,7 @@ export class RendererWhisperSTT extends EventEmitter implements STTProvider {
   public getStatus(): { isListening: boolean; engine: string } {
     return {
       isListening: this.isListening(),
-      engine: 'whisper'
+      engine: "whisper",
     };
   }
 }

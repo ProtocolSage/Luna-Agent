@@ -4,16 +4,16 @@
  */
 
 // Add these imports to your server.ts file (after existing imports):
-import { 
-  initializeToolSystem, 
+import {
+  initializeToolSystem,
   shutdownToolSystem,
-  getToolExecutive 
-} from './services/enhancedToolExecutor';
-import enhancedToolsRoutes from './routes/enhancedTools';
+  getToolExecutive,
+} from "./services/enhancedToolExecutor";
+import enhancedToolsRoutes from "./routes/enhancedTools";
 
 /**
  * Add this to your SecureExpressServer class in server.ts
- * 
+ *
  * 1. Add to class properties:
  */
 /*
@@ -125,5 +125,5 @@ process.on('SIGINT', () => this.shutdown());
 */
 
 export const serverIntegrationExample = {
-  note: "This file provides integration examples. Apply the code snippets above to your server.ts file."
+  note: "This file provides integration examples. Apply the code snippets above to your server.ts file.",
 };

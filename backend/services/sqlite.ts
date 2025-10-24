@@ -1,18 +1,22 @@
-import Database from 'better-sqlite3';
-import fs from 'fs';
-import path from 'path';
+import Database from "better-sqlite3";
+import fs from "fs";
+import path from "path";
 
 let db: Database.Database | null = null;
 
-function ensureDir(p: string) { if (!fs.existsSync(p)) fs.mkdirSync(p, { recursive: true }); }
+function ensureDir(p: string) {
+  if (!fs.existsSync(p)) fs.mkdirSync(p, { recursive: true });
+}
 
 export function getDB(): Database.Database {
   if (db) return db;
-  const dbPath = process.env.DB_PATH || path.resolve(process.cwd(), 'memory', 'luna-memory.db');
+  const dbPath =
+    process.env.DB_PATH ||
+    path.resolve(process.cwd(), "memory", "luna-memory.db");
   ensureDir(path.dirname(dbPath));
   db = new Database(dbPath);
-  db.pragma('journal_mode = WAL');
-  db.pragma('synchronous = NORMAL');
+  db.pragma("journal_mode = WAL");
+  db.pragma("synchronous = NORMAL");
 
   // Text rows (fast list/recent) - Make compatible with old MemoryStore
   db.exec(`

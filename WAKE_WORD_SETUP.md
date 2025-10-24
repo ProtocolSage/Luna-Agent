@@ -17,6 +17,7 @@ The Luna Agent uses Picovoice Porcupine for wake word detection. This guide will
 ### 2. Place the Model File
 
 Copy the downloaded `.ppn` file to:
+
 ```
 app/renderer/public/assets/Hey-Luna_en_wasm_v3.ppn
 ```
@@ -24,6 +25,7 @@ app/renderer/public/assets/Hey-Luna_en_wasm_v3.ppn
 ### 3. Verify Environment Configuration
 
 Ensure your `.env` file contains:
+
 ```
 PICOVOICE_ACCESS_KEY=vEheY8nulaN9JmhJpi7fpP1+bxAYHeugE8C/6iXmuIOGZTCVlcU6yg==
 ```
@@ -31,37 +33,42 @@ PICOVOICE_ACCESS_KEY=vEheY8nulaN9JmhJpi7fpP1+bxAYHeugE8C/6iXmuIOGZTCVlcU6yg==
 ### 4. Update Model Path (if needed)
 
 If your model file has a different name, update the path in:
+
 - `app/renderer/components/VoiceControls.tsx` (line 52)
 
 ```typescript
-const WAKE_WORD_MODEL_PATH = '/assets/Your-Model-Name.ppn';
+const WAKE_WORD_MODEL_PATH = "/assets/Your-Model-Name.ppn";
 ```
 
 ## Testing
 
 1. Start the Electron app:
+
 ```bash
 npm run dev
 ```
 
 2. In the Voice Controls:
-   - Set mode to "Auto" 
+   - Set mode to "Auto"
    - Ensure wake word detection is enabled
    - Say "Hey Luna" to trigger listening
 
 ## Troubleshooting
 
 ### Model Not Loading
+
 - Check browser console for errors
 - Verify the `.ppn` file is in the correct location
 - Ensure the file path matches exactly
 
 ### Wake Word Not Detecting
+
 - Check microphone permissions
 - Verify the Picovoice access key is valid
 - Try adjusting the sensitivity in `WakeWordListener.tsx` (currently set to 0.5)
 
 ### Performance Issues
+
 - The wake word detection runs entirely in the browser
 - No native dependencies required
 - Works in Electron renderer process

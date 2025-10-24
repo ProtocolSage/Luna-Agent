@@ -82,12 +82,14 @@ LUNA_SENTENCE_TTS=true
 ### 2. Preload Script Update ([app/main/preload.ts](app/main/preload.ts))
 
 **Before:**
+
 ```typescript
 VOICE_AUTO_LISTEN: false,
 WAKE_WORD_ENABLED: false,
 ```
 
 **After:**
+
 ```typescript
 VOICE_AUTO_LISTEN: process.env.VOICE_AUTO_LISTEN === 'true',
 WAKE_WORD_ENABLED: process.env.WAKE_WORD_ENABLED === 'true',
@@ -178,25 +180,29 @@ Luna:  *automatically resumes listening*
 Located in [LuxuryApp.tsx:330-355](app/renderer/components/LuxuryApp.tsx#L330-L355):
 
 ```typescript
-voiceServiceRef.current.on('transcription_received', async (transcript: string) => {
-  // Security validation
-  const validation = securityServiceRef.current.validateInput(transcript);
-  if (!validation.valid) {
-    console.warn('Invalid voice input detected:', validation.issues);
-    return;
-  }
+voiceServiceRef.current.on(
+  "transcription_received",
+  async (transcript: string) => {
+    // Security validation
+    const validation = securityServiceRef.current.validateInput(transcript);
+    if (!validation.valid) {
+      console.warn("Invalid voice input detected:", validation.issues);
+      return;
+    }
 
-  const sanitizedTranscript = securityServiceRef.current.sanitizeText(transcript);
-  setInputValue(sanitizedTranscript);
-  setVoiceState(prev => ({ ...prev, transcript: sanitizedTranscript }));
+    const sanitizedTranscript =
+      securityServiceRef.current.sanitizeText(transcript);
+    setInputValue(sanitizedTranscript);
+    setVoiceState((prev) => ({ ...prev, transcript: sanitizedTranscript }));
 
-  // Auto-send message for continuous conversation
-  if (sanitizedTranscript.trim()) {
-    setTimeout(() => {
-      handleSendMessage(); // ✅ AUTO-SENDS!
-    }, 500);
-  }
-});
+    // Auto-send message for continuous conversation
+    if (sanitizedTranscript.trim()) {
+      setTimeout(() => {
+        handleSendMessage(); // ✅ AUTO-SENDS!
+      }, 500);
+    }
+  },
+);
 ```
 
 ### Auto-Listen After Response
@@ -207,7 +213,7 @@ Located in [LuxuryApp.tsx:698-706](app/renderer/components/LuxuryApp.tsx#L698-L7
 // Auto-listen: restart listening if auto-listen is enabled
 const autoListenEnabled = (window as any).__ENV?.VOICE_AUTO_LISTEN === true;
 if (autoListenEnabled && !voiceState.isListening && !voiceState.isSpeaking) {
-  console.log('Auto-listen enabled, restarting listening after response...');
+  console.log("Auto-listen enabled, restarting listening after response...");
   setTimeout(() => {
     if (!voiceState.isListening && !voiceState.isSpeaking) {
       toggleVoiceRecording().catch(console.error);
@@ -258,14 +264,14 @@ Or keep them for manual control - your choice!
 
 ## 📊 Performance Metrics
 
-| Feature | Status | Response Time |
-|---------|--------|---------------|
-| Wake Word Detection | ✅ Active | ~100ms |
-| Speech-to-Text | ✅ Active | ~500ms (cloud) / ~200ms (local) |
-| Auto-Send Delay | ✅ Active | 500ms after speech ends |
-| AI Processing | ✅ Active | 1-3 seconds (streaming) |
-| Text-to-Speech | ✅ Active | Real-time streaming |
-| Auto-Listen Resume | ✅ Active | 1500ms after TTS ends |
+| Feature             | Status    | Response Time                   |
+| ------------------- | --------- | ------------------------------- |
+| Wake Word Detection | ✅ Active | ~100ms                          |
+| Speech-to-Text      | ✅ Active | ~500ms (cloud) / ~200ms (local) |
+| Auto-Send Delay     | ✅ Active | 500ms after speech ends         |
+| AI Processing       | ✅ Active | 1-3 seconds (streaming)         |
+| Text-to-Speech      | ✅ Active | Real-time streaming             |
+| Auto-Listen Resume  | ✅ Active | 1500ms after TTS ends           |
 
 ---
 
@@ -274,12 +280,14 @@ Or keep them for manual control - your choice!
 ### Wake Word Not Detecting
 
 1. **Check browser console:**
+
    ```javascript
    console.log(window.__ENV?.WAKE_WORD_ENABLED); // Should be true
    console.log(window.__ENV?.PICOVOICE_ACCESS_KEY); // Should be set
    ```
 
 2. **Verify wake word assets:**
+
    ```bash
    ls -la dist/app/renderer/assets/Hey-Luna*
    # Should show: Hey-Luna_en_wasm_v3_0_0.ppn
@@ -297,6 +305,7 @@ Or keep them for manual control - your choice!
 ### Auto-Send Not Working
 
 1. **Check environment exposure:**
+
    ```javascript
    console.log(window.__ENV?.VOICE_AUTO_LISTEN); // Should be true
    ```
@@ -313,6 +322,7 @@ Or keep them for manual control - your choice!
    - Look for `tts_ended` event in console
 
 2. **Verify auto-listen logic:**
+
    ```javascript
    console.log(window.__ENV?.LUNA_AUTO_LISTEN_AFTER_TTS); // Should be true
    ```
@@ -354,6 +364,7 @@ Now that Jarvis mode is active, you can:
 Your Luna Agent is now a true **Jarvis-like AI assistant**!
 
 **What You Can Do:**
+
 - Say "Hey Luna" to start conversation (no button press!)
 - Speak naturally, Luna auto-sends your message
 - Listen to Luna's response
@@ -361,6 +372,7 @@ Your Luna Agent is now a true **Jarvis-like AI assistant**!
 - Luna automatically listens for your next question
 
 **What's Different:**
+
 - ✅ Wake word detection enabled
 - ✅ Auto-send after transcription
 - ✅ Auto-listen after TTS
@@ -371,4 +383,4 @@ Your Luna Agent is now a true **Jarvis-like AI assistant**!
 
 ---
 
-*For more enhancements, see [JARVIS-ENHANCEMENTS.md](JARVIS-ENHANCEMENTS.md)*
+_For more enhancements, see [JARVIS-ENHANCEMENTS.md](JARVIS-ENHANCEMENTS.md)_

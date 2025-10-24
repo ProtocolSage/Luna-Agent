@@ -1,5 +1,5 @@
 // FeatureFlags.ts - Complete feature flag system for Luna voice agent
-import React from 'react';
+import React from "react";
 
 export interface VoiceFeatureFlags {
   // Core Voice Features
@@ -7,14 +7,14 @@ export interface VoiceFeatureFlags {
   textToSpeech: boolean;
   voiceActivation: boolean;
   wakeWordDetection: boolean;
-  
+
   // Voice Providers
   elevenLabsTTS: boolean;
   openaiTTS: boolean;
   webSpeechTTS: boolean;
   openaiSTT: boolean;
   webSpeechSTT: boolean;
-  
+
   // Advanced Voice Features
   voiceCloning: boolean;
   multiVoiceSupport: boolean;
@@ -22,26 +22,26 @@ export interface VoiceFeatureFlags {
   backgroundNoiseReduction: boolean;
   voiceActivityDetection: boolean;
   continuousListening: boolean;
-  
+
   // UI Features
   voiceVisualizer: boolean;
   voiceControls: boolean;
   diagnosticPanel: boolean;
   voiceSettings: boolean;
-  
+
   // Conversation Features
   conversationHistory: boolean;
   contextAwareness: boolean;
   memoryIntegration: boolean;
   streamingResponse: boolean;
   interruptionHandling: boolean;
-  
+
   // Performance Features
   voiceBuffering: boolean;
   audioCompression: boolean;
   latencyOptimization: boolean;
   offlineMode: boolean;
-  
+
   // Experimental Features
   emotionalTone: boolean;
   voicePersonalities: boolean;
@@ -55,13 +55,13 @@ export interface SystemFeatureFlags {
   toolsIntegration: boolean;
   memorySystem: boolean;
   securityEnforcement: boolean;
-  
+
   // UI Features
   darkMode: boolean;
   animations: boolean;
   notifications: boolean;
   keyboardShortcuts: boolean;
-  
+
   // Development Features
   debugMode: boolean;
   performanceMetrics: boolean;
@@ -76,14 +76,14 @@ export const DEFAULT_VOICE_FLAGS: VoiceFeatureFlags = {
   textToSpeech: true,
   voiceActivation: true,
   wakeWordDetection: true,
-  
+
   // Voice Providers - All enabled with fallbacks
   elevenLabsTTS: true,
   openaiTTS: true,
   webSpeechTTS: true,
   openaiSTT: true,
   webSpeechSTT: true,
-  
+
   // Advanced Voice Features - Enabled for full functionality
   voiceCloning: true,
   multiVoiceSupport: true,
@@ -91,26 +91,26 @@ export const DEFAULT_VOICE_FLAGS: VoiceFeatureFlags = {
   backgroundNoiseReduction: true,
   voiceActivityDetection: true,
   continuousListening: true,
-  
+
   // UI Features - All enabled for rich experience
   voiceVisualizer: true,
   voiceControls: true,
   diagnosticPanel: true,
   voiceSettings: true,
-  
+
   // Conversation Features - Full conversational AI
   conversationHistory: true,
   contextAwareness: true,
   memoryIntegration: true,
   streamingResponse: true,
   interruptionHandling: true,
-  
+
   // Performance Features - Optimized for responsiveness
   voiceBuffering: true,
   audioCompression: true,
   latencyOptimization: true,
   offlineMode: false, // Requires internet for AI
-  
+
   // Experimental Features - Enabled for complete experience
   emotionalTone: true,
   voicePersonalities: true,
@@ -124,13 +124,13 @@ export const DEFAULT_SYSTEM_FLAGS: SystemFeatureFlags = {
   toolsIntegration: true,
   memorySystem: true,
   securityEnforcement: true,
-  
+
   // UI Features - Modern interface
   darkMode: true,
   animations: true,
   notifications: true,
   keyboardShortcuts: true,
-  
+
   // Development Features - Disabled in production
   debugMode: false,
   performanceMetrics: true,
@@ -238,19 +238,19 @@ export class FeatureFlagManager {
   // Preset Configurations
   applyDevelopmentMode(): void {
     this.setVoiceFlags(DEVELOPMENT_VOICE_FLAGS);
-    this.setSystemFlags({ 
-      debugMode: true, 
-      devTools: true, 
-      performanceMetrics: true 
+    this.setSystemFlags({
+      debugMode: true,
+      devTools: true,
+      performanceMetrics: true,
     });
   }
 
   applyMinimalMode(): void {
     this.setVoiceFlags(MINIMAL_VOICE_FLAGS);
-    this.setSystemFlags({ 
-      animations: false, 
+    this.setSystemFlags({
+      animations: false,
       notifications: false,
-      performanceMetrics: false 
+      performanceMetrics: false,
     });
   }
 
@@ -264,11 +264,15 @@ export class FeatureFlagManager {
 
   // Export/Import Configuration
   exportConfiguration(): string {
-    return JSON.stringify({
-      voice: this.voiceFlags,
-      system: this.systemFlags,
-      timestamp: new Date().toISOString()
-    }, null, 2);
+    return JSON.stringify(
+      {
+        voice: this.voiceFlags,
+        system: this.systemFlags,
+        timestamp: new Date().toISOString(),
+      },
+      null,
+      2,
+    );
   }
 
   importConfiguration(config: string): boolean {
@@ -278,7 +282,7 @@ export class FeatureFlagManager {
       if (parsed.system) this.setSystemFlags(parsed.system);
       return true;
     } catch (error) {
-      console.error('Failed to import configuration:', error);
+      console.error("Failed to import configuration:", error);
       return false;
     }
   }
@@ -311,49 +315,52 @@ export class FeatureFlagManager {
   }
 
   private notifyListeners(): void {
-    this.listeners.forEach(callback => callback());
+    this.listeners.forEach((callback) => callback());
   }
 
   // Persistence
   private loadVoiceFlags(): VoiceFeatureFlags {
     try {
-      const stored = localStorage.getItem('luna-voice-flags');
+      const stored = localStorage.getItem("luna-voice-flags");
       if (stored) {
         const parsed = JSON.parse(stored);
         return { ...DEFAULT_VOICE_FLAGS, ...parsed };
       }
     } catch (error) {
-      console.error('Failed to load voice flags:', error);
+      console.error("Failed to load voice flags:", error);
     }
     return { ...DEFAULT_VOICE_FLAGS };
   }
 
   private loadSystemFlags(): SystemFeatureFlags {
     try {
-      const stored = localStorage.getItem('luna-system-flags');
+      const stored = localStorage.getItem("luna-system-flags");
       if (stored) {
         const parsed = JSON.parse(stored);
         return { ...DEFAULT_SYSTEM_FLAGS, ...parsed };
       }
     } catch (error) {
-      console.error('Failed to load system flags:', error);
+      console.error("Failed to load system flags:", error);
     }
     return { ...DEFAULT_SYSTEM_FLAGS };
   }
 
   private saveVoiceFlags(): void {
     try {
-      localStorage.setItem('luna-voice-flags', JSON.stringify(this.voiceFlags));
+      localStorage.setItem("luna-voice-flags", JSON.stringify(this.voiceFlags));
     } catch (error) {
-      console.error('Failed to save voice flags:', error);
+      console.error("Failed to save voice flags:", error);
     }
   }
 
   private saveSystemFlags(): void {
     try {
-      localStorage.setItem('luna-system-flags', JSON.stringify(this.systemFlags));
+      localStorage.setItem(
+        "luna-system-flags",
+        JSON.stringify(this.systemFlags),
+      );
     } catch (error) {
-      console.error('Failed to save system flags:', error);
+      console.error("Failed to save system flags:", error);
     }
   }
 }
@@ -365,14 +372,14 @@ export const featureFlags = new FeatureFlagManager();
 export const useFeatureFlags = () => {
   const [flags, setFlags] = React.useState({
     voice: featureFlags.getVoiceFlags(),
-    system: featureFlags.getSystemFlags()
+    system: featureFlags.getSystemFlags(),
   });
 
   React.useEffect(() => {
     const unsubscribe = featureFlags.onFlagsChanged(() => {
       setFlags({
         voice: featureFlags.getVoiceFlags(),
-        system: featureFlags.getSystemFlags()
+        system: featureFlags.getSystemFlags(),
       });
     });
     return unsubscribe;
@@ -381,23 +388,27 @@ export const useFeatureFlags = () => {
   return {
     voice: flags.voice,
     system: flags.system,
-    isVoiceEnabled: (feature: keyof VoiceFeatureFlags) => 
+    isVoiceEnabled: (feature: keyof VoiceFeatureFlags) =>
       featureFlags.isVoiceFeatureEnabled(feature),
-    isSystemEnabled: (feature: keyof SystemFeatureFlags) => 
+    isSystemEnabled: (feature: keyof SystemFeatureFlags) =>
       featureFlags.isSystemFeatureEnabled(feature),
-    toggleVoice: (feature: keyof VoiceFeatureFlags) => 
+    toggleVoice: (feature: keyof VoiceFeatureFlags) =>
       featureFlags.toggleVoiceFeature(feature),
-    toggleSystem: (feature: keyof SystemFeatureFlags) => 
+    toggleSystem: (feature: keyof SystemFeatureFlags) =>
       featureFlags.toggleSystemFeature(feature),
-    manager: featureFlags
+    manager: featureFlags,
   };
 };
 
 // Type guards for runtime checks
-export const isVoiceFeature = (feature: string): feature is keyof VoiceFeatureFlags => {
+export const isVoiceFeature = (
+  feature: string,
+): feature is keyof VoiceFeatureFlags => {
   return feature in DEFAULT_VOICE_FLAGS;
 };
 
-export const isSystemFeature = (feature: string): feature is keyof SystemFeatureFlags => {
+export const isSystemFeature = (
+  feature: string,
+): feature is keyof SystemFeatureFlags => {
   return feature in DEFAULT_SYSTEM_FLAGS;
 };

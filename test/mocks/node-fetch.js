@@ -1,5 +1,5 @@
 // Mock for node-fetch to avoid ESM issues in Jest
-const crossFetch = require('cross-fetch');
+const crossFetch = require("cross-fetch");
 
 // Re-export cross-fetch as node-fetch replacement
 module.exports = crossFetch;

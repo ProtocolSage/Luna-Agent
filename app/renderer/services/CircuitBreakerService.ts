@@ -5,16 +5,16 @@
  */
 
 export enum CircuitState {
-  CLOSED = 'CLOSED',     // Normal operation
-  OPEN = 'OPEN',         // Service disabled due to failures
-  HALF_OPEN = 'HALF_OPEN' // Testing if service recovered
+  CLOSED = "CLOSED", // Normal operation
+  OPEN = "OPEN", // Service disabled due to failures
+  HALF_OPEN = "HALF_OPEN", // Testing if service recovered
 }
 
 interface CircuitBreakerConfig {
-  failureThreshold: number;    // Number of failures before opening
-  successThreshold: number;    // Number of successes to close from half-open
-  timeout: number;            // Time to wait before trying half-open (ms)
-  monitoringWindow: number;   // Time window to track failures (ms)
+  failureThreshold: number; // Number of failures before opening
+  successThreshold: number; // Number of successes to close from half-open
+  timeout: number; // Time to wait before trying half-open (ms)
+  monitoringWindow: number; // Time window to track failures (ms)
 }
 
 interface CircuitBreakerStats {
@@ -32,11 +32,11 @@ export class CircuitBreakerService {
 
   constructor(config: Partial<CircuitBreakerConfig> = {}) {
     this.config = {
-      failureThreshold: 5,      // Open after 5 failures
-      successThreshold: 3,      // Close after 3 successes in half-open
-      timeout: 60000,          // Wait 1 minute before retry
+      failureThreshold: 5, // Open after 5 failures
+      successThreshold: 3, // Close after 3 successes in half-open
+      timeout: 60000, // Wait 1 minute before retry
       monitoringWindow: 300000, // 5 minute window
-      ...config
+      ...config,
     };
   }
 
@@ -46,7 +46,7 @@ export class CircuitBreakerService {
   async execute<T>(
     circuitName: string,
     fn: () => Promise<T>,
-    fallback?: () => Promise<T>
+    fallback?: () => Promise<T>,
   ): Promise<T> {
     const circuit = this.getOrCreateCircuit(circuitName);
 
@@ -57,7 +57,9 @@ export class CircuitBreakerService {
         if (fallback) {
           return await fallback();
         }
-        throw new Error(`Circuit breaker '${circuitName}' is OPEN. Service temporarily unavailable.`);
+        throw new Error(
+          `Circuit breaker '${circuitName}' is OPEN. Service temporarily unavailable.`,
+        );
       } else {
         // Move to half-open state to test
         circuit.state = CircuitState.HALF_OPEN;
@@ -72,13 +74,13 @@ export class CircuitBreakerService {
       return result;
     } catch (error) {
       this.onFailure(circuitName);
-      
+
       // If we have a fallback, use it instead of throwing
       if (fallback && (circuit.state as any) === CircuitState.OPEN) {
         console.log(`Circuit breaker '${circuitName}' failed, using fallback`);
         return await fallback();
       }
-      
+
       throw error;
     }
   }
@@ -88,15 +90,15 @@ export class CircuitBreakerService {
    */
   canExecute(circuitName: string): boolean {
     const circuit = this.getOrCreateCircuit(circuitName);
-    
+
     if (circuit.state === CircuitState.CLOSED) {
       return true;
     }
-    
+
     if (circuit.state === CircuitState.OPEN) {
       return Date.now() >= circuit.nextAttempt;
     }
-    
+
     // HALF_OPEN - allow execution
     return true;
   }
@@ -115,7 +117,8 @@ export class CircuitBreakerService {
       state: circuit.state,
       failureCount: circuit.failureCount,
       successCount: circuit.successCount,
-      nextAttempt: circuit.state === CircuitState.OPEN ? circuit.nextAttempt : undefined
+      nextAttempt:
+        circuit.state === CircuitState.OPEN ? circuit.nextAttempt : undefined,
     };
   }
 
@@ -143,7 +146,7 @@ export class CircuitBreakerService {
         successCount: circuit.successCount,
         lastFailureTime: circuit.lastFailureTime,
         lastSuccessTime: circuit.lastSuccessTime,
-        nextAttempt: circuit.nextAttempt
+        nextAttempt: circuit.nextAttempt,
       };
     });
     return states;
@@ -157,7 +160,7 @@ export class CircuitBreakerService {
         lastFailureTime: 0,
         lastSuccessTime: 0,
         state: CircuitState.CLOSED,
-        nextAttempt: 0
+        nextAttempt: 0,
       });
     }
     return this.circuits.get(circuitName)!;
@@ -174,7 +177,9 @@ export class CircuitBreakerService {
         circuit.state = CircuitState.CLOSED;
         circuit.failureCount = 0;
         circuit.successCount = 0;
-        console.log(`Circuit breaker '${circuitName}' closed - service recovered`);
+        console.log(
+          `Circuit breaker '${circuitName}' closed - service recovered`,
+        );
       }
     } else if (circuit.state === CircuitState.CLOSED) {
       // Reset failure count on success in normal operation
@@ -197,13 +202,17 @@ export class CircuitBreakerService {
       // Failed in half-open, go back to open
       circuit.state = CircuitState.OPEN;
       circuit.nextAttempt = Date.now() + this.config.timeout;
-      console.log(`Circuit breaker '${circuitName}' failed in HALF_OPEN, going back to OPEN`);
+      console.log(
+        `Circuit breaker '${circuitName}' failed in HALF_OPEN, going back to OPEN`,
+      );
     } else if (circuit.state === CircuitState.CLOSED) {
       // Check if we should open the circuit
       if (circuit.failureCount >= this.config.failureThreshold) {
         circuit.state = CircuitState.OPEN;
         circuit.nextAttempt = Date.now() + this.config.timeout;
-        console.log(`Circuit breaker '${circuitName}' opened due to ${circuit.failureCount} failures`);
+        console.log(
+          `Circuit breaker '${circuitName}' opened due to ${circuit.failureCount} failures`,
+        );
       }
     }
   }
@@ -215,10 +224,10 @@ let circuitBreakerService: CircuitBreakerService | null = null;
 export function getCircuitBreakerService(): CircuitBreakerService {
   if (!circuitBreakerService) {
     circuitBreakerService = new CircuitBreakerService({
-      failureThreshold: 3,      // More aggressive for voice services
-      successThreshold: 2,      // Faster recovery
-      timeout: 30000,          // 30 second cooldown
-      monitoringWindow: 120000  // 2 minute window
+      failureThreshold: 3, // More aggressive for voice services
+      successThreshold: 2, // Faster recovery
+      timeout: 30000, // 30 second cooldown
+      monitoringWindow: 120000, // 2 minute window
     });
   }
   return circuitBreakerService;

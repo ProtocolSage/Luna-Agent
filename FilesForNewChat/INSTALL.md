@@ -5,11 +5,13 @@
 I've created all the files in this container. Here's how to get them to your project:
 
 1. Open PowerShell in your project directory:
+
    ```powershell
    cd C:\dev\luna-agent-v1.0-production-complete-2
    ```
 
 2. Create the necessary directories:
+
    ```powershell
    New-Item -ItemType Directory -Path "src/utils" -Force
    New-Item -ItemType Directory -Path "src/components" -Force
@@ -51,24 +53,26 @@ I'll provide each file content in the chat. Copy and paste them into the correct
 ## What to Do After Copying Files
 
 1. Run the deployment script:
+
    ```powershell
    .\deploy-refactoring.ps1
    ```
 
 2. Or manually run:
+
    ```powershell
    # Clear environment
    [Environment]::SetEnvironmentVariable('NODE_OPTIONS', $null, 'User')
-   
+
    # Update package.json
    node scripts/update-package.js
-   
+
    # Rebuild native modules
    npm run rebuild
-   
+
    # Copy assets
    npm run copy-assets
-   
+
    # Test the app
    npm start
    ```
@@ -76,6 +80,7 @@ I'll provide each file content in the chat. Copy and paste them into the correct
 ## Files Created
 
 Total: 12 files
+
 - 1 utility file (logger)
 - 3 React components
 - 1 service update

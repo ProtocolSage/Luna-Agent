@@ -104,11 +104,91 @@ jobs:
           name: luna-agent-${{ matrix.platform }}
           path: dist/
 
+  # Security Scan Build Artifacts
+  security-scan-artifacts:
+    name: Scan Build Artifacts
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      contents: read
+      security-events: write
+    
+    strategy:
+      matrix:
+        include:
+          - platform: linux
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: luna-agent-${{ matrix.platform }}
+          path: dist/
+      
+      - name: Run Trivy vulnerability scanner on build artifacts
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: 'fs'
+          scan-ref: 'dist/'
+          format: 'sarif'
+          output: 'trivy-build-${{ matrix.platform }}.sarif'
+          severity: 'CRITICAL,HIGH,MEDIUM'
+          exit-code: '0'
+      
+      - name: Upload Trivy results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-build-${{ matrix.platform }}.sarif'
+          category: 'build-artifacts-${{ matrix.platform }}'
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      
+      - name: Install production dependencies
+        run: npm ci --omit=dev
+      
+      - name: Run npm audit
+        run: npm audit --audit-level=moderate --production
+        continue-on-error: true
+      
+      - name: Generate audit report
+        run: |
+          npm audit --audit-level=moderate --production --json > npm-audit-${{ matrix.platform }}.json || true
+          if [ -s npm-audit-${{ matrix.platform }}.json ]; then
+            CRITICAL=$(jq '.metadata.vulnerabilities.critical // 0' npm-audit-${{ matrix.platform }}.json)
+            HIGH=$(jq '.metadata.vulnerabilities.high // 0' npm-audit-${{ matrix.platform }}.json)
+            
+            echo "## Security Scan Results (${{ matrix.platform }})" > scan-summary.md
+            echo "- Critical vulnerabilities: $CRITICAL" >> scan-summary.md
+            echo "- High vulnerabilities: $HIGH" >> scan-summary.md
+            
+            if [ "$CRITICAL" -gt 0 ]; then
+              echo "❌ Critical vulnerabilities found in build artifacts!"
+              exit 1
+            fi
+          fi
+      
+      - name: Upload audit results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-scan-${{ matrix.platform }}
+          path: |
+            npm-audit-${{ matrix.platform }}.json
+            scan-summary.md
+          retention-days: 30
+
   # Docker Build & Push
   docker:
     name: Docker Build & Push
     runs-on: ubuntu-latest
-    needs: [test, security]
+    needs: [test, security, security-scan-artifacts]
     if: github.event_name == 'push' || github.event_name == 'release'
     
     permissions:

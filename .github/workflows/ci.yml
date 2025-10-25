@@ -133,6 +133,96 @@ jobs:
           path: dist/
           retention-days: 7
 
+  security-scan:
+    name: Security Scan Build Artifacts
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      contents: read
+      security-events: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-artifacts
+          path: dist/
+      
+      - name: Run Trivy vulnerability scanner on build artifacts
+        uses: aquasecurity/trivy-action@v0.33.1
+        with:
+          scan-type: 'fs'
+          scan-ref: 'dist/'
+          format: 'sarif'
+          output: 'trivy-build-results.sarif'
+          severity: 'CRITICAL,HIGH,MEDIUM'
+          exit-code: '0'
+      
+      - name: Upload Trivy results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-build-results.sarif'
+          category: 'build-artifacts'
+      
+      - name: Setup Node.js for npm audit
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      
+      - name: Install dependencies for audit
+        run: npm ci --omit=dev
+      
+      - name: Run npm audit on production dependencies
+        run: npm audit --audit-level=moderate --production
+        continue-on-error: true
+      
+      - name: Generate npm audit report
+        run: |
+          npm audit --audit-level=moderate --production --json > npm-audit-results.json || true
+          echo "## NPM Audit Results" > audit-summary.md
+          if [ -s npm-audit-results.json ]; then
+            echo "\`\`\`json" >> audit-summary.md
+            cat npm-audit-results.json >> audit-summary.md
+            echo "\`\`\`" >> audit-summary.md
+          else
+            echo "No vulnerabilities found in production dependencies." >> audit-summary.md
+          fi
+      
+      - name: Upload npm audit results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: npm-audit-results
+          path: |
+            npm-audit-results.json
+            audit-summary.md
+          retention-days: 30
+      
+      - name: Check for critical vulnerabilities
+        run: |
+          if [ -s npm-audit-results.json ]; then
+            CRITICAL=$(jq '.metadata.vulnerabilities.critical // 0' npm-audit-results.json)
+            HIGH=$(jq '.metadata.vulnerabilities.high // 0' npm-audit-results.json)
+            
+            echo "Critical vulnerabilities: $CRITICAL"
+            echo "High vulnerabilities: $HIGH"
+            
+            if [ "$CRITICAL" -gt 0 ]; then
+              echo "❌ Build artifacts contain critical vulnerabilities!"
+              exit 1
+            fi
+            
+            if [ "$HIGH" -gt 5 ]; then
+              echo "⚠️  Warning: Build artifacts contain $HIGH high-severity vulnerabilities"
+              echo "Consider addressing these before deployment"
+            fi
+          fi
+
   sonarcloud:
     name: SonarCloud Analysis
     runs-on: ubuntu-latest

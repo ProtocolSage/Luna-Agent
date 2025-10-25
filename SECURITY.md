@@ -269,3 +269,13 @@ AUDIT_LOGGING_ENABLED=true
 5. **Deployment** - Production rollout
 6. **Monitoring** - Post-update verification
 
+### Electron Fuse Hardening Status
+
+- **Ticket**: [SEC-204](docs/tickets/SEC-204-electron-fuse-hardening.md)
+- **Last Check**: 2025-10-25
+- **Proof**:
+  ```
+  git grep -n "embeddedAsarIntegrityValidation\|onlyLoadAppFromAsar" -- ':!dist'
+  # no matches
+  ```
+- **Action**: Upgrade Electron to 35.7.5+ and enable `embeddedAsarIntegrityValidation` and `onlyLoadAppFromAsar` fuses during packaging to close the known CVE.

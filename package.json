@@ -88,8 +88,9 @@
     ]
   },
   "devDependencies": {
+    "@electron/rebuild": "^4.0.1",
     "@esbuild/linux-x64": "^0.25.10",
-    "@testing-library/jest-dom": "^6.7.0",
+    "@testing-library/jest-dom": "^6.9.1",
     "@types/better-sqlite3": "^7.6.13",
     "@types/cheerio": "^0.22.35",
     "@types/compression": "^1.8.1",
@@ -117,7 +118,6 @@
     "css-loader": "^7.1.2",
     "electron": "^28.3.2",
     "electron-builder": "^24.13.3",
-    "electron-rebuild": "^3.2.9",
     "esbuild-loader": "^4.3.0",
     "eslint": "^8.50.0",
     "eslint-config-prettier": "^9.0.0",
@@ -127,13 +127,12 @@
     "husky": "^8.0.3",
     "identity-obj-proxy": "^3.0.0",
     "jest": "^29.7.0",
-    "jest-dom": "^4.0.0",
     "jest-environment-jsdom": "^30.0.5",
     "jest-html-reporters": "^3.1.5",
     "jest-junit": "^16.0.0",
     "lint-staged": "^16.1.5",
     "prettier": "^3.0.3",
-    "rimraf": "^5.0.1",
+    "rimraf": "^5.0.5",
     "style-loader": "^4.0.0",
     "supertest": "^6.3.3",
     "ts-jest": "^29.1.1",
@@ -152,7 +151,7 @@
     "@supabase/supabase-js": "^2.57.4",
     "@types/three": "^0.179.0",
     "abort-controller": "^3.0.0",
-    "axios": "^1.11.0",
+    "axios": "1.12.0",
     "bcryptjs": "^2.4.3",
     "better-sqlite3": "^12.2.0",
     "cheerio": "^1.1.2",
@@ -232,5 +231,9 @@
   },
   "_moduleAliases": {
     "@agent": "dist/agent"
+  },
+  "overrides": {
+    "rimraf": "^5.0.5",
+    "glob": "^10.3.15"
   }
 }

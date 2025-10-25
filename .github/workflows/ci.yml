@@ -109,19 +109,46 @@ jobs:
     name: Build Application
     runs-on: ubuntu-latest
     needs: [lint, test]
+    timeout-minutes: 45
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955
         
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          node-version: '20.x'
           cache: 'npm'
+
+      - name: NPM config (speed + stability)
+        run: |
+          npm config set prefer-offline true
+          npm config set fund false
+          npm config set audit false
+          npm config set progress false
+          npm config set fetch-retries 5
+          npm config set fetch-timeout 120000
+          echo "NPM config:"
+          npm config list
+
+      - name: Cache Electron & node-gyp (native rebuild speedup)
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: |
+            ~/.cache/electron
+            ~/.cache/electron-builder
+            ~/.cache/node-gyp
+          key: ${{ runner.os }}-electron-${{ hashFiles('package-lock.json') }}
       
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --no-audit --no-fund --progress=false
+
+      - name: Rebuild native modules
+        run: npx @electron/rebuild
+
+      - name: Test
+        run: npm test --silent
       
       - name: Build application
         run: npm run build

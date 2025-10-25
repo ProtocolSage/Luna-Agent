@@ -47,6 +47,7 @@
     "prepare": "husky install",
     "probe:voice": "powershell -ExecutionPolicy Bypass -File .\\\\voice-probe.ps1 -Base http://localhost:3000 -Audio .\\\\fixtures\\\\hello_luna.wav",
     "lint": "eslint src --ext .ts,.tsx",
+    "format:check": "prettier --check \"**/*.{js,jsx,ts,tsx,json,md}\"",
     "clean": "rimraf dist logs"
   },
   "build": {

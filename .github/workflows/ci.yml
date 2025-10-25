@@ -152,7 +152,7 @@ jobs:
           path: dist/
       
       - name: Run Trivy vulnerability scanner on build artifacts
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@0.29.0
         with:
           scan-type: 'fs'
           scan-ref: 'dist/'

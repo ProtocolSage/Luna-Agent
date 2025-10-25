@@ -25,7 +25,7 @@ The main CI workflow includes a dedicated `security-scan` job that runs after th
 - **Scan Type**: Filesystem scan of build artifacts
 - **Severity Levels**: CRITICAL, HIGH, MEDIUM
 - **Output Format**: SARIF (uploaded to GitHub Security tab)
-- **Action Version**: `aquasecurity/trivy-action@0.28.0`
+- **Action Version**: `aquasecurity/trivy-action@0.29.0`
 
 ##### NPM Audit
 - **Scope**: Production dependencies only (`--omit=dev`)
@@ -189,7 +189,7 @@ Keep security tools current:
 
 ```yaml
 # Update Trivy version
-uses: aquasecurity/trivy-action@0.28.0  # Check for latest
+uses: aquasecurity/trivy-action@0.29.0  # Check for latest
 
 # Update CodeQL action
 uses: github/codeql-action/upload-sarif@v3  # Check for latest

@@ -116,7 +116,7 @@ dist/
 ### If microphone doesn't work:
 - Check Windows Settings → Privacy → Microphone
 - Run as Administrator if needed
-- The sandbox is set to false to allow media access
+- The sandbox is now enabled with proper media permission handlers for security
 
 ## Verification Steps
 

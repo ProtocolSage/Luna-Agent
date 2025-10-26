@@ -75,9 +75,6 @@ export class RendererCloudSTT implements STTProvider {
     // Even if credentials exist, they're not available in renderer for security
     console.warn('[RendererCloudSTT] Cloud STT cannot run in renderer (API keys not exposed for security). Will fallback to Whisper.');
     throw new Error('SECURITY: Cloud STT requires backend API - API keys not exposed to renderer');
-
-    this._isInitialized = true;
-    console.log('[RendererCloudSTT] Initialized successfully');
   }
 
   async startListening(): Promise<void> {

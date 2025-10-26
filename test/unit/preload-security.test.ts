@@ -101,9 +101,9 @@ describe('Preload Script Security', () => {
   });
 
   test('should handle missing API keys correctly', () => {
-    // Clear API keys
-    process.env.AZURE_SPEECH_KEY = undefined;
-    process.env.OPENAI_API_KEY = undefined;
+    // Clear API keys properly
+    delete process.env.AZURE_SPEECH_KEY;
+    delete process.env.OPENAI_API_KEY;
 
     const mockEnv = {
       HAS_AZURE_SPEECH: !!process.env.AZURE_SPEECH_KEY,

@@ -275,8 +275,10 @@ describe('ToolPipeline Security', () => {
         metadata: {}
       };
 
+      // Test with intentionally malicious command to verify security fix
+      // This dangerous command should NOT be executed due to planning failure
       const result = await pipeline.execute(
-        'rm -rf /', // Intentionally dangerous command
+        'rm -rf /', // Intentionally dangerous command for security testing
         context,
         { autoPlanning: true }
       );

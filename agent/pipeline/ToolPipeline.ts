@@ -205,16 +205,9 @@ Respond with a JSON object containing:
       };
 
     } catch (error) {
-      // Fallback to simple single-step execution
-      console.warn('Planning failed, using fallback approach:', error);
-      
-      return {
-        steps: [{ tool: 'execute_command', args: { command: userRequest } }],
-        reasoning: 'Fallback execution plan due to planning failure',
-        confidence: 0.3,
-        dependencies: [],
-        estimatedTimeMs: 30000
-      };
+      // Security: Do not provide unsafe fallback execution
+      // Let the error propagate to ensure proper error handling
+      throw new Error(`Tool planning failed: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 

@@ -244,6 +244,42 @@ LOG_LEVEL=info
 4. **Customize UI** - Update styles in components
 5. **Add Features** - Build on the clean foundation
 
+## 🎤 Voice Features
+
+### Chunked Streaming TTS (New!)
+
+Luna Agent now supports chunked streaming text-to-speech for ultra-low latency voice responses:
+
+- **Lower Latency**: Audio starts playing in 200-500ms instead of 2-5s
+- **Progressive Playback**: Stream audio chunks as they're generated
+- **Backward Compatible**: Original TTS endpoint still works
+- **Easy Toggle**: Enable/disable via `VOICE_STREAMING_ENABLED` environment variable
+
+**Quick Usage:**
+
+```typescript
+import { playStreamingTTS } from './services/api/voiceClient';
+
+// Streaming TTS (recommended)
+const { stop, promise } = await playStreamingTTS('Hello world!', {
+  voiceId: 'alloy'
+});
+await promise;
+```
+
+**Configuration:**
+
+```env
+# Enable chunked streaming TTS (default: true)
+VOICE_STREAMING_ENABLED=true
+OPENAI_API_KEY=sk-...
+```
+
+**Learn More:**
+- 📖 [Complete Streaming TTS Guide](docs/CHUNKED_STREAMING_TTS.md)
+- 💡 [Usage Examples](examples/streaming-tts-usage.tsx)
+- 🧪 [Integration Tests](test/integration/streaming-tts.test.ts)
+
 ## 💡 Philosophy
 
 This refactoring follows the principle: **Make it work, make it simple, then make it fast.**

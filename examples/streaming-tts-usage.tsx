@@ -237,7 +237,12 @@ export function ProgressiveStreamingTTS() {
         receivedBytes += chunk.length;
         
         // Update progress (estimate based on typical audio sizes)
-        const estimatedTotal = text.length * 100; // rough estimate
+        // MP3 at 128kbps averages ~1000 bytes per second of audio
+        // Human speech is ~150 words/min or ~2.5 words/sec
+        // Average word is ~5 chars, so ~12.5 chars/sec of speech
+        // Therefore roughly 1000 bytes / 12.5 chars ≈ 80-100 bytes per character
+        const BYTES_PER_CHAR_ESTIMATE = 100;
+        const estimatedTotal = text.length * BYTES_PER_CHAR_ESTIMATE;
         const progressPercent = Math.min(95, (receivedBytes / estimatedTotal) * 100);
         setProgress(progressPercent);
         setStatus(`Streaming: ${receivedBytes} bytes received...`);

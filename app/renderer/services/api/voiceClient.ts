@@ -12,6 +12,7 @@ export interface TTSOptions {
   voiceId?: string;
   stability?: number;        // 0..1
   similarityBoost?: number;  // 0..1
+  streaming?: boolean;       // Enable streaming TTS
 }
 
 /**
@@ -20,7 +21,9 @@ export interface TTSOptions {
 export async function tts(text: string, opt: TTSOptions = {}): Promise<Blob> {
   if (!text || !text.trim()) throw new Error('tts: text required');
 
-  const r = await apiFetch(API.TTS_SYNTHESIZE, {
+  const endpoint = opt.streaming ? API.TTS_STREAM : API.TTS_SYNTHESIZE;
+  
+  const r = await apiFetch(endpoint, {
     method: 'POST',
     body: {
       text,
@@ -36,6 +39,117 @@ export async function tts(text: string, opt: TTSOptions = {}): Promise<Blob> {
     throw new Error(`TTS ${r.status}: ${msg}`);
   }
   return await r.blob(); // audio/mpeg
+}
+
+/**
+ * Streaming TTS - returns an async iterator that yields audio chunks as they arrive.
+ * Provides lower latency by starting playback before all audio is generated.
+ */
+export async function* ttsStream(text: string, opt: TTSOptions = {}): AsyncGenerator<Uint8Array, void, unknown> {
+  if (!text || !text.trim()) throw new Error('tts: text required');
+
+  const r = await apiFetch(API.TTS_STREAM, {
+    method: 'POST',
+    body: {
+      text,
+      provider: 'openai',  // Streaming only supported with OpenAI
+      voiceId: opt.voiceId,
+    }
+  });
+
+  if (!r.ok) {
+    const msg = await safeError(r);
+    throw new Error(`TTS Stream ${r.status}: ${msg}`);
+  }
+
+  const reader = r.body?.getReader();
+  if (!reader) {
+    throw new Error('Response body not readable');
+  }
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      yield value;
+    }
+  } finally {
+    reader.releaseLock();
+  }
+}
+
+/**
+ * Play streaming TTS with progressive audio playback.
+ * Returns a controller with stop() method.
+ */
+export async function playStreamingTTS(text: string, opt: TTSOptions = {}): Promise<{
+  stop: () => void;
+  promise: Promise<void>;
+}> {
+  const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+  const chunks: Uint8Array[] = [];
+  let stopped = false;
+  let audioSource: AudioBufferSourceNode | null = null;
+
+  const stop = () => {
+    stopped = true;
+    if (audioSource) {
+      try {
+        audioSource.stop();
+      } catch (e) {
+        // Already stopped
+      }
+    }
+    if (audioContext.state !== 'closed') {
+      audioContext.close().catch(() => {});
+    }
+  };
+
+  const promise = (async () => {
+    try {
+      // Collect all chunks
+      for await (const chunk of ttsStream(text, opt)) {
+        if (stopped) break;
+        chunks.push(chunk);
+      }
+
+      if (stopped || chunks.length === 0) return;
+
+      // Concatenate all chunks into a single buffer
+      const totalLength = chunks.reduce((acc, chunk) => acc + chunk.length, 0);
+      const audioData = new Uint8Array(totalLength);
+      let offset = 0;
+      for (const chunk of chunks) {
+        audioData.set(chunk, offset);
+        offset += chunk.length;
+      }
+
+      // Decode the MP3 audio data
+      const audioBuffer = await audioContext.decodeAudioData(audioData.buffer);
+
+      if (stopped) return;
+
+      // Play the audio
+      audioSource = audioContext.createBufferSource();
+      audioSource.buffer = audioBuffer;
+      audioSource.connect(audioContext.destination);
+      audioSource.start(0);
+
+      // Wait for playback to complete
+      await new Promise<void>((resolve) => {
+        audioSource!.onended = () => resolve();
+      });
+    } catch (error) {
+      console.error('Streaming TTS playback error:', error);
+      throw error;
+    } finally {
+      if (audioContext.state !== 'closed') {
+        audioContext.close().catch(() => {});
+      }
+    }
+  })();
+
+  return { stop, promise };
 }
 
 /**

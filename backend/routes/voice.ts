@@ -77,7 +77,7 @@ const normaliseProviderError = (error: any): { status: number; code: string; mes
 router.get('/tts/check', (req: Request, res: Response) => {
   const hasElevenLabs = !!process.env.ELEVEN_API_KEY;
   const hasOpenAI = !!process.env.OPENAI_API_KEY;
-  const streamingFlag = (process.env.VOICE_STREAMING_ENABLED ?? 'false').toLowerCase() === 'true';
+  const streamingFlag = (process.env.VOICE_STREAMING_ENABLED ?? 'true').toLowerCase() === 'true';
   const streamingAvailable = streamingFlag && hasOpenAI;
   const providers = {
     elevenlabs: hasElevenLabs,
@@ -92,10 +92,79 @@ router.get('/tts/check', (req: Request, res: Response) => {
     status: 'ok',
     providers,
     availableProviders,
-    streaming: { enabled: streamingFlag, available: streamingAvailable },
+    streaming: { 
+      enabled: streamingFlag, 
+      available: streamingAvailable,
+      endpoint: streamingAvailable ? '/api/voice/tts/stream' : null,
+      supportedProviders: streamingAvailable ? ['openai'] : []
+    },
     recommended: availableProviders[0] || 'webSpeech',
     timestamp: new Date().toISOString(),
   });
+});
+
+router.post('/tts/stream', async (req: Request, res: Response) => {
+  try {
+    const { text, voiceId, stability, similarityBoost, provider } = req.body;
+    if (!text) {
+      res.status(400).json({ error: 'Text is required' });
+      return;
+    }
+
+    // Streaming TTS is currently only supported with OpenAI
+    if (!process.env.OPENAI_API_KEY) {
+      res.status(503).json({ error: 'OpenAI API key not configured' });
+      return;
+    }
+
+    if (provider && provider !== 'openai') {
+      res.status(400).json({ error: 'Streaming TTS only supported with OpenAI provider' });
+      return;
+    }
+
+    try {
+      const openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      
+      // Use OpenAI's streaming API
+      const response = await openaiClient.audio.speech.create({
+        model: 'tts-1',
+        voice: voiceId || 'alloy',
+        input: text,
+        response_format: 'mp3',
+      });
+
+      // Set headers for streaming
+      res.setHeader('Content-Type', 'audio/mpeg');
+      res.setHeader('Transfer-Encoding', 'chunked');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+
+      // Stream the response body to the client in chunks
+      const stream = response.body as unknown as NodeJS.ReadableStream;
+      
+      stream.on('data', (chunk: Buffer) => {
+        res.write(chunk);
+      });
+
+      stream.on('end', () => {
+        res.end();
+      });
+
+      stream.on('error', (error: Error) => {
+        console.error('Stream error:', error);
+        if (!res.headersSent) {
+          res.status(500).json({ error: 'Streaming failed' });
+        }
+      });
+
+    } catch (openaiError: any) {
+      console.error('OpenAI streaming TTS failed:', openaiError.message);
+      res.status(500).json({ error: 'OpenAI TTS failed', details: openaiError.message });
+    }
+  } catch (error: any) {
+    console.error('TTS Streaming Error:', error.message);
+    res.status(500).json({ error: 'Failed to generate speech stream' });
+  }
 });
 
 router.post('/tts', async (req: Request, res: Response) => {

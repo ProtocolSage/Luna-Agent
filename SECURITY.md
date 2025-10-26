@@ -136,12 +136,22 @@ AUDIT_LOGGING_ENABLED=true
 - Rotate keys regularly
 - Monitor usage patterns
 - Implement rate limiting
+- Keep API keys in main/backend process only
+- Use IPC or HTTP APIs for renderer-to-backend communication
 
 **DON'T:**
 - Hardcode keys in source
 - Share keys between environments
 - Log keys in plaintext
 - Use keys without monitoring
+- **Expose API keys to renderer process (XSS vulnerability)**
+- Pass API keys through contextBridge in Electron preload scripts
+
+**Electron Security:**
+- API keys are kept exclusively in the main process and backend server
+- The preload script only exposes boolean feature flags (e.g., `HAS_OPENAI: true`)
+- Renderer services use backend APIs for operations requiring API keys
+- This prevents XSS attacks from stealing credentials
 
 ### 2. Data Handling
 

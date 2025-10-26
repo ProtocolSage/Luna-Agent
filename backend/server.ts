@@ -63,6 +63,7 @@ import { ChatRequest, ChatResponse, ModelConfig } from '../types';
 import { createAgentRouter } from './routes/agent';
 import voiceRouter from './routes/voice';
 import streamingVoiceRouter, { initializeVoiceWebSocket } from './routes/streamingVoice';
+import websocketSTTRouter, { initializeWebSocketSTT } from './routes/websocketSTT';
 import publicVoiceDiagnosticsRouter from './routes/publicVoiceDiagnostics';
 import memoryRoutes from './routes/memory';
 import toolsRoutes from './routes/tools';
@@ -140,6 +141,7 @@ class SecureExpressServer {
   private port: number;
   private server: any;
   private voiceWebSocketServer: any;
+  private sttWebSocketServer: any;
 
   constructor() {
     this.app = express();
@@ -852,6 +854,10 @@ class SecureExpressServer {
       this.app.use('/api/voice/streaming', streamingVoiceRouter);
       console.log('[SecureServer] Streaming voice routes mounted successfully');
       
+      console.log('[SecureServer] Mounting WebSocket STT routes at /api/voice/websocket-stt');
+      this.app.use('/api/voice/websocket-stt', websocketSTTRouter);
+      console.log('[SecureServer] WebSocket STT routes mounted successfully');
+      
       // Then mount auth routes
       this.app.use('/api', routes);  // This mounts /api/auth from routes/index.ts
       
@@ -920,6 +926,14 @@ class SecureExpressServer {
               console.log(`?? Streaming voice WebSocket: ws://localhost:${this.port}/ws/voice/stream`);
             } catch (error) {
               console.error('[StreamingVoice] Failed to initialize WebSocket server:', error);
+            }
+            
+            // Initialize WebSocket server for streaming STT
+            try {
+              this.sttWebSocketServer = initializeWebSocketSTT(this.server);
+              console.log(`?? WebSocket STT: ws://localhost:${this.port}/ws/voice/stt`);
+            } catch (error) {
+              console.error('[WebSocketSTT] Failed to initialize WebSocket server:', error);
             }
             
             resolve();

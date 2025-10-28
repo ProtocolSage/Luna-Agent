@@ -325,7 +325,7 @@ router.get('/health', (req: Request, res: Response) => {
 
 // Utility functions
 function generateSessionId(): string {
-  return `stt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  return `stt_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
 }
 
 function sendMessage(ws: WebSocket | undefined, message: any): void {

@@ -66,6 +66,12 @@ const result = filter.detect("My SSN is 123-45-6789");
 - File system restrictions
 - Network access control
 
+**Electron Renderer Sandbox:**
+- Enabled for all renderer processes
+- Context isolation with preload scripts
+- Explicit media permission grants
+- No direct Node.js API access
+
 **Security Boundaries:**
 ```typescript
 const sandbox = new ToolSandbox({

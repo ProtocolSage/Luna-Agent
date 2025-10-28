@@ -137,6 +137,18 @@ class LunaMainProcess {
       contents.setWindowOpenHandler(() => {
         return { action: 'deny' };
       });
+
+      // Grant media permissions for voice functionality with sandbox enabled
+      contents.session.setPermissionRequestHandler((webContents, permission, callback) => {
+        const allowedPermissions = ['media', 'microphone', 'audioCapture', 'mediaKeySystem'];
+        if (allowedPermissions.includes(permission)) {
+          logger.info(`Media permission granted: ${permission}`, 'main-process');
+          callback(true);
+        } else {
+          logger.warn(`Permission denied: ${permission}`, 'main-process');
+          callback(false);
+        }
+      });
     });
   }
 
@@ -210,7 +222,7 @@ class LunaMainProcess {
         nodeIntegration: false,
         contextIsolation: true,
         // enableRemoteModule deprecated in newer Electron versions
-        sandbox: false, // Changed to allow media access
+        sandbox: true, // Enabled for security - media access works with proper permissions
         preload: path.join(__dirname, 'preload.js'),
         
         // Performance and features

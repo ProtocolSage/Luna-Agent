@@ -9,6 +9,8 @@ type InChannels  = 'tts-ready' | 'voice:initialized' | 'voice:error' | 'voice:li
 type HandleChannels = 'voice:get-state' | 'voice:get-history' | 'voice:chat-with-tts' | 'stt:start' | 'stt:stop' | 'stt:get-status' | 'stt:switch-to-cloud' | 'stt:switch-to-whisper' | 'stt:health-check';
 
 // ENSURE this ENV exposure exists with your required vars
+// SECURITY: API keys are NOT exposed to renderer process to prevent XSS attacks
+// Renderer should use backend API endpoints for operations requiring API keys
 contextBridge.exposeInMainWorld('__ENV', {
   LUNA_API_BASE: process.env.LUNA_API_BASE,
   API_BASE: process.env.API_BASE,
@@ -20,18 +22,18 @@ contextBridge.exposeInMainWorld('__ENV', {
   LUNA_AUTO_LISTEN_AFTER_TTS: process.env.LUNA_AUTO_LISTEN_AFTER_TTS === 'true',
   LUNA_SILENCE_TIMEOUT: parseInt(process.env.LUNA_SILENCE_TIMEOUT || '3000', 10),
   LUNA_SENTENCE_TTS: process.env.LUNA_SENTENCE_TTS === 'true',
-  // Keep existing env vars that may be needed
-  AZURE_SPEECH_KEY: process.env.AZURE_SPEECH_KEY,
-  AZURE_SPEECH_REGION: process.env.AZURE_SPEECH_REGION,
-  DEEPGRAM_API_KEY: process.env.DEEPGRAM_API_KEY,
-  GOOGLE_CLOUD_API_KEY: process.env.GOOGLE_CLOUD_API_KEY,
-  OPENAI_API_KEY: process.env.OPENAI_API_KEY,
-  ELEVEN_API_KEY: process.env.ELEVEN_API_KEY,
+  // Service Provider Configuration (non-sensitive)
   STT_PROVIDER: process.env.STT_PROVIDER || 'azure',
   STT_PREFER_LOCAL: process.env.STT_PREFER_LOCAL === 'true',
-  // Wake word configuration
-  PICOVOICE_ACCESS_KEY: process.env.PICOVOICE_ACCESS_KEY,
-  WAKE_WORD: process.env.WAKE_WORD || 'luna'
+  AZURE_SPEECH_REGION: process.env.AZURE_SPEECH_REGION, // Region is not sensitive
+  WAKE_WORD: process.env.WAKE_WORD || 'luna', // Wake word text is not sensitive
+  // Feature Flags - Indicate which services are configured (without exposing keys)
+  HAS_AZURE_SPEECH: !!process.env.AZURE_SPEECH_KEY,
+  HAS_DEEPGRAM: !!process.env.DEEPGRAM_API_KEY,
+  HAS_GOOGLE_CLOUD: !!process.env.GOOGLE_CLOUD_API_KEY,
+  HAS_OPENAI: !!process.env.OPENAI_API_KEY,
+  HAS_ELEVEN_LABS: !!process.env.ELEVEN_API_KEY,
+  HAS_PICOVOICE: !!process.env.PICOVOICE_ACCESS_KEY
 });
 
 contextBridge.exposeInMainWorld('voiceIPC', {

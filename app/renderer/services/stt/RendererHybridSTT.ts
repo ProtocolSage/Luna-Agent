@@ -36,17 +36,18 @@ export class RendererHybridSTT {
     try {
       this.isStarted = true;
       
-      // Check if we have cloud STT credentials
+      // SECURITY FIX: Check feature flags instead of direct API key access
       const env = (window as any).__ENV || {};
-      const hasCloudCredentials = env.AZURE_SPEECH_KEY || env.DEEPGRAM_API_KEY;
+      const hasCloudCredentials = env.HAS_AZURE_SPEECH || env.HAS_DEEPGRAM;
       
       if (hasCloudCredentials) {
-        // Try cloud STT first if credentials exist
+        // Note: Cloud STT will fail due to API keys not being exposed (security fix)
+        // This will automatically fall back to Whisper
         try {
           await this.initializeCloudSTT();
           return { success: true };
         } catch (cloudError: any) {
-          console.warn('[RendererHybridSTT] Cloud STT failed:', cloudError.message);
+          console.warn('[RendererHybridSTT] Cloud STT failed (expected - API keys not in renderer):', cloudError.message);
           this.lastError = cloudError.message;
           // Fall through to Whisper
         }
@@ -231,8 +232,10 @@ export class RendererHybridSTT {
   }
 
   async healthCheck(): Promise<{ healthy: boolean; details?: any }> {
-    const hasWhisperKey = !!(window as any).__ENV?.OPENAI_API_KEY;
-    const hasCloudKey = !!(window as any).__ENV?.AZURE_SPEECH_KEY || !!(window as any).__ENV?.DEEPGRAM_API_KEY;
+    // SECURITY FIX: Check feature flags instead of direct API key access
+    const env = (window as any).__ENV;
+    const hasWhisperKey = !!env?.HAS_OPENAI;
+    const hasCloudKey = !!env?.HAS_AZURE_SPEECH || !!env?.HAS_DEEPGRAM;
     
     const status = this.getStatus();
     const healthy = !!this.currentEngine && (this.currentEngine.isListening() || this.currentEngine.isInitialized());
@@ -241,6 +244,7 @@ export class RendererHybridSTT {
       // Try to auto-recover
       try {
         if (hasCloudKey) {
+          // Note: Cloud STT will fail (API keys not in renderer) - will fall back to Whisper
           await this.initializeCloudSTT();
         } else if (hasWhisperKey) {
           await this.switchToWhisperFallback();

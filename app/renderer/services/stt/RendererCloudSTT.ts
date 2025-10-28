@@ -30,14 +30,16 @@ export class RendererCloudSTT implements STTProvider {
   };
 
   constructor() {
-    // Initialize cloud config from environment exposed via preload
+    // SECURITY FIX: API keys are no longer exposed to renderer
+    // Cloud STT service cannot run directly in renderer for security reasons
+    // This class now checks for availability flags only
     const env = (window as any).__ENV || {};
     this.cloudConfig = {
       service: (env.STT_PROVIDER as 'azure' | 'deepgram' | 'google') || 'azure',
-      azureKey: env.AZURE_SPEECH_KEY,
+      azureKey: '', // API keys not available in renderer (security)
       azureRegion: env.AZURE_SPEECH_REGION || 'eastus',
-      deepgramKey: env.DEEPGRAM_API_KEY,
-      googleKey: env.GOOGLE_CLOUD_API_KEY,
+      deepgramKey: '', // API keys not available in renderer (security)
+      googleKey: '', // API keys not available in renderer (security)
       language: 'en-US'
     };
   }
@@ -59,14 +61,20 @@ export class RendererCloudSTT implements STTProvider {
       throw new Error('Cloud STT requires browser context with navigator.mediaDevices');
     }
 
-    // Check if credentials are available - if not, fail immediately for fallback
-    if (!this.cloudConfig.azureKey && !this.cloudConfig.deepgramKey) {
+    // SECURITY FIX: API keys are not exposed to renderer for security reasons
+    // Cloud STT cannot connect directly from renderer without API keys
+    // Always fail to trigger fallback to Whisper (which uses backend API)
+    const env = (window as any).__ENV || {};
+    const hasCloudCredentials = env.HAS_AZURE_SPEECH || env.HAS_DEEPGRAM;
+    
+    if (!hasCloudCredentials) {
       console.warn('[RendererCloudSTT] No cloud STT credentials configured. Will fallback to Whisper.');
       throw new Error('NO_CLOUD_CREDENTIALS: No Azure or Deepgram API keys configured');
     }
-
-    this._isInitialized = true;
-    console.log('[RendererCloudSTT] Initialized successfully');
+    
+    // Even if credentials exist, they're not available in renderer for security
+    console.warn('[RendererCloudSTT] Cloud STT cannot run in renderer (API keys not exposed for security). Will fallback to Whisper.');
+    throw new Error('SECURITY: Cloud STT requires backend API - API keys not exposed to renderer');
   }
 
   async startListening(): Promise<void> {

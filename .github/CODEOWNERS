@@ -1,0 +1,19 @@
+# Critical security & infra
+/.github/workflows/*            @ProtocolSage/devops
+/security/*                     @ProtocolSage/security
+
+# Electron core + preload
+/electron-main/**               @ProtocolSage/electron @ProtocolSage/security
+/app/electron/**                @ProtocolSage/electron @ProtocolSage/security
+/app/preload/**                 @ProtocolSage/electron @ProtocolSage/security
+
+# Voice pipeline
+/voice/**                       @ProtocolSage/voice
+
+# Agent/tooling
+/agent/**                       @ProtocolSage/agents
+/tools/**                       @ProtocolSage/agents
+
+# Data & memory
+/server/db/**                   @ProtocolSage/backend
+/server/memory/**               @ProtocolSage/backend

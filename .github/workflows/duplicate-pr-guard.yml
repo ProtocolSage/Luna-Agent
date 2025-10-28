@@ -1,0 +1,77 @@
+name: duplicate-pr-guard
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened, ready_for_review]
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  detect-duplicates:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Label by agent (branch heuristic)
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const ref = pr.head.ref.toLowerCase();
+            const labels = [];
+            if (ref.includes('claude')) labels.push('agent:claude');
+            if (ref.includes('copilot')) labels.push('agent:copilot');
+            if (labels.length) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: pr.number, labels
+              }).catch(() => {});
+            }
+
+      - name: Detect potential duplicate PRs
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            const tokenize = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim().split(/\s+/).filter(Boolean);
+            const jaccard = (a, b) => { const A = new Set(a), B = new Set(b);
+              const inter = [...A].filter(x => B.has(x)).length; const uni = new Set([...A, ...B]).size; return uni ? inter/uni : 0; };
+
+            const thisTitleTokens = tokenize(pr.title);
+            const thisFiles = await github.paginate(github.rest.pulls.listFiles, { owner, repo, pull_number: pr.number, per_page: 100 });
+            const thisPaths = thisFiles.map(f => f.filename);
+
+            const openPRs = await github.paginate(github.rest.pulls.list, { owner, repo, state: 'open', per_page: 100 });
+
+            const suspects = [];
+            for (const other of openPRs) {
+              if (other.number === pr.number) continue;
+              const otherTokens = tokenize(other.title);
+              const titleScore = jaccard(thisTitleTokens, otherTokens);
+
+              const otherFiles = await github.paginate(github.rest.pulls.listFiles, { owner, repo, pull_number: other.number, per_page: 100 });
+              const otherPaths = otherFiles.map(f => f.filename);
+              const pathScore = jaccard(thisPaths, otherPaths);
+
+              if (pathScore >= 0.4 || (titleScore >= 0.5 && pathScore >= 0.2)) {
+                suspects.push({ number: other.number, title: other.title, titleScore, pathScore });
+              }
+            }
+
+            if (suspects.length) {
+              await github.rest.issues.addLabels({
+                owner, repo, issue_number: pr.number,
+                labels: ['duplicate', 'needs triage']
+              }).catch(() => {});
+
+              const bullets = suspects.map(s => `- #${s.number} — "${s.title}" (title≈${s.titleScore.toFixed(2)}, paths≈${s.pathScore.toFixed(2)})`).join('\n');
+              const body = [
+                `Possible duplicate(s) detected based on title/path overlap:`, ``,
+                bullets, ``,
+                `> If superseded, close older PRs with a note like: "Superseded by #${pr.number}".`
+              ].join('\n');
+
+              await github.rest.issues.createComment({ owner, repo, issue_number: pr.number, body });
+            }

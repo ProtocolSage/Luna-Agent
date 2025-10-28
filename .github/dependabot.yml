@@ -1,0 +1,66 @@
+version: 2
+updates:
+  # npm dependencies
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "07:00"
+    # Group minor and patch updates to reduce PR spam
+    groups:
+      production-dependencies:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        exclude-patterns:
+          - "@types/*"
+          - "*-dev"
+          - "eslint*"
+          - "prettier*"
+        update-types:
+          - "minor"
+          - "patch"
+      development-dependencies:
+        applies-to: version-updates
+        patterns:
+          - "@types/*"
+          - "*-dev"
+          - "eslint*"
+          - "prettier*"
+          - "jest*"
+          - "vitest*"
+        update-types:
+          - "minor"
+          - "patch"
+      security-updates:
+        applies-to: security-updates
+    # Limit number of open PRs
+    open-pull-requests-limit: 10
+    # Auto-label
+    labels:
+      - "dependencies"
+      - "automated"
+    # Ignore Electron major versions (breaking changes)
+    ignore:
+      - dependency-name: "electron"
+        update-types: ["version-update:semver-major"]
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "07:00"
+    groups:
+      actions-updates:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "github-actions"

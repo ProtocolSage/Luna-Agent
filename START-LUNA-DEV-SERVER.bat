@@ -44,7 +44,7 @@ if %ERRORLEVEL% NEQ 0 (
 REM Start with dev server
 echo.
 echo Starting Luna Agent with dev server...
-echo - Backend: http://localhost:3000
+echo - Backend: http://localhost:3001
 echo - Renderer Dev Server: http://localhost:5173
 echo - Electron will connect to the dev server
 echo.

@@ -5,7 +5,7 @@ Write-Host "🔍 LUNA AGENT - VOICE ROUTES DEBUG" -ForegroundColor Cyan
 Write-Host "==================================" -ForegroundColor Cyan
 Write-Host ""
 
-$port = 3000
+$port = 3001
 
 # Function to test endpoint with detailed response
 function Test-EndpointDetails {

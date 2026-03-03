@@ -48,7 +48,7 @@ while (-not $serverReady -and $attempts -lt 15) {
     $attempts++
     
     try {
-        $healthCheck = Invoke-RestMethod -Uri "http://localhost:3000/health" -Method GET -TimeoutSec 3
+        $healthCheck = Invoke-RestMethod -Uri "http://localhost:3001/health" -Method GET -TimeoutSec 3
         $serverReady = $true
         Write-Host "✅ Server is ready!" -ForegroundColor Green
     } catch {
@@ -83,11 +83,11 @@ function Test-Endpoint {
 
 # Test the FIXED endpoint paths
 $allTests = @(
-    @{ Url = "http://localhost:3000/health"; Name = "System health check" },
-    @{ Url = "http://localhost:3000/api/voice/tts/check"; Name = "Legacy voice TTS" },
-    @{ Url = "http://localhost:3000/api/voice/streaming/status"; Name = "Streaming voice status" },
-    @{ Url = "http://localhost:3000/api/voice/streaming/health"; Name = "Streaming voice health" },
-    @{ Url = "http://localhost:3000/api/voice/streaming/sessions"; Name = "Streaming voice sessions" }
+    @{ Url = "http://localhost:3001/health"; Name = "System health check" },
+    @{ Url = "http://localhost:3001/api/voice/tts/check"; Name = "Legacy voice TTS" },
+    @{ Url = "http://localhost:3001/api/voice/streaming/status"; Name = "Streaming voice status" },
+    @{ Url = "http://localhost:3001/api/voice/streaming/health"; Name = "Streaming voice health" },
+    @{ Url = "http://localhost:3001/api/voice/streaming/sessions"; Name = "Streaming voice sessions" }
 )
 
 $results = @()
@@ -108,7 +108,7 @@ $wsSuccess = $false
 try {
     $webSocket = New-Object System.Net.WebSockets.ClientWebSocket
     $cancellationToken = [System.Threading.CancellationToken]::None
-    $uri = [System.Uri]::new("ws://localhost:3000/ws/voice/stream")
+    $uri = [System.Uri]::new("ws://localhost:3001/ws/voice/stream")
     
     $connectTask = $webSocket.ConnectAsync($uri, $cancellationToken)
     if ($connectTask.Wait(5000) -and $webSocket.State -eq "Open") {
@@ -153,10 +153,10 @@ if ($overallSuccess) {
     Write-Host "4. Start talking to your AI agent!" -ForegroundColor White
     Write-Host ""
     Write-Host "🔗 Working endpoints:" -ForegroundColor Gray
-    Write-Host "• Status: http://localhost:3000/api/voice/streaming/status" -ForegroundColor DarkGray
-    Write-Host "• Health: http://localhost:3000/api/voice/streaming/health" -ForegroundColor DarkGray
-    Write-Host "• Sessions: http://localhost:3000/api/voice/streaming/sessions" -ForegroundColor DarkGray
-    Write-Host "• WebSocket: ws://localhost:3000/ws/voice/stream" -ForegroundColor DarkGray
+    Write-Host "• Status: http://localhost:3001/api/voice/streaming/status" -ForegroundColor DarkGray
+    Write-Host "• Health: http://localhost:3001/api/voice/streaming/health" -ForegroundColor DarkGray
+    Write-Host "• Sessions: http://localhost:3001/api/voice/streaming/sessions" -ForegroundColor DarkGray
+    Write-Host "• WebSocket: ws://localhost:3001/ws/voice/stream" -ForegroundColor DarkGray
     
 } else {
     Write-Host ""

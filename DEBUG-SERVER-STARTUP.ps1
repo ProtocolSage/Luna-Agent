@@ -78,15 +78,15 @@ Write-Host ""
 Write-Host "🔬 Testing server endpoints..." -ForegroundColor Yellow
 
 try {
-    $healthCheck = Invoke-RestMethod -Uri "http://localhost:3000/health" -Method GET -TimeoutSec 5
+    $healthCheck = Invoke-RestMethod -Uri "http://localhost:3001/health" -Method GET -TimeoutSec 5
     Write-Host "✅ Server is responding to health checks" -ForegroundColor Green
     
     # Test a few key endpoints to see what's actually mounted
     $testEndpoints = @(
-        "http://localhost:3000/api",
-        "http://localhost:3000/api/voice",
-        "http://localhost:3000/api/voice/tts/check",
-        "http://localhost:3000/api/voice/streaming/status"
+        "http://localhost:3001/api",
+        "http://localhost:3001/api/voice",
+        "http://localhost:3001/api/voice/tts/check",
+        "http://localhost:3001/api/voice/streaming/status"
     )
     
     Write-Host ""

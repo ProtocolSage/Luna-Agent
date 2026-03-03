@@ -16,8 +16,8 @@ if errorlevel 1 (
     cmd /c "npx tsc -p tsconfig.backend.json"
 )
 
-echo [3/6] Killing any processes on port 3000...
-for /f "tokens=5" %%a in ('netstat -aon ^| find ":3000" ^| find "LISTENING"') do (
+echo [3/6] Killing any processes on port 3001...
+for /f "tokens=5" %%a in ('netstat -aon ^| find ":3001" ^| find "LISTENING"') do (
     taskkill /F /PID %%a >nul 2>nul
 )
 

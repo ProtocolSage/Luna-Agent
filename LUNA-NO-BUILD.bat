@@ -9,8 +9,8 @@ cd /d C:\dev\luna-agent-v1.0-production-complete-2
 echo [1] Fixing critical server.js issue directly...
 powershell -Command "(Get-Content dist\backend\server.js) -replace 'authenticateToken,', '' | Set-Content dist\backend\server.js"
 
-echo [2] Killing port 3000...
-for /f "tokens=5" %%a in ('netstat -aon ^| find ":3000" ^| find "LISTENING"') do (
+echo [2] Killing port 3001...
+for /f "tokens=5" %%a in ('netstat -aon ^| find ":3001" ^| find "LISTENING"') do (
     taskkill /F /PID %%a >nul 2>nul
 )
 
@@ -20,7 +20,7 @@ start "Luna Backend" cmd /k "node dist\backend\server.js 2>&1"
 timeout /t 3 /nobreak >nul
 
 echo [4] Testing backend...
-curl -s http://localhost:3000/health
+curl -s http://localhost:3001/health
 if %errorlevel% equ 0 (
     echo Backend is running!
 ) else (

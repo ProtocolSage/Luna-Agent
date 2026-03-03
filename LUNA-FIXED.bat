@@ -9,8 +9,8 @@ cd /d C:\dev\luna-agent-v1.0-production-complete-2
 echo [1/4] Compiling fixed TypeScript files...
 cmd /c "npx tsc backend\server.ts backend\routes\agent.ts --outDir dist --esModuleInterop --skipLibCheck --allowJs"
 
-echo [2/4] Killing processes on port 3000...
-for /f "tokens=5" %%a in ('netstat -aon ^| find ":3000" ^| find "LISTENING"') do (
+echo [2/4] Killing processes on port 3001...
+for /f "tokens=5" %%a in ('netstat -aon ^| find ":3001" ^| find "LISTENING"') do (
     taskkill /F /PID %%a >nul 2>nul
 )
 

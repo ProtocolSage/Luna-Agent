@@ -88,7 +88,7 @@ echo  - Say "Hey Luna" to activate
 echo  - Or press and hold SPACE bar
 echo  - Or click the microphone button
 echo.
-echo  Web Interface: http://localhost:3000
+echo  Web Interface: http://localhost:3001
 echo.
 echo  Starting Luna in 3 seconds...
 timeout /t 3 /nobreak >nul

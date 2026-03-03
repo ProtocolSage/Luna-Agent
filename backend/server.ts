@@ -143,7 +143,7 @@ class SecureExpressServer {
 
   constructor() {
     this.app = express();
-    this.port = parseInt(process.env.PORT || '3000', 10); // Ensure PORT is respected
+    this.port = parseInt(process.env.PORT || '3001', 10); // Ensure PORT is respected
     this.securityService = new SecurityService();
     this.databaseService = getDatabaseService();
     

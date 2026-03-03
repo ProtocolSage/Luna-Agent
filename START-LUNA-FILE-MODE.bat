@@ -48,7 +48,7 @@ echo Assets copied.
 REM Start in file mode
 echo.
 echo Starting Luna Agent in file mode...
-echo - Backend: http://localhost:3000
+echo - Backend: http://localhost:3001
 echo - Renderer: Loading from dist/app/renderer/index.html
 echo.
 call npm run dev:file

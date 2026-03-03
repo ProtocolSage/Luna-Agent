@@ -160,7 +160,7 @@ class LunaMainProcess {
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: blob: file:",
               "font-src 'self' data:",
-              "connect-src 'self' http://localhost:3000 http://127.0.0.1:3000 ws://localhost:3000 ws://127.0.0.1:3000 http://localhost:5173 ws://localhost:5173",
+              "connect-src 'self' http://localhost:3001 http://127.0.0.1:3001 ws://localhost:3001 ws://127.0.0.1:3001 http://localhost:5173 ws://localhost:5173",
               "media-src 'self' blob: data:",
               "object-src 'none'",
               "base-uri 'self'"
@@ -227,7 +227,7 @@ class LunaMainProcess {
     });
 
     // Load the renderer - support both dev server and file mode
-    const apiBase = process.env.LUNA_API_BASE || process.env.API_BASE || 'http://localhost:3000';
+    const apiBase = process.env.LUNA_API_BASE || process.env.API_BASE || 'http://localhost:3001';
     
     // Check if we're in dev server mode
     const rendererUrl = process.env.ELECTRON_RENDERER_URL;
@@ -348,7 +348,7 @@ class LunaMainProcess {
       if (fs.existsSync(serverPath)) {
         console.log('[Main] Starting backend server:', serverPath);
         this.serverProcess = spawn('node', [serverPath], {
-          env: { ...process.env, PORT: '3000' },
+          env: { ...process.env, PORT: '3001' },
           stdio: 'pipe'
         });
         
@@ -378,7 +378,7 @@ class LunaMainProcess {
         console.warn('  ', path.join(process.resourcesPath, 'app', 'dist', 'backend', 'server.js'));
         console.warn('  ', path.join(process.resourcesPath, 'backend', 'server.js'));
         console.warn('  ', path.join(__dirname, 'backend', 'server.js'));
-        console.warn('[Main] App will try to connect to external backend at localhost:3000');
+        console.warn('[Main] App will try to connect to external backend at localhost:3001');
       }
     } else {
       // Development: Backend started externally
